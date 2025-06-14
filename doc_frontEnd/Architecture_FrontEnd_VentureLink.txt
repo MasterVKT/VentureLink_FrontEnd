@@ -1,0 +1,3289 @@
+Architecture Frontend VentureLink
+Ce document décrit l'architecture complète du frontend de l'application mobile VentureLink, développée avec Flutter/Dart. Il sert de référence principale pour l'équipe frontend et définit l'organisation du code, les patterns utilisés, et les choix techniques.
+1. Vue d'ensemble
+L'application VentureLink adopte une architecture MVVM (Model-View-ViewModel) permettant une séparation claire des responsabilités et une meilleure testabilité. Le frontend est entièrement développé avec Flutter pour une expérience utilisateur cohérente sur iOS et Android.
+1.1 Principes architecturaux
+•	Séparation des préoccupations: Chaque composant a une responsabilité unique et bien définie
+•	Testabilité: Architecture conçue pour faciliter les tests unitaires et d'intégration
+•	Maintenabilité: Organisation claire du code pour une évolution facilitée
+•	Réactivité: UI réactive aux changements d'état via des patterns observables
+•	Performances: Optimisation des rendus et des appels réseau
+1.2 Stack technologique
+•	Framework: Flutter 3.10+
+•	Langage: Dart 3.0+
+•	Gestion d'état: Provider pour la gestion d'état locale et globale
+•	Navigation: Flutter Navigation 2.0 avec AutoRoute
+•	Réseau: Dio pour les requêtes HTTP
+•	Intégrations Firebase: Authentication, Cloud Messaging
+•	Stockage local: Shared Preferences et Hive
+•	Injection de dépendances: GetIt
+•	Internationalisation: Flutter Localizations
+2. Structure du projet
+2.1 Organisation des dossiers
+
+## 11. Performance et Optimisation
+
+### 11.1 Lazy Loading et Code Splitting
+
+```dart
+// config/routes.dart avec lazy loading
+@MaterialAutoRouter(
+  replaceInRouteName: 'Screen,Route',
+  routes: <AutoRoute>[
+    AutoRoute(
+      path: '/',
+      page: SplashScreen,
+      initial: true,
+    ),
+    // Routes principales avec chargement immédiat
+    AutoRoute(
+      path: '/login',
+      page: LoginScreen,
+    ),
+    AutoRoute(
+      path: '/register',
+      page: RegisterScreen,
+    ),
+    AutoRoute(
+      path: '/main',
+      page: MainScreen,
+      children: [
+        AutoRoute(
+          path: 'home',
+          page: HomeScreen,
+          initial: true,
+        ),
+        AutoRoute(
+          path: 'discover',
+          page: DiscoverScreen,
+        ),
+        AutoRoute(
+          path: 'notifications',
+          page: NotificationScreen,
+        ),
+        AutoRoute(
+          path: 'profile',
+          page: ProfileScreen,
+        ),
+      ],
+    ),
+    // Routes secondaires avec lazy loading
+    AutoRoute(
+      path: '/project/:id',
+      page: ProjectDetailScreen,
+    ),
+    AutoRoute(
+      path: '/project/create',
+      page: ProjectCreateScreen,
+    ),
+    AutoRoute(
+      path: '/settings',
+      page: SettingsScreen,
+    ),
+    AutoRoute(
+      path: '/premium',
+      page: PremiumScreen,
+    ),
+  ],
+)
+class $AppRouter {}
+11.2 Optimisation des Images
+// core/utils/image_utils.dart
+class ImageUtils {
+  // Compression des images avant upload
+  static Future<File> compressImage(File imageFile, {
+    int quality = 85,
+    int maxWidth = 1080,
+    int maxHeight = 1920,
+  }) async {
+    final dir = await getTemporaryDirectory();
+    final targetPath = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    
+    // Compression avec flutter_image_compress
+    final result = await FlutterImageCompress.compressAndGetFile(
+      imageFile.path,
+      targetPath,
+      quality: quality,
+      minWidth: maxWidth,
+      minHeight: maxHeight,
+    );
+    
+    return File(result!.path);
+  }
+  
+  // Chargement des images avec cache
+  static CachedNetworkImage cachedImage(
+    String url, {
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.cover,
+    Widget Function(BuildContext, String)? placeholder,
+    Widget Function(BuildContext, String, dynamic)? errorWidget,
+  }) {
+    return CachedNetworkImage(
+      imageUrl: url,
+      width: width,
+      height: height,
+      fit: fit,
+      placeholder: placeholder ?? (context, url) => Container(
+        color: Colors.grey[200],
+        child: const Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2.0,
+          ),
+        ),
+      ),
+      errorWidget: errorWidget ?? (context, url, error) => Container(
+        color: Colors.grey[200],
+        child: const Center(
+          child: Icon(Icons.error_outline),
+        ),
+      ),
+    );
+  }
+}
+11.3 Stratégies de Mise en Cache
+// core/network/dio_client.dart (ajout de méthodes de cache)
+
+// Ajouter un gestionnaire de cache
+final _cacheStore = MemoryCacheStore(maxSize: 10485760); // 10 MB
+final _cacheOptions = CacheOptions(
+  store: _cacheStore,
+  policy: CachePolicy.request,
+  hitCacheOnErrorExcept: [401, 403], // Ne pas utiliser le cache en cas d'erreur d'autorisation
+  maxStale: const Duration(days: 1), // Durée maximum du cache
+  priority: CachePriority.normal,
+  keyBuilder: CacheOptions.defaultCacheKeyBuilder,
+);
+
+// Initialiser Dio avec le cache
+DioClient(this._dio, this._storageService) {
+  _dio.options.baseUrl = AppConfig.apiBaseUrl;
+  _dio.options.connectTimeout = const Duration(seconds: 15);
+  _dio.options.receiveTimeout = const Duration(seconds: 15);
+  _dio.options.responseType = ResponseType.json;
+  
+  // Ajouter l'intercepteur de cache
+  _dio.interceptors.add(DioCacheInterceptor(options: _cacheOptions));
+  
+  // Autres intercepteurs
+  _dio.interceptors.add(_createAuthInterceptor());
+  _dio.interceptors.add(_createLogInterceptor());
+  _dio.interceptors.add(_createErrorInterceptor());
+}
+
+// Méthode pour les requêtes avec cache spécifique
+Future<Response> getCached(
+  String path, {
+  Map<String, dynamic>? queryParameters,
+  Duration maxStale = const Duration(hours: 1),
+  Duration maxAge = const Duration(minutes: 10),
+  bool forceRefresh = false,
+}) async {
+  final cacheOptions = _cacheOptions.copyWith(
+    policy: forceRefresh ? CachePolicy.refresh : CachePolicy.request,
+    maxStale: maxStale,
+    maxAge: maxAge,
+  );
+  
+  try {
+    final response = await _dio.get(
+      path,
+      queryParameters: queryParameters,
+      options: Options(extra: {
+        'dio_cache_options': cacheOptions.toExtra(),
+      }),
+    );
+    return response;
+  } catch (e) {
+    throw _handleError(e);
+  }
+}
+
+// Méthode pour effacer le cache
+Future<void> clearCache() async {
+  await _cacheStore.clean();
+}
+
+// Méthode pour effacer une entrée spécifique du cache
+Future<void> invalidateCacheEntry(String key) async {
+  await _cacheStore.delete(key);
+}
+11.4 Rendering Optimisé
+// presentation/common_widgets/optimized_list_view.dart
+class OptimizedListView<T> extends StatelessWidget {
+  final List<T> items;
+  final Widget Function(BuildContext context, T item, int index) itemBuilder;
+  final bool isLoading;
+  final VoidCallback? onLoadMore;
+  final bool hasMoreItems;
+  final double itemHeight;
+  
+  const OptimizedListView({
+    Key? key,
+    required this.items,
+    required this.itemBuilder,
+    this.isLoading = false,
+    this.onLoadMore,
+    this.hasMoreItems = false,
+    required this.itemHeight,
+  }) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (!isLoading && 
+            hasMoreItems && 
+            scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent * 0.9 &&
+            onLoadMore != null) {
+          onLoadMore!();
+        }
+        return false;
+      },
+      child: ListView.builder(
+        // Optimiser les performances avec un contrôleur d'économie de mémoire
+        addAutomaticKeepAlives: false,
+        addRepaintBoundaries: false,
+        itemCount: items.length + (isLoading || hasMoreItems ? 1 : 0),
+        // Optimiser le défilement avec une hauteur fixe
+        itemExtent: itemHeight,
+        // Construire uniquement les éléments visibles et proches
+        cacheExtent: MediaQuery.of(context).size.height,
+        itemBuilder: (context, index) {
+          if (index >= items.length) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          
+          // Utiliser RepaintBoundary pour isoler le rendering
+          return RepaintBoundary(
+            child: itemBuilder(context, items[index], index),
+          );
+        },
+      ),
+    );
+  }
+}
+12. Sécurité
+12.1 Stockage sécurisé
+// services/security_service.dart
+class SecurityService {
+  final FlutterSecureStorage _secureStorage;
+  
+  SecurityService(this._secureStorage);
+  
+  // Stockage de données sensibles
+  Future<void> secureWrite(String key, String value) async {
+    await _secureStorage.write(key: key, value: value);
+  }
+  
+  Future<String?> secureRead(String key) async {
+    return await _secureStorage.read(key: key);
+  }
+  
+  Future<void> secureDelete(String key) async {
+    await _secureStorage.delete(key: key);
+  }
+  
+  // Chiffrement des données
+  Future<String> encrypt(String plainText, String key) async {
+    final encrypter = _createEncrypter(key);
+    final iv = IV.fromLength(16);
+    final encrypted = encrypter.encrypt(plainText, iv: iv);
+    return encrypted.base64;
+  }
+  
+  Future<String> decrypt(String encryptedText, String key) async {
+    final encrypter = _createEncrypter(key);
+    final iv = IV.fromLength(16);
+    final encrypted = Encrypted.fromBase64(encryptedText);
+    return encrypter.decrypt(encrypted, iv: iv);
+  }
+  
+  Encrypter _createEncrypter(String key) {
+    final keyBytes = md5.convert(utf8.encode(key)).bytes;
+    final encryptionKey = Key(Uint8List.fromList(keyBytes));
+    return Encrypter(AES(encryptionKey));
+  }
+  
+  // Génération de clé sécurisée
+  Future<String> generateSecureKey() async {
+    final random = Random.secure();
+    final values = List<int>.generate(32, (i) => random.nextInt(256));
+    return base64Url.encode(values);
+  }
+}
+12.2 Protection contre le jailbreak/root
+// services/security_service.dart (ajout)
+Future<bool> isDeviceSecure() async {
+  if (Platform.isAndroid) {
+    return !await _isRooted();
+  } else if (Platform.isIOS) {
+    return !await _isJailbroken();
+  }
+  return true;
+}
+
+Future<bool> _isRooted() async {
+  try {
+    // Vérifier les chemins de fichiers communs aux appareils rootés
+    const paths = [
+      '/system/app/Superuser.apk',
+      '/sbin/su',
+      '/system/bin/su',
+      '/system/xbin/su',
+      '/data/local/xbin/su',
+      '/data/local/bin/su',
+      '/system/sd/xbin/su',
+      '/system/bin/failsafe/su',
+      '/data/local/su'
+    ];
+    
+    for (final path in paths) {
+      if (await File(path).exists()) {
+        return true;
+      }
+    }
+    
+    // Vérifier les applications de root connues
+    final pm = await channel.invokeMethod('checkPackageManager');
+    final packages = [
+      'com.noshufou.android.su',
+      'com.thirdparty.superuser',
+      'eu.chainfire.supersu',
+      'com.koushikdutta.superuser',
+      'com.zachspong.temprootremovejb',
+      'com.ramdroid.appquarantine'
+    ];
+    
+    for (final pkg in packages) {
+      if (pm.contains(pkg)) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (e) {
+    // En cas d'erreur, considérer l'appareil comme potentiellement compromis
+    return true;
+  }
+}
+
+Future<bool> _isJailbroken() async {
+  try {
+    // Vérifier les chemins de fichiers communs aux appareils jailbreakés
+    const paths = [
+      '/Applications/Cydia.app',
+      '/Library/MobileSubstrate/MobileSubstrate.dylib',
+      '/bin/bash',
+      '/usr/sbin/sshd',
+      '/etc/apt',
+      '/private/var/lib/apt/'
+    ];
+    
+    for (final path in paths) {
+      if (await File(path).exists()) {
+        return true;
+      }
+    }
+    
+    // Vérifier si l'application peut écrire en dehors de son sandbox
+    final testFile = '/private/jailbreak.txt';
+    try {
+      await File(testFile).writeAsString('test');
+      await File(testFile).delete();
+      return true;
+    } catch (e) {
+      // Normal, ne pas pouvoir écrire ici
+    }
+    
+    return false;
+  } catch (e) {
+    // En cas d'erreur, considérer l'appareil comme potentiellement compromis
+    return true;
+  }
+}
+12.3 Sécurité des communications réseau
+// core/network/certificate_pinning.dart
+class CertificatePinning {
+  // Configuration du pinning de certificat avec dio_pinning
+  static void setupPinning(Dio dio) {
+    // SHA-256 des certificats de l'API VentureLink
+    final fingerprints = [
+      'sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', // Remplacer par l'empreinte réelle
+      'sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=', // Certificat secondaire/backup
+    ];
+    
+    // Ajouter l'intercepteur de pinning
+    dio.httpClientAdapter = PinningAdapter(
+      allowedSHAFingerprints: fingerprints,
+      // Domaines à vérifier
+      trustedDomains: ['api.venturelink.com', 'api-dev.venturelink.com'],
+    );
+  }
+}
+13. Déploiement et Livraison
+13.1 Configuration de l'environnement
+// config/environment.dart
+enum Environment {
+  development,
+  staging,
+  production,
+}
+
+class AppConfig {
+  static late Environment environment;
+  static late String apiBaseUrl;
+  static late String apiKey;
+  static late bool enableAnalytics;
+  static late bool enableCrashlytics;
+  
+  static void configure(Environment env) {
+    environment = env;
+    
+    switch (environment) {
+      case Environment.development:
+        apiBaseUrl = 'https://api-dev.venturelink.com/api/v1';
+        apiKey = 'dev-api-key';
+        enableAnalytics = false;
+        enableCrashlytics = false;
+        break;
+      case Environment.staging:
+        apiBaseUrl = 'https://api-staging.venturelink.com/api/v1';
+        apiKey = 'staging-api-key';
+        enableAnalytics = true;
+        enableCrashlytics = true;
+        break;
+      case Environment.production:
+        apiBaseUrl = 'https://api.venturelink.com/api/v1';
+        apiKey = 'prod-api-key';
+        enableAnalytics = true;
+        enableCrashlytics = true;
+        break;
+    }
+  }
+  
+  static bool get isProduction => environment == Environment.production;
+  static bool get isStaging => environment == Environment.staging;
+  static bool get isDevelopment => environment == Environment.development;
+}
+
+// Entrées principales pour chaque environnement
+// main_dev.dart
+void main() {
+  AppConfig.configure(Environment.development);
+  mainCommon();
+}
+
+// main_staging.dart
+void main() {
+  AppConfig.configure(Environment.staging);
+  mainCommon();
+}
+
+// main_prod.dart
+void main() {
+  AppConfig.configure(Environment.production);
+  mainCommon();
+}
+
+// main.dart
+void mainCommon() {
+  // Configuration commune
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialiser Firebase
+  initializeFirebase();
+  
+  // Injection de dépendances
+  setupDependencies();
+  
+  // Lancer l'application
+  runApp(const App());
+}
+13.2 Build automatisé avec Fastlane
+# fastlane/Fastfile
+default_platform(:android)
+
+# Android
+platform :android do
+  desc "Build and deploy Android app to internal track"
+  lane :internal do
+    gradle(
+      task: "clean assembleRelease",
+      build_type: "Release",
+      properties: {
+        "android.injected.signing.store.file" => ENV["KEYSTORE_PATH"],
+        "android.injected.signing.store.password" => ENV["KEYSTORE_PASSWORD"],
+        "android.injected.signing.key.alias" => ENV["KEY_ALIAS"],
+        "android.injected.signing.key.password" => ENV["KEY_PASSWORD"],
+      }
+    )
+    upload_to_play_store(
+      track: "internal",
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+  
+  desc "Build and deploy Android app to production"
+  lane :production do
+    gradle(
+      task: "clean bundleRelease",
+      build_type: "Release",
+      properties: {
+        "android.injected.signing.store.file" => ENV["KEYSTORE_PATH"],
+        "android.injected.signing.store.password" => ENV["KEYSTORE_PASSWORD"],
+        "android.injected.signing.key.alias" => ENV["KEY_ALIAS"],
+        "android.injected.signing.key.password" => ENV["KEY_PASSWORD"],
+      }
+    )
+    upload_to_play_store(
+      track: "production",
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+    )
+  end
+end
+
+# iOS
+platform :ios do
+  desc "Build and deploy iOS app to TestFlight"
+  lane :beta do
+    match(type: "appstore")
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1,
+      xcodeproj: "ios/Runner.xcodeproj"
+    )
+    build_app(workspace: "ios/Runner.xcworkspace", scheme: "Runner")
+    upload_to_testflight
+  end
+  
+  desc "Build and deploy iOS app to App Store"
+  lane :production do
+    match(type: "appstore")
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1,
+      xcodeproj: "ios/Runner.xcodeproj"
+    )
+    build_app(workspace: "ios/Runner.xcworkspace", scheme: "Runner")
+    upload_to_app_store(
+      submit_for_review: true,
+      automatic_release: true,
+      force: true
+    )
+  end
+end
+13.3 Configuration CI/CD (GitHub Actions)
+# .github/workflows/flutter-ci.yml
+name: Flutter CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Test and Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.x'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  build-android:
+    name: Build Android App
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.x'
+          channel: 'stable'
+      - run: flutter pub get
+      - name: Setup keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+          echo "storeFile=keystore.jks" >> android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+      - run: flutter build appbundle
+      - name: Upload app bundle
+        uses: actions/upload-artifact@v2
+        with:
+          name: app-bundle
+          path: build/app/outputs/bundle/release/app-release.aab
+
+  build-ios:
+    name: Build iOS App
+    needs: test
+    runs-on: macos-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.x'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - name: Upload app
+        uses: actions/upload-artifact@v2
+        with:
+          name: ios-build
+          path: build/ios/iphoneos
+
+  deploy-internal:
+    name: Deploy to internal
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download app bundle
+        uses: actions/download-artifact@v2
+        with:
+          name: app-bundle
+          path: build/app/outputs/bundle/release/
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7'
+      - name: Install Fastlane
+        run: gem install fastlane
+      - name: Deploy to Play Store internal
+        run: |
+          cd android
+          fastlane internal
+        env:
+          KEYSTORE_PATH: keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SUPPLY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+
+  deploy-production:
+    name: Deploy to production
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download app bundle
+        uses: actions/download-artifact@v2
+        with:
+          name: app-bundle
+          path: build/app/outputs/bundle/release/
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7'
+      - name: Install Fastlane
+        run: gem install fastlane
+      - name: Deploy to Play Store production
+        run: |
+          cd android
+          fastlane production
+        env:
+          KEYSTORE_PATH: keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SUPPLY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+lib/ ├── main.dart # Point d'entrée de l'application ├── app.dart # Configuration générale de l'application ├── config/ # Configuration (URLs, clés API, etc.) │ ├── app_config.dart │ ├── environment.dart │ └── routes.dart ├── constants/ # Constantes utilisées dans l'application │ ├── app_constants.dart │ ├── api_paths.dart │ ├── assets_paths.dart │ └── design_constants.dart ├── core/ # Fonctionnalités centrales réutilisables │ ├── error/ # Gestion des erreurs │ │ ├── app_exceptions.dart │ │ ├── error_handler.dart │ │ └── network_exceptions.dart │ ├── network/ # Abstraction du réseau │ │ ├── api_client.dart │ │ ├── dio_client.dart │ │ ├── interceptors/ │ │ └── network_info.dart │ ├── utils/ # Utilitaires │ │ ├── date_utils.dart │ │ ├── validators.dart │ │ ├── file_utils.dart │ │ └── string_utils.dart │ └── extensions/ # Extensions Dart │ ├── context_extensions.dart │ ├── string_extensions.dart │ └── datetime_extensions.dart ├── data/ # Couche données │ ├── models/ # Modèles de données (entités) │ │ ├── user/ │ │ ├── project/ │ │ ├── conversation/ │ │ └── notification/ │ ├── repositories/ # Implémentation des repositories │ │ ├── user_repository.dart │ │ ├── project_repository.dart │ │ ├── messaging_repository.dart │ │ └── notification_repository.dart │ ├── datasources/ # Sources de données (local, remote) │ │ ├── local/ │ │ └── remote/ │ └── providers/ # Providers pour l'état global │ ├── auth_provider.dart │ ├── user_provider.dart │ └── theme_provider.dart ├── domain/ # Couche domaine │ ├── entities/ # Entités du domaine │ │ ├── user.dart │ │ ├── project.dart │ │ └── message.dart │ ├── repositories/ # Interfaces des repositories │ │ ├── i_user_repository.dart │ │ ├── i_project_repository.dart │ │ └── i_messaging_repository.dart │ └── usecases/ # Cas d'utilisation │ ├── user/ │ ├── project/ │ └── messaging/ ├── presentation/ # Couche présentation │ ├── common_widgets/ # Widgets réutilisables │ │ ├── buttons/ │ │ ├── cards/ │ │ ├── inputs/ │ │ └── dialogs/ │ └── screens/ # Écrans de l'application │ ├── auth/ # Authentification │ │ ├── login/ │ │ ├── register/ │ │ └── onboarding/ │ ├── home/ # Écran d'accueil │ │ ├── home_screen.dart │ │ ├── home_viewmodel.dart │ │ └── widgets/ │ ├── project/ # Gestion des projets │ │ ├── project_list/ │ │ ├── project_detail/ │ │ └── project_create/ │ ├── profile/ # Profil utilisateur │ │ ├── profile_screen.dart │ │ ├── profile_viewmodel.dart │ │ ├── edit_profile/ │ │ └── widgets/ │ ├── messaging/ # Messagerie │ │ ├── conversation_list/ │ │ └── conversation_detail/ │ ├── search/ # Recherche │ │ ├── search_screen.dart │ │ ├── search_viewmodel.dart │ │ └── widgets/ │ ├── notifications/ # Notifications │ │ ├── notification_screen.dart │ │ ├── notification_viewmodel.dart │ │ └── widgets/ │ └── settings/ # Paramètres │ ├── settings_screen.dart │ └── widgets/ ├── services/ # Services (auth, analytics, storage, etc.) │ ├── firebase/ # Services Firebase │ │ ├── auth_service.dart │ │ ├── messaging_service.dart │ │ └── notification_service.dart │ ├── api_service.dart # Service d'API │ ├── storage_service.dart # Service de stockage local │ └── analytics_service.dart └── localization/ # Internationalisation ├── app_localizations.dart ├── l10n/ └── locale_provider.dart
+
+### 2.2 Organisation des assets
+
+assets/ ├── images/ │ ├── logo/ │ ├── icons/ │ ├── illustrations/ │ └── placeholders/ ├── fonts/ │ ├── sf_pro/ │ └── roboto/ ├── animations/ │ └── lottie/ └── data/ └── initial_categories.json
+
+## 3. Architecture MVVM détaillée
+
+### 3.1 Model (Entités et Données)
+
+Les modèles représentent les données et la logique métier de l'application. Ils sont structurés en:
+
+- **Entités de domaine**: Classes pures représentant les objets métier
+- **Modèles de données**: Classes pour la sérialisation/désérialisation des données API
+- **Repositories**: Abstractions pour l'accès aux données (locales ou distantes)
+
+Exemple d'entité de domaine:
+
+```dart
+// domain/entities/project.dart
+class Project {
+  final String id;
+  final String title;
+  final String shortDescription;
+  final String? fullDescription;
+  final User creator;
+  final ProjectCategory category;
+  final ProjectStage stage;
+  final double? fundingMin;
+  final double? fundingMax;
+  final String fundingCurrency;
+  final DateTime createdAt;
+  final bool isPremium;
+  
+  // Constructeur et méthodes
+}
+Exemple de modèle de données:
+// data/models/project/project_model.dart
+class ProjectModel {
+  final String id;
+  final String title;
+  final String shortDescription;
+  final String? fullDescription;
+  final UserModel creator;
+  final ProjectCategoryModel category;
+  final String stage;
+  final double? fundingMin;
+  final double? fundingMax;
+  final String fundingCurrency;
+  final DateTime createdAt;
+  final bool isPremium;
+  
+  // Constructeur, fromJson, toJson
+
+  // Conversion vers l'entité de domaine
+  Project toDomain() {
+    return Project(
+      id: id,
+      title: title,
+      shortDescription: shortDescription,
+      fullDescription: fullDescription,
+      creator: creator.toDomain(),
+      category: category.toDomain(),
+      stage: ProjectStage.fromString(stage),
+      fundingMin: fundingMin,
+      fundingMax: fundingMax,
+      fundingCurrency: fundingCurrency,
+      createdAt: createdAt,
+      isPremium: isPremium,
+    );
+  }
+}
+3.2 View (Écrans et Widgets)
+Les vues sont responsables de l'affichage des données et de la capture des interactions utilisateur. Elles sont structurées en:
+•	Écrans: Pages complètes représentant une fonctionnalité
+•	Widgets: Composants UI réutilisables
+•	Adaptateurs UI: Convertissent les entités du domaine en format affichable
+Exemple d'écran:
+// presentation/screens/project/project_detail/project_detail_screen.dart
+class ProjectDetailScreen extends StatelessWidget {
+  final String projectId;
+  
+  const ProjectDetailScreen({Key? key, required this.projectId}) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => getIt<ProjectDetailViewModel>()..loadProject(projectId),
+      child: Consumer<ProjectDetailViewModel>(
+        builder: (context, viewModel, _) {
+          if (viewModel.isLoading) {
+            return const LoadingIndicator();
+          }
+          
+          if (viewModel.error != null) {
+            return ErrorView(error: viewModel.error!);
+          }
+          
+          final project = viewModel.project!;
+          
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(project.title),
+              actions: [
+                if (viewModel.isCreator)
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => context.router.push(
+                      ProjectEditRoute(projectId: project.id),
+                    ),
+                  ),
+              ],
+            ),
+            body: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ProjectHeaderWidget(project: project),
+                  ProjectInfoWidget(project: project),
+                  ProjectMediaGallery(mediaList: project.media),
+                  ProjectNeedsWidget(needs: project.needs),
+                  ProjectQuestionsWidget(
+                    questions: viewModel.questions,
+                    onAskQuestion: viewModel.askQuestion,
+                  ),
+                ],
+              ),
+            ),
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: viewModel.canExpressInterest
+                ? () => viewModel.expressInterest()
+                : null,
+              label: Text(AppLocalizations.of(context)!.interestedButton),
+              icon: const Icon(Icons.thumb_up),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+3.3 ViewModel
+Les ViewModels font le lien entre les vues et les modèles. Ils:
+•	Exposent les données aux vues via des observables
+•	Réagissent aux actions de l'utilisateur
+•	Coordonnent les cas d'utilisation
+•	Gèrent l'état de l'UI et la logique de présentation
+Exemple de ViewModel:
+// presentation/screens/project/project_detail/project_detail_viewmodel.dart
+class ProjectDetailViewModel extends ChangeNotifier {
+  final GetProjectUseCase _getProjectUseCase;
+  final GetProjectQuestionsUseCase _getQuestionsUseCase;
+  final AskQuestionUseCase _askQuestionUseCase;
+  final ExpressInterestUseCase _expressInterestUseCase;
+  final UserProvider _userProvider;
+  
+  Project? _project;
+  List<Question> _questions = [];
+  bool _isLoading = false;
+  Exception? _error;
+  
+  // Getters
+  Project? get project => _project;
+  List<Question> get questions => _questions;
+  bool get isLoading => _isLoading;
+  Exception? get error => _error;
+  bool get isCreator => _project?.creator.id == _userProvider.currentUser?.id;
+  bool get canExpressInterest => !isCreator && _project != null && !_hasExpressedInterest;
+  
+  bool get _hasExpressedInterest => _project?.hasExpressedInterest ?? false;
+  
+  // Constructeur avec injection de dépendances
+  ProjectDetailViewModel({
+    required GetProjectUseCase getProjectUseCase,
+    required GetProjectQuestionsUseCase getQuestionsUseCase,
+    required AskQuestionUseCase askQuestionUseCase,
+    required ExpressInterestUseCase expressInterestUseCase,
+    required UserProvider userProvider,
+  }) : _getProjectUseCase = getProjectUseCase,
+       _getQuestionsUseCase = getQuestionsUseCase,
+       _askQuestionUseCase = askQuestionUseCase,
+       _expressInterestUseCase = expressInterestUseCase,
+       _userProvider = userProvider;
+  
+  // Méthodes
+  Future<void> loadProject(String projectId) async {
+    _setLoading(true);
+    
+    try {
+      final result = await _getProjectUseCase(projectId);
+      _project = result;
+      _loadQuestions(projectId);
+      _error = null;
+    } catch (e) {
+      _error = e is Exception ? e : Exception('Une erreur est survenue');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  Future<void> _loadQuestions(String projectId) async {
+    try {
+      final result = await _getQuestionsUseCase(projectId);
+      _questions = result;
+      notifyListeners();
+    } catch (e) {
+      // Gérer l'erreur (mais ne pas bloquer l'affichage du projet)
+      _questions = [];
+      notifyListeners();
+    }
+  }
+  
+  Future<void> askQuestion(String questionText) async {
+    try {
+      final newQuestion = await _askQuestionUseCase(
+        project.id,
+        questionText,
+      );
+      
+      _questions = [..._questions, newQuestion];
+      notifyListeners();
+    } catch (e) {
+      // Gérer l'erreur
+      rethrow;
+    }
+  }
+  
+  Future<void> expressInterest() async {
+    try {
+      await _expressInterestUseCase(project.id);
+      // Recharger le projet pour mettre à jour le statut
+      await loadProject(project.id);
+    } catch (e) {
+      // Gérer l'erreur
+      rethrow;
+    }
+  }
+  
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+}
+3.4 Cas d'utilisation (Use Cases)
+Les cas d'utilisation encapsulent les actions spécifiques que l'application peut effectuer. Ils:
+•	Contiennent la logique métier
+•	Orchestrent les appels aux repositories
+•	Effectuent des transformations de données
+•	Gèrent la validation et les règles métier
+Exemple de cas d'utilisation:
+// domain/usecases/project/get_project_use_case.dart
+class GetProjectUseCase {
+  final IProjectRepository _projectRepository;
+  
+  GetProjectUseCase(this._projectRepository);
+  
+  Future<Project> call(String projectId) async {
+    return await _projectRepository.getProject(projectId);
+  }
+}
+
+// domain/usecases/project/express_interest_use_case.dart
+class ExpressInterestUseCase {
+  final IProjectRepository _projectRepository;
+  final IUserRepository _userRepository;
+  
+  ExpressInterestUseCase(this._projectRepository, this._userRepository);
+  
+  Future<void> call(String projectId, {
+    String? message,
+    double? investmentAmount,
+    List<String>? skillsOffered,
+  }) async {
+    // Vérifier si l'utilisateur peut exprimer son intérêt
+    final currentUser = await _userRepository.getCurrentUser();
+    
+    if (currentUser == null) {
+      throw NotAuthenticatedException();
+    }
+    
+    // Exprimer l'intérêt
+    await _projectRepository.expressInterest(
+      projectId: projectId,
+      message: message,
+      investmentAmount: investmentAmount,
+      skillsOffered: skillsOffered,
+    );
+  }
+}
+3.5 Repositories
+Les repositories sont des abstractions qui fournissent un accès unifié aux données, qu'elles soient locales ou distantes:
+// domain/repositories/i_project_repository.dart
+abstract class IProjectRepository {
+  Future<List<Project>> getProjects({
+    String? category,
+    String? search,
+    ProjectStage? stage,
+    String? country,
+    double? fundingMin,
+    double? fundingMax,
+    int page = 1,
+    int limit = 20,
+    String? sortBy,
+    SortOrder? sortOrder,
+  });
+  
+  Future<Project> getProject(String id);
+  
+  Future<Project> createProject(ProjectCreate projectData);
+  
+  Future<Project> updateProject(String id, ProjectUpdate projectData);
+  
+  Future<void> deleteProject(String id);
+  
+  Future<void> expressInterest(
+    String projectId, {
+    String? message,
+    double? investmentAmount,
+    List<String>? skillsOffered,
+  });
+  
+  Future<void> addToFavorites(String projectId, {String? notes});
+  
+  Future<void> removeFromFavorites(String projectId);
+  
+  Future<List<Question>> getProjectQuestions(String projectId);
+  
+  Future<Question> askQuestion(String projectId, String questionText, {bool isPrivate = false});
+}
+
+// data/repositories/project_repository.dart
+class ProjectRepository implements IProjectRepository {
+  final ProjectRemoteDataSource _remoteDataSource;
+  final ProjectLocalDataSource _localDataSource;
+  final NetworkInfo _networkInfo;
+  
+  ProjectRepository(
+    this._remoteDataSource,
+    this._localDataSource,
+    this._networkInfo,
+  );
+  
+  @override
+  Future<Project> getProject(String id) async {
+    if (await _networkInfo.isConnected) {
+      try {
+        final remoteProject = await _remoteDataSource.getProject(id);
+        await _localDataSource.cacheProject(remoteProject);
+        return remoteProject.toDomain();
+      } catch (e) {
+        // Essayer de récupérer les données en cache si disponibles
+        if (await _localDataSource.hasProjectCached(id)) {
+          final localProject = await _localDataSource.getProject(id);
+          return localProject.toDomain();
+        }
+        rethrow;
+      }
+    } else {
+      // Pas de connexion, utiliser les données en cache
+      if (await _localDataSource.hasProjectCached(id)) {
+        final localProject = await _localDataSource.getProject(id);
+        return localProject.toDomain();
+      }
+      throw NoInternetConnectionException();
+    }
+  }
+  
+  // Autres implémentations...
+}
+4. Navigation
+4.1 Système de routes
+VentureLink utilise AutoRoute pour générer une navigation type par nom, avec transitions personnalisées et passage de paramètres typés.
+// config/routes.dart
+@MaterialAutoRouter(
+  replaceInRouteName: 'Screen,Route',
+  routes: <AutoRoute>[
+    AutoRoute(
+      path: '/',
+      page: SplashScreen,
+      initial: true,
+    ),
+    AutoRoute(
+      path: '/login',
+      page: LoginScreen,
+    ),
+    AutoRoute(
+      path: '/register',
+      page: RegisterScreen,
+    ),
+    AutoRoute(
+      path: '/onboarding',
+      page: OnboardingScreen,
+    ),
+    AutoRoute(
+      path: '/main',
+      page: MainScreen,
+      children: [
+        AutoRoute(
+          path: 'home',
+          page: HomeScreen,
+          initial: true,
+        ),
+        AutoRoute(
+          path: 'discover',
+          page: DiscoverScreen,
+        ),
+        AutoRoute(
+          path: 'notifications',
+          page: NotificationScreen,
+        ),
+        AutoRoute(
+          path: 'profile',
+          page: ProfileScreen,
+        ),
+      ],
+    ),
+    AutoRoute(
+      path: '/project/:id',
+      page: ProjectDetailScreen,
+    ),
+    AutoRoute(
+      path: '/project/create',
+      page: ProjectCreateScreen,
+    ),
+    AutoRoute(
+      path: '/project/:id/edit',
+      page: ProjectEditScreen,
+    ),
+    AutoRoute(
+      path: '/conversations',
+      page: ConversationListScreen,
+    ),
+    AutoRoute(
+      path: '/conversation/:id',
+      page: ConversationDetailScreen,
+    ),
+    AutoRoute(
+      path: '/search',
+      page: SearchScreen,
+    ),
+    AutoRoute(
+      path: '/settings',
+      page: SettingsScreen,
+    ),
+    AutoRoute(
+      path: '/premium',
+      page: PremiumScreen,
+    ),
+    AutoRoute(
+      path: '*',
+      page: NotFoundScreen,
+    ),
+  ],
+)
+class $AppRouter {}
+4.2 Navigation entre écrans
+// Navigation vers un écran
+context.router.push(ProjectDetailRoute(id: project.id));
+
+// Navigation avec remplacement
+context.router.replace(HomeRoute());
+
+// Navigation avec deep linking
+context.router.navigateNamed('/project/${project.id}');
+
+// Navigation avec paramètres de requête
+context.router.navigateNamed(
+  '/search',
+  queryParams: {'category': 'technology', 'stage': 'PROTOTYPE'},
+);
+
+// Retour
+context.router.pop();
+4.3 Navigation depuis les notifications
+// services/firebase/notification_service.dart
+void _handleNotificationTap(RemoteMessage message) {
+  final data = message.data;
+  final type = data['type'];
+  final entityId = data['entity_id'];
+  final action = data['action'];
+  
+  switch (action) {
+    case 'OPEN_PROJECT':
+      appRouter.navigateNamed('/project/$entityId');
+      break;
+    case 'OPEN_CONVERSATION':
+      appRouter.navigateNamed('/conversation/$entityId');
+      break;
+    case 'OPEN_PROJECT_INTEREST':
+      final projectId = data['project_id'];
+      final interestId = data['interest_id'];
+      appRouter.navigateNamed('/project/$projectId/interest/$interestId');
+      break;
+    default:
+      appRouter.navigateNamed('/notifications');
+  }
+}
+5. Gestion d'état
+5.1 Provider pour la gestion d'état
+VentureLink utilise le package Provider pour la gestion d'état à différents niveaux:
+•	ChangeNotifier pour les ViewModels
+•	Provider pour l'injection de dépendances locales
+•	MultiProvider pour la gestion d'état globale
+// main.dart
+void main() {
+  // Injection de dépendances
+  setupDependencies();
+  
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => getIt<ThemeProvider>(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => getIt<AuthProvider>(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => getIt<UserProvider>(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => getIt<LocaleProvider>(),
+        ),
+      ],
+      child: const App(),
+    ),
+  );
+}
+
+// app.dart
+class App extends StatelessWidget {
+  const App({Key? key}) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    // Récupérer les providers
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    
+    // Créer le routeur
+    final appRouter = AppRouter();
+    
+    return MaterialApp.router(
+      title: 'VentureLink',
+      theme: themeProvider.lightTheme,
+      darkTheme: themeProvider.darkTheme,
+      themeMode: themeProvider.themeMode,
+      locale: localeProvider.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      routerDelegate: appRouter.delegate(
+        navigatorObservers: () => [AutoRouteObserver()],
+      ),
+      routeInformationParser: appRouter.defaultRouteParser(),
+    );
+  }
+}
+5.2 Providers globaux
+// data/providers/auth_provider.dart
+class AuthProvider extends ChangeNotifier {
+  final AuthService _authService;
+  final StorageService _storageService;
+  
+  bool _isAuthenticated = false;
+  bool _isLoading = false;
+  Exception? _error;
+  
+  // Getters
+  bool get isAuthenticated => _isAuthenticated;
+  bool get isLoading => _isLoading;
+  Exception? get error => _error;
+  
+  AuthProvider({
+    required AuthService authService,
+    required StorageService storageService,
+  }) : _authService = authService,
+       _storageService = storageService {
+    // Initialiser l'état d'authentification
+    _checkAuthStatus();
+  }
+  
+  Future<void> _checkAuthStatus() async {
+    final token = await _storageService.getToken();
+    
+    if (token != null) {
+      _isAuthenticated = true;
+      notifyListeners();
+    }
+  }
+  
+  Future<void> login(String email, String password) async {
+    _setLoading(true);
+    
+    try {
+      final result = await _authService.loginWithEmailPassword(email, password);
+      
+      // Stocker le token
+      await _storageService.saveToken(result.token);
+      await _storageService.saveRefreshToken(result.refreshToken);
+      
+      _isAuthenticated = true;
+      _error = null;
+    } catch (e) {
+      _isAuthenticated = false;
+      _error = e is Exception ? e : Exception('Une erreur est survenue');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  Future<void> register(String email, String password, String firstName, String lastName, UserType userType) async {
+    _setLoading(true);
+    
+    try {
+      final result = await _authService.register(
+        email: email,
+        password: password,
+        firstName: firstName,
+        lastName: lastName,
+        userType: userType,
+      );
+      
+      // Stocker le token
+      await _storageService.saveToken(result.token);
+      await _storageService.saveRefreshToken(result.refreshToken);
+      
+      _isAuthenticated = true;
+      _error = null;
+    } catch (e) {
+      _isAuthenticated = false;
+      _error = e is Exception ? e : Exception('Une erreur est survenue');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  Future<void> loginWithGoogle() async {
+    _setLoading(true);
+    
+    try {
+      final result = await _authService.loginWithGoogle();
+      
+      // Stocker le token
+      await _storageService.saveToken(result.token);
+      await _storageService.saveRefreshToken(result.refreshToken);
+      
+      _isAuthenticated = true;
+      _error = null;
+    } catch (e) {
+      _isAuthenticated = false;
+      _error = e is Exception ? e : Exception('Une erreur est survenue');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  Future<void> loginWithLinkedIn() async {
+    _setLoading(true);
+    
+    try {
+      final result = await _authService.loginWithLinkedIn();
+      
+      // Stocker le token
+      await _storageService.saveToken(result.token);
+      await _storageService.saveRefreshToken(result.refreshToken);
+      
+      _isAuthenticated = true;
+      _error = null;
+    } catch (e) {
+      _isAuthenticated = false;
+      _error = e is Exception ? e : Exception('Une erreur est survenue');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  Future<void> logout() async {
+    _setLoading(true);
+    
+    try {
+      await _authService.logout();
+      
+      // Supprimer les tokens
+      await _storageService.deleteToken();
+      await _storageService.deleteRefreshToken();
+      
+      _isAuthenticated = false;
+      _error = null;
+    } catch (e) {
+      _error = e is Exception ? e : Exception('Une erreur est survenue');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+}
+5.3 ViewModels locaux
+Les ViewModels locaux sont injectés au niveau des écrans:
+// presentation/screens/auth/login/login_screen.dart
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({Key? key}) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => getIt<LoginViewModel>(),
+      child: Consumer<LoginViewModel>(
+        builder: (context, viewModel, _) {
+          return Scaffold(
+            // UI basé sur l'état du viewModel
+          );
+        },
+      ),
+    );
+  }
+}
+6. Gestion des services
+6.1 Services d'API
+// services/api_service.dart
+class ApiService {
+  final DioClient _dioClient;
+  final StorageService _storageService;
+  
+  ApiService(this._dioClient, this._storageService);
+  
+  // Exemples de méthodes
+  
+  // Utilisateurs
+  Future<UserResponse> getCurrentUser() async {
+    final response = await _dioClient.get(ApiPaths.userMe);
+    return UserResponse.fromJson(response.data);
+  }
+  
+  Future<UserResponse> updateUser(UserUpdateRequest request) async {
+    final response = await _dioClient.put(
+      ApiPaths.userMe,
+      data: request.toJson(),
+    );
+    return UserResponse.fromJson(response.data);
+  }
+  
+  // Projets
+  Future<List<ProjectResponse>> getProjects({
+    String? category,
+    String? search,
+    String? stage,
+    String? country,
+    double? fundingMin,
+    double? fundingMax,
+    int page = 1,
+    int limit = 20,
+    String? sortBy,
+    String? order,
+  }) async {
+    final queryParams = {
+      if (category != null) 'category': category,
+      if (search != null) 'search': search,
+      if (stage != null) 'stage': stage,
+      if (country != null) 'location_country': country,
+      if (fundingMin != null) 'funding_min': fundingMin.toString(),
+      if (fundingMax != null) 'funding_max': fundingMax.toString(),
+      'page': page.toString(),
+      'limit': limit.toString(),
+      if (sortBy != null) 'sort': sortBy,
+      if (order != null) 'order': order,
+    };
+    
+    final response = await _dioClient.get(
+      ApiPaths.projects,
+      queryParameters: queryParams,
+    );
+    
+    final data = response.data;
+    final projects = List<Map<String, dynamic>>.from(data['data']);
+    
+    return projects.map((json) => ProjectResponse.fromJson(json)).toList();
+  }
+  
+  Future<ProjectResponse> getProject(String id) async {
+    final response = await _dioClient.get('${ApiPaths.projects}/$id');
+    return ProjectResponse.fromJson(response.data);
+  }
+  
+  // Autres méthodes d'API...
+  
+  // Méthode pour mettre à jour le token FCM
+  Future<void> updateFCMToken(String token) async {
+    await _dioClient.put(
+      ApiPaths.userMe,
+      data: {'fcm_token': token},
+    );
+  }
+}
+6.2 Services Firebase
+// services/firebase/auth_service.dart
+class AuthService {
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final ApiService _apiService;
+  
+  AuthService(this._apiService);
+  
+  // Authentification par email/password via Firebase
+  Future<AuthResult> loginWithEmailPassword(String email, String password) async {
+    try {
+      // Authentifier avec Firebase
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      // Obtenir le token Firebase
+      final firebaseToken = await userCredential.user!.getIdToken();
+      
+      // Authentifier avec notre backend
+      final response = await _apiService.loginWithFirebase(
+        provider: 'EMAIL',
+        token: firebaseToken,
+      );
+      
+      return AuthResult(
+        userId: response.id,
+        token: response.token,
+        refreshToken: response.refreshToken,
+        isNewUser: false,
+      );
+    } catch (e) {
+      // Gérer les erreurs spécifiques
+      if (e is FirebaseAuthException) {
+        if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+          throw InvalidCredentialsException();
+        }
+      }
+      rethrow;
+    }
+  }
+  
+  // Enregistrement avec email/password
+  Future<AuthResult> register({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required UserType userType,
+  }) async {
+    try {
+      // Créer l'utilisateur dans Firebase
+      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      // Mettre à jour le profil Firebase
+      await userCredential.user!.updateDisplayName('$firstName $lastName');
+      
+      // Obtenir le token Firebase
+      final firebaseToken = await userCredential.user!.getIdToken();
+      
+      // Enregistrer avec notre backend
+      final response = await _apiService.registerWithFirebase(
+        provider: 'EMAIL',
+        token: firebaseToken,
+        firstName: firstName,
+        lastName: lastName,
+        userType: userType.toString().split('.').last,
+      );
+      
+      return AuthResult(
+        userId: response.id,
+        token: response.token,
+        refreshToken: response.refreshToken,
+        isNewUser: true,
+      );
+    } catch (e) {
+      // Gérer les erreurs spécifiques
+      if (e is FirebaseAuthException) {
+        if (e.code == 'email-already-in-use') {
+          throw EmailAlreadyInUseException();
+        }
+      }
+      rethrow;
+    }
+  }
+  
+  // Authentification Google
+  Future<AuthResult> loginWithGoogle() async {
+    try {
+      // Déclencher le flow d'authentification Google
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        throw CancelledException();
+      }
+      
+      // Obtenir les détails d'authentification
+      final googleAuth = await googleUser.authentication;
+      
+      // Créer un credential Firebase
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      
+      // S'authentifier avec Firebase
+      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      
+      // Obtenir le token Firebase
+      final firebaseToken = await userCredential.user!.getIdToken();
+      
+      // Authentifier avec notre backend
+      final response = await _apiService.loginWithFirebase(
+        provider: 'GOOGLE',
+        token: firebaseToken,
+      );
+      
+      return AuthResult(
+        userId: response.id,
+        token: response.token,
+        refreshToken: response.refreshToken,
+        isNewUser: response.isNewUser,
+      );
+    } catch (e) {
+      if (e is CancelledException) {
+        rethrow;
+      }
+      throw AuthenticationException('Échec de l\'authentification Google');
+    }
+  }
+  
+  // Authentification LinkedIn
+  Future<AuthResult> loginWithLinkedIn() async {
+    try {
+      // Utiliser le package flutter_web_auth pour OAuth LinkedIn
+      final result = await FlutterWebAuth.authenticate(
+        url: '${AppConfig.apiBaseUrl}/api/v1/auth/linkedin/authorize',
+        callbackUrlScheme: 'venturelink',
+      );
+      
+      // Extraire le token
+      final token = Uri.parse(result).queryParameters['token'];
+      
+      if (token == null) {
+        throw AuthenticationException('Token LinkedIn manquant');
+      }
+      
+      // Échanger le token avec notre backend
+      final response = await _apiService.loginWithLinkedIn(token: token);
+      
+      return AuthResult(
+        userId: response.id,
+        token: response.token,
+        refreshToken: response.refreshToken,
+        isNewUser: response.isNewUser,
+      );
+    } catch (e) {
+      throw AuthenticationException('Échec de l\'authentification LinkedIn');
+    }
+  }
+  
+  // Déconnexion
+  Future<void> logout() async {
+    await _firebaseAuth.signOut();
+    await _googleSignIn.signOut();
+    await _apiService.logout();
+  }
+}
+// services/firebase/messaging_service.dart
+class MessagingService {
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final ApiService _apiService;
+  
+  MessagingService(this._apiService);
+  
+  Future<void> initialize() async {
+    // Demander la permission
+    final settings = await _firebaseMessaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+    
+    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional) {
+      // Configurer les canaux Android
+      await _setupNotificationChannels();
+      
+      // Configurer les handlers
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      
+      // Initialiser les notifications locales
+      await _initializeLocalNotifications();
+      
+      // Obtenir et enregistrer le token FCM
+      final token = await _firebaseMessaging.getToken();
+      if (token != null) {
+        await _apiService.updateFCMToken(token);
+      }
+      
+      // Écouter les rafraîchissements de token
+      FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+        _apiService.updateFCMToken(token);
+      });
+      
+      // S'abonner aux sujets généraux
+      await _firebaseMessaging.subscribeToTopic('announcements');
+    }
+  }
+  
+  Future<void> _setupNotificationChannels() async {
+    if (Platform.isAndroid) {
+      // Canaux Android
+      const AndroidNotificationChannel messagesChannel = AndroidNotificationChannel(
+        'messages',
+        'Messages',
+        description: 'Notifications pour les nouveaux messages',
+        importance: Importance.high,
+        enableVibration: true,
+      );
+      
+      const AndroidNotificationChannel interestsChannel = AndroidNotificationChannel(
+        'interests',
+        'Marques d\'intérêt',
+        description: 'Notifications pour les marques d\'intérêt sur les projets',
+        importance: Importance.high,
+      );
+      
+      const AndroidNotificationChannel questionsChannel = AndroidNotificationChannel(
+        'questions',
+        'Questions',
+        description: 'Notifications pour les questions sur les projets',
+        importance: Importance.default,
+      );
+      
+      const AndroidNotificationChannel generalChannel = AndroidNotificationChannel(
+        'general',
+        'Général',
+        description: 'Notifications générales et annonces',
+        importance: Importance.low,
+      );
+      
+      // Créer les canaux
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannels([
+        messagesChannel,
+        interestsChannel,
+        questionsChannel,
+        generalChannel,
+      ]);
+    }
+  }
+  
+  Future<void> _initializeLocalNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@drawable/ic_notification');
+    
+    final DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    
+    final InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+    
+    await _flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: _handleLocalNotificationTap,
+    );
+  }
+  
+  void _handleForegroundMessage(RemoteMessage message) {
+    // Afficher une notification locale quand l'app est au premier plan
+    if (message.notification != null) {
+      _showLocalNotification(message);
+    }
+    
+    // Traiter les données pour mise à jour de l'UI en temps réel
+    if (message.data.isNotEmpty) {
+      _processNotificationData(message.data);
+    }
+  }
+  
+  void _handleMessageOpenedApp(RemoteMessage message) {
+    // Naviguer vers l'écran approprié en fonction du type de notification
+    if (message.data.isNotEmpty) {
+      _navigateBasedOnNotification(message.data);
+    }
+  }
+  
+  void _handleLocalNotificationTap(NotificationResponse response) {
+    // Extraire les données et naviguer
+    final payload = response.payload;
+    if (payload != null) {
+      final data = jsonDecode(payload);
+      _navigateBasedOnNotification(data);
+    }
+  }
+  
+  Future<void> _showLocalNotification(RemoteMessage message) async {
+    final notification = message.notification;
+    final android = message.notification?.android;
+    
+    if (notification != null) {
+      await _flutterLocalNotificationsPlugin.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            android?.channelId ?? 'general',
+            'Notifications',
+            icon: android?.smallIcon ?? 'ic_notification',
+          ),
+          iOS: const DarwinNotificationDetails(),
+        ),
+        payload: jsonEncode(message.data),
+      );
+    }
+  }
+  
+  void _processNotificationData(Map<String, dynamic> data) {
+    // Mise à jour de l'UI en temps réel
+    // Par exemple, mise à jour des compteurs de notification
+    final type = data['type'];
+    
+    switch (type) {
+      case 'NEW_MESSAGE':
+        // Mettre à jour le compteur de messages non lus
+        break;
+      case 'NEW_INTEREST':
+        // Mettre à jour le compteur d'intérêts
+        break;
+      case 'PROJECT_QUESTION':
+        // Mettre à jour le compteur de questions
+        break;
+    }
+  }
+  
+  void _navigateBasedOnNotification(Map<String, dynamic> data) {
+    final type = data['type'];
+    final entityId = data['entity_id'];
+    final action = data['action'];
+    
+    // Naviguer en fonction du type
+    switch (action) {
+      case 'OPEN_CONVERSATION':
+        context.router.push(ConversationDetailRoute(id: entityId));
+        break;
+      case 'OPEN_PROJECT':
+        context.router.push(ProjectDetailRoute(id: entityId));
+        break;
+      case 'OPEN_PROJECT_INTEREST':
+        final projectId = data['project_id'];
+        context.router.push(ProjectInterestRoute(
+          projectId: projectId,
+          interestId: entityId,
+        ));
+        break;
+      default:
+        context.router.push(const NotificationRoute());
+    }
+  }
+}
+
+// Fonction globale pour les notifications en arrière-plan
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // S'assurer que Firebase est initialisé
+  await Firebase.initializeApp();
+  
+  // Rien à faire ici, juste afficher la notification système
+}
+6.3 Service de stockage local
+// services/storage_service.dart
+class StorageService {
+  static const String _tokenKey = 'auth_token';
+  static const String _refreshTokenKey = 'refresh_token';
+  static const String _userIdKey = 'user_id';
+  static const String _userTypeKey = 'user_type';
+  static const String _fcmTokenKey = 'fcm_token';
+  static const String _themeKey = 'theme_mode';
+  static const String _localeKey = 'locale';
+  
+  final SharedPreferences _prefs;
+  final FlutterSecureStorage _secureStorage;
+  
+  StorageService(this._prefs, this._secureStorage);
+  
+  // Tokens (stockés en sécurité)
+  Future<String?> getToken() async {
+    return await _secureStorage.read(key: _tokenKey);
+  }
+  
+  Future<void> saveToken(String token) async {
+    await _secureStorage.write(key: _tokenKey, value: token);
+  }
+  
+  Future<void> deleteToken() async {
+    await _secureStorage.delete(key: _tokenKey);
+  }
+  
+  Future<String?> getRefreshToken() async {
+    return await _secureStorage.read(key: _refreshTokenKey);
+  }
+  
+  Future<void> saveRefreshToken(String token) async {
+    await _secureStorage.write(key: _refreshTokenKey, value: token);
+  }
+  
+  Future<void> deleteRefreshToken() async {
+    await _secureStorage.delete(key: _refreshTokenKey);
+  }
+  
+  // Informations utilisateur
+  Future<String?> getUserId() async {
+    return _prefs.getString(_userIdKey);
+  }
+  
+  Future<void> saveUserId(String userId) async {
+    await _prefs.setString(_userIdKey, userId);
+  }
+  
+  Future<void> deleteUserId() async {
+    await _prefs.remove(_userIdKey);
+  }
+  
+  Future<UserType?> getUserType() async {
+    final userTypeStr = _prefs.getString(_userTypeKey);
+    if (userTypeStr == null) return null;
+    return UserTypeExtension.fromString(userTypeStr);
+  }
+  
+  Future<void> saveUserType(UserType userType) async {
+    await _prefs.setString(_userTypeKey, userType.toString().split('.').last);
+  }
+  
+  // FCM Token
+  Future<String?> getFCMToken() async {
+    return _prefs.getString(_fcmTokenKey);
+  }
+  
+  Future<void> saveFCMToken(String token) async {
+    await _prefs.setString(_fcmTokenKey, token);
+  }
+  
+  // Préférences
+  Future<ThemeMode> getThemeMode() async {
+    final themeStr = _prefs.getString(_themeKey);
+    if (themeStr == null) return ThemeMode.system;
+    
+    switch (themeStr) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+  
+  Future<void> saveThemeMode(ThemeMode themeMode) async {
+    String themeStr;
+    
+    switch (themeMode) {
+      case ThemeMode.light:
+        themeStr = 'light';
+        break;
+      case ThemeMode.dark:
+        themeStr = 'dark';
+        break;
+      case ThemeMode.system:
+        themeStr = 'system';
+        break;
+    }
+    
+    await _prefs.setString(_themeKey, themeStr);
+  }
+  
+  Future<Locale?> getLocale() async {
+    final localeStr = _prefs.getString(_localeKey);
+    if (localeStr == null) return null;
+    
+    final parts = localeStr.split('_');
+    if (parts.length == 1) {
+      return Locale(parts[0]);
+    } else if (parts.length == 2) {
+      return Locale(parts[0], parts[1]);
+    }
+    
+    return null;
+  }
+  
+  Future<void> saveLocale(Locale locale) async {
+    final localeStr = locale.countryCode == null
+        ? locale.languageCode
+        : '${locale.languageCode}_${locale.countryCode}';
+    
+    await _prefs.setString(_localeKey, localeStr);
+  }
+  
+  // Nettoyage complet (déconnexion)
+  Future<void> clearAllData() async {
+    await _secureStorage.deleteAll();
+    await _prefs.clear();
+  }
+}
+7. Architecture réseau
+7.1 Client HTTP
+// core/network/dio_client.dart
+class DioClient {
+  final Dio _dio;
+  final StorageService _storageService;
+  
+  DioClient(this._dio, this._storageService) {
+    _dio.options.baseUrl = AppConfig.apiBaseUrl;
+    _dio.options.connectTimeout = const Duration(seconds: 15);
+    _dio.options.receiveTimeout = const Duration(seconds: 15);
+    _dio.options.responseType = ResponseType.json;
+    
+    // Ajouter les intercepteurs
+    _dio.interceptors.add(_createAuthInterceptor());
+    _dio.interceptors.add(_createLogInterceptor());
+    _dio.interceptors.add(_createErrorInterceptor());
+  }
+  
+  // Méthodes HTTP
+  Future<Response> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    try {
+      final response = await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        options: options,
+      );
+      return response;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  Future<Response> post(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    try {
+      final response = await _dio.post(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+      );
+      return response;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  Future<Response> put(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    try {
+      final response = await _dio.put(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+      );
+      return response;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  Future<Response> delete(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    try {
+      final response = await _dio.delete(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+      );
+      return response;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  // Upload de fichiers
+  Future<Response> uploadFile(
+    String path,
+    File file, {
+    String paramName = 'file',
+    Map<String, dynamic>? fields,
+    ProgressCallback? onSendProgress,
+  }) async {
+    try {
+      final fileName = file.path.split('/').last;
+      final formData = FormData.fromMap({
+        paramName: await MultipartFile.fromFile(
+          file.path,
+          filename: fileName,
+        ),
+        if (fields != null) ...fields,
+      });
+      
+      final response = await _dio.post(
+        path,
+        data: formData,
+        onSendProgress: onSendProgress,
+      );
+      return response;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  // Intercepteurs
+  Interceptor _createAuthInterceptor() {
+    return InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        // Ajouter le token d'authentification si disponible
+        final token = await _storageService.getToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        
+        // Ajouter l'en-tête d'acceptation de langue
+        final locale = await _storageService.getLocale();
+        if (locale != null) {
+          options.headers['Accept-Language'] = locale.languageCode;
+        } else {
+          options.headers['Accept-Language'] = 'fr';
+        }
+        
+        return handler.next(options);
+      },
+      onError: (error, handler) async {
+        // Gérer l'expiration du token
+        if (error.response?.statusCode == 401) {
+          // Essayer de rafraîchir le token
+          final refreshToken = await _storageService.getRefreshToken();
+          
+          if (refreshToken != null) {
+            try {
+              // Appeler l'API de rafraîchissement
+              final response = await _dio.post(
+                '/api/v1/auth/refresh-token',
+                data: {'refresh_token': refreshToken},
+                options: Options(headers: {}),
+              );
+              
+              // Stocker le nouveau token
+              final newToken = response.data['token'];
+              final newRefreshToken = response.data['refresh_token'];
+              
+              await _storageService.saveToken(newToken);
+              await _storageService.saveRefreshToken(newRefreshToken);
+              
+              // Répéter la requête originale avec le nouveau token
+              error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+              
+              final opts = Options(
+                method: error.requestOptions.method,
+                headers: error.requestOptions.headers,
+              );
+              
+              final cloneReq = await _dio.request(
+                error.requestOptions.path,
+                options: opts,
+                data: error.requestOptions.data,
+                queryParameters: error.requestOptions.queryParameters,
+              );
+              
+              return handler.resolve(cloneReq);
+            } catch (e) {
+              // Échec du rafraîchissement, déconnexion
+              await _storageService.deleteToken();
+              await _storageService.deleteRefreshToken();
+              
+              return handler.next(error);
+            }
+          }
+        }
+        
+        return handler.next(error);
+      },
+    );
+  }
+  
+  Interceptor _createLogInterceptor() {
+    return LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (log) {
+        // Utiliser un logger personnalisé
+        if (AppConfig.environment == Environment.development) {
+          debugPrint('DioClient: $log');
+        }
+      },
+    );
+  }
+  
+  Interceptor _createErrorInterceptor() {
+    return InterceptorsWrapper(
+      onError: (error, handler) {
+        // Personnaliser l'erreur avant de la propager
+        return handler.next(error);
+      },
+    );
+  }
+  
+  // Gestion des erreurs
+  Exception _handleError(dynamic error) {
+    if (error is DioException) {
+      // Erreurs Dio
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return TimeoutException('La connexion a expiré');
+          
+        case DioExceptionType.badCertificate:
+        case DioExceptionType.connectionError:
+          return NetworkException('Erreur de connexion');
+          
+        case DioExceptionType.badResponse:
+          return _handleApiError(error.response);
+          
+        case DioExceptionType.cancel:
+          return CancelledException('Requête annulée');
+          
+        default:
+          return UnknownException('Une erreur est survenue');
+      }
+    }
+    
+    // Autres erreurs
+    return UnknownException('Une erreur est survenue');
+  }
+  
+  Exception _handleApiError(Response? response) {
+    if (response == null) {
+      return ServerException('Erreur serveur');
+    }
+    
+    final statusCode = response.statusCode;
+    
+    try {
+      // Essayer de parser l'erreur depuis la réponse
+      final data = response.data;
+      final errorResponse = ErrorResponse.fromJson(data);
+      
+      switch (statusCode) {
+        case 400:
+          return ValidationException(errorResponse.message, errorResponse.details);
+        case 401:
+          return UnauthorizedException(errorResponse.message);
+        case 403:
+          return ForbiddenException(errorResponse.message);
+        case 404:
+          return NotFoundException(errorResponse.message);
+        case 409:
+          return ConflictException(errorResponse.message);
+        case 422:
+          return ValidationException(errorResponse.message, errorResponse.details);
+        case 429:
+          return RateLimitExceededException(errorResponse.message);
+        case 500:
+        default:
+          return ServerException(errorResponse.message);
+      }
+    } catch (e) {
+      // Si impossible de parser l'erreur, utiliser le code HTTP
+      switch (statusCode) {
+        case 400:
+          return ValidationException('Requête invalide');
+        case 401:
+          return UnauthorizedException('Non autorisé');
+        case 403:
+          return ForbiddenException('Accès refusé');
+        case 404:
+          return NotFoundException('Ressource introuvable');
+        case 409:
+          return ConflictException('Conflit');
+        case 422:
+          return ValidationException('Données invalides');
+        case 429:
+          return RateLimitExceededException('Trop de requêtes');
+        case 500:
+        default:
+          return ServerException('Erreur serveur');
+      }
+    }
+  }
+}
+7.2 Intercepteurs
+// core/network/interceptors/connectivity_interceptor.dart
+class ConnectivityInterceptor extends Interceptor {
+  final NetworkInfo _networkInfo;
+  
+  ConnectivityInterceptor(this._networkInfo);
+  
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    if (await _networkInfo.isConnected) {
+      // Continuer la requête
+      return handler.next(options);
+    } else {
+      // Annuler la requête avec une erreur
+      return handler.reject(
+        DioException(
+          requestOptions: options,
+          error: NoInternetConnectionException(),
+          type: DioExceptionType.connectionError,
+        ),
+      );
+    }
+  }
+}
+
+// core/network/interceptors/retry_interceptor.dart
+class RetryInterceptor extends Interceptor {
+  final Dio dio;
+  final int retries;
+  final Duration retryDelay;
+  
+  RetryInterceptor(this.dio, {this.retries = 3, this.retryDelay = const Duration(seconds: 1)});
+  
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // Vérifier si l'erreur est éligible pour une nouvelle tentative
+    if (_shouldRetry(err)) {
+      final options = err.requestOptions;
+      
+      // Récupérer les tentatives déjà effectuées
+      final extraInfo = options.extra;
+      final retryCount = extraInfo['retryCount'] ?? 0;
+      
+      // Vérifier si on a atteint le nombre maximal de tentatives
+      if (retryCount < retries) {
+        // Incrémenter le compteur
+        options.extra['retryCount'] = retryCount + 1;
+        
+        // Attendre avant de réessayer
+        await Future.delayed(retryDelay * (retryCount + 1));
+        
+        try {
+          // Réessayer la requête
+          final response = await dio.fetch(options);
+          return handler.resolve(response);
+        } catch (e) {
+          // Si cela échoue à nouveau, continuer avec l'erreur
+          if (e is DioException) {
+            return handler.next(e);
+          }
+          return handler.next(err);
+        }
+      }
+    }
+    
+    // Continuer avec l'erreur
+    return handler.next(err);
+  }
+  
+  bool _shouldRetry(DioException error) {
+    // Réessayer en cas d'erreurs réseau ou de timeout
+    return error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.connectionError ||
+        (error.type == DioExceptionType.badResponse && 
+         error.response?.statusCode == 500); // Erreur serveur
+  }
+}
+7.3 Gestion des erreurs
+// core/error/app_exceptions.dart
+abstract class AppException implements Exception {
+  final String message;
+  
+  AppException(this.message);
+  
+  @override
+  String toString() => message;
+}
+
+class NetworkException extends AppException {
+  NetworkException([String message = 'Erreur de connexion réseau']) : super(message);
+}
+
+class ServerException extends AppException {
+  ServerException([String message = 'Erreur serveur']) : super(message);
+}
+
+class TimeoutException extends NetworkException {
+  TimeoutException([String message = 'La connexion a expiré']) : super(message);
+}
+
+class NoInternetConnectionException extends NetworkException {
+  NoInternetConnectionException([String message = 'Pas de connexion Internet']) : super(message);
+}
+
+class ValidationException extends AppException {
+  final List<ValidationError>? errors;
+  
+  ValidationException([String message = 'Données invalides', this.errors]) : super(message);
+}
+
+class ValidationError {
+  final String field;
+  final String message;
+  
+  ValidationError(this.field, this.message);
+}
+
+class UnauthorizedException extends AppException {
+  UnauthorizedException([String message = 'Non autorisé']) : super(message);
+}
+
+class ForbiddenException extends AppException {
+  ForbiddenException([String message = 'Accès refusé']) : super(message);
+}
+
+class NotFoundException extends AppException {
+  NotFoundException([String message = 'Ressource introuvable']) : super(message);
+}
+
+class ConflictException extends AppException {
+  ConflictException([String message = 'Conflit']) : super(message);
+}
+
+class RateLimitExceededException extends AppException {
+  RateLimitExceededException([String message = 'Trop de requêtes']) : super(message);
+}
+
+class CancelledException extends AppException {
+  CancelledException([String message = 'Requête annulée']) : super(message);
+}
+
+class UnknownException extends AppException {
+  UnknownException([String message = 'Une erreur inconnue est survenue']) : super(message);
+}
+
+// Exceptions spécifiques à l'authentification
+class AuthenticationException extends AppException {
+  AuthenticationException([String message = 'Erreur d\'authentification']) : super(message);
+}
+
+class InvalidCredentialsException extends AuthenticationException {
+  InvalidCredentialsException([String message = 'Identifiants invalides']) : super(message);
+}
+
+class EmailAlreadyInUseException extends AuthenticationException {
+  EmailAlreadyInUseException([String message = 'Cet email est déjà utilisé']) : super(message);
+}
+
+class NotAuthenticatedException extends AuthenticationException {
+  NotAuthenticatedException([String message = 'Vous devez être connecté']) : super(message);
+}
+
+// core/error/error_handler.dart
+class ErrorHandler {
+  static String getErrorMessage(Exception exception) {
+    if (exception is AppException) {
+      return exception.message;
+    }
+    
+    return 'Une erreur est survenue';
+  }
+  
+  static bool isNetworkError(Exception exception) {
+    return exception is NetworkException ||
+           exception is TimeoutException ||
+           exception is NoInternetConnectionException;
+  }
+  
+  static bool isAuthenticationError(Exception exception) {
+    return exception is UnauthorizedException ||
+           exception is AuthenticationException;
+  }
+  
+  static bool isValidationError(Exception exception) {
+    return exception is ValidationException;
+  }
+  
+  static List<ValidationError>? getValidationErrors(Exception exception) {
+    if (exception is ValidationException) {
+      return exception.errors;
+    }
+    
+    return null;
+  }
+  
+  static Widget buildErrorWidget(
+    BuildContext context,
+    Exception exception, {
+    VoidCallback? onRetry,
+  }) {
+    final errorMessage = getErrorMessage(exception);
+    
+    if (isNetworkError(exception)) {
+      return NetworkErrorView(
+        message: errorMessage,
+        onRetry: onRetry,
+      );
+    }
+    
+    if (isAuthenticationError(exception)) {
+      return AuthErrorView(
+        message: errorMessage,
+        onLogin: () => context.router.replace(const LoginRoute()),
+      );
+    }
+    
+    return GeneralErrorView(
+      message: errorMessage,
+      onRetry: onRetry,
+    );
+  }
+}
+8. Internationalisation
+8.1 Configuration
+// localization/app_localizations.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+export 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+extension AppLocalizationsX on BuildContext {
+  AppLocalizations get loc => AppLocalizations.of(this)!;
+}
+
+class LocalizationConfig {
+  static const supportedLocales = [
+    Locale('fr'), // Français (par défaut)
+    Locale('en'), // Anglais
+  ];
+  
+  static const defaultLocale = Locale('fr');
+  
+  static const localizationsDelegates = [
+    AppLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ];
+  
+  static bool isSupported(Locale locale) {
+    return supportedLocales.contains(locale);
+  }
+}
+
+// localization/locale_provider.dart
+class LocaleProvider extends ChangeNotifier {
+  final StorageService _storageService;
+  
+  Locale? _locale;
+  
+  LocaleProvider(this._storageService) {
+    _loadSavedLocale();
+  }
+  
+  Locale get locale => _locale ?? LocalizationConfig.defaultLocale;
+  
+  Future<void> _loadSavedLocale() async {
+    final savedLocale = await _storageService.getLocale();
+    if (savedLocale != null && LocalizationConfig.isSupported(savedLocale)) {
+      _locale = savedLocale;
+      notifyListeners();
+    }
+  }
+  
+  Future<void> setLocale(Locale locale) async {
+    if (!LocalizationConfig.isSupported(locale)) return;
+    
+    _locale = locale;
+    await _storageService.saveLocale(locale);
+    notifyListeners();
+  }
+  
+  Future<void> resetLocale() async {
+    _locale = null;
+    await _storageService.deleteLocale();
+    notifyListeners();
+  }
+}
+8.2 Fichiers de traduction
+# localization/l10n/app_fr.arb
+{
+  "@@locale": "fr",
+  
+  "appName": "VentureLink",
+  "appTagline": "Connectez-vous. Investissez. Réussissez.",
+  
+  "loginTitle": "Connexion",
+  "registerTitle": "Inscription",
+  "emailLabel": "Email",
+  "passwordLabel": "Mot de passe",
+  "confirmPasswordLabel": "Confirmer le mot de passe",
+  "firstNameLabel": "Prénom",
+  "lastNameLabel": "Nom",
+  "loginButton": "Se connecter",
+  "registerButton": "S'inscrire",
+  "forgotPasswordLabel": "Mot de passe oublié ?",
+  "noAccountLabel": "Pas encore de compte ?",
+  "hasAccountLabel": "Déjà inscrit ?",
+  "continueWithGoogle": "Continuer avec Google",
+  "continueWithLinkedIn": "Continuer avec LinkedIn",
+  
+  "profileTitle": "Profil",
+  "editProfileTitle": "Modifier le profil",
+  "saveButton": "Enregistrer",
+  "cancelButton": "Annuler",
+  
+  "homeTitle": "Accueil",
+  "discoverTitle": "Découvrir",
+  "projectsTitle": "Projets",
+  "messagesTitle": "Messages",
+  "notificationsTitle": "Notifications",
+  "settingsTitle": "Paramètres",
+  
+  "createProjectTitle": "Créer un projet",
+  "projectNameLabel": "Nom du projet",
+  "projectDescriptionLabel": "Description",
+  "projectCategoryLabel": "Catégorie",
+  "projectStageLabel": "Stade",
+  "projectFundingLabel": "Financement recherché",
+  "projectLocationLabel": "Localisation",
+  "projectTagsLabel": "Tags",
+  
+  "interestedButton": "Je suis intéressé",
+  "favoriteButton": "Ajouter aux favoris",
+  "shareButton": "Partager",
+  "askQuestionButton": "Poser une question",
+  
+  "messageInputHint": "Écrivez votre message...",
+  "sendButton": "Envoyer",
+  "attachFileButton": "Joindre un fichier",
+  
+  "premiumTitle": "VentureLink Premium",
+  "upgradeToPremium": "Passer à Premium",
+  "premiumMonthly": "Abonnement mensuel",
+  "premiumYearly": "Abonnement annuel",
+  
+  "errorTitle": "Erreur",
+  "networkErrorMessage": "Erreur de connexion. Veuillez vérifier votre connexion Internet.",
+  "retryButton": "Réessayer",
+  
+  "languageSettingsTitle": "Langue",
+  "themeSettingsTitle": "Thème",
+  "notificationSettingsTitle": "Notifications",
+  "accountSettingsTitle": "Compte",
+  "logoutButton": "Déconnexion",
+  
+  "darkMode": "Mode sombre",
+  "lightMode": "Mode clair",
+  "systemMode": "Système",
+  
+  "loadingText": "Chargement...",
+  "emptyProjectsMessage": "Aucun projet trouvé",
+  "emptyMessagesMessage": "Aucune conversation",
+  "emptyNotificationsMessage": "Aucune notification",
+  
+  "userTypeInvestor": "Investisseur",
+  "userTypeProjectOwner": "Porteur de projet",
+  "userTypeBoth": "Les deux",
+  
+  "stageIdea": "Idée",
+  "stagePrototype": "Prototype",
+  "stageDevelopment": "En développement",
+  "stageGrowth": "En croissance"
+}
+
+# localization/l10n/app_en.arb
+{
+  "@@locale": "en",
+  
+  "appName": "VentureLink",
+  "appTagline": "Connect. Invest. Succeed.",
+  
+  "loginTitle": "Login",
+  "registerTitle": "Register",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "confirmPasswordLabel": "Confirm Password",
+  "firstNameLabel": "First Name",
+  "lastNameLabel": "Last Name",
+  "loginButton": "Login",
+  "registerButton": "Register",
+  "forgotPasswordLabel": "Forgot password?",
+  "noAccountLabel": "Don't have an account yet?",
+  "hasAccountLabel": "Already registered?",
+  "continueWithGoogle": "Continue with Google",
+  "continueWithLinkedIn": "Continue with LinkedIn",
+  
+  "profileTitle": "Profile",
+  "editProfileTitle": "Edit Profile",
+  "saveButton": "Save",
+  "cancelButton": "Cancel",
+  
+  "homeTitle": "Home",
+  "discoverTitle": "Discover",
+  "projectsTitle": "Projects",
+  "messagesTitle": "Messages",
+  "notificationsTitle": "Notifications",
+  "settingsTitle": "Settings",
+  
+  "createProjectTitle": "Create Project",
+  "projectNameLabel": "Project Name",
+  "projectDescriptionLabel": "Description",
+  "projectCategoryLabel": "Category",
+  "projectStageLabel": "Stage",
+  "projectFundingLabel": "Funding Needed",
+  "projectLocationLabel": "Location",
+  "projectTagsLabel": "Tags",
+  
+  "interestedButton": "I'm Interested",
+  "favoriteButton": "Add to Favorites",
+  "shareButton": "Share",
+  "askQuestionButton": "Ask a Question",
+  
+  "messageInputHint": "Write your message...",
+  "sendButton": "Send",
+  "attachFileButton": "Attach File",
+  
+  "premiumTitle": "VentureLink Premium",
+  "upgradeToPremium": "Upgrade to Premium",
+  "premiumMonthly": "Monthly Subscription",
+  "premiumYearly": "Yearly Subscription",
+  
+  "errorTitle": "Error",
+  "networkErrorMessage": "Connection error. Please check your internet connection.",
+  "retryButton": "Retry",
+  
+  "languageSettingsTitle": "Language",
+  "themeSettingsTitle": "Theme",
+  "notificationSettingsTitle": "Notifications",
+  "accountSettingsTitle": "Account",
+  "logoutButton": "Logout",
+  
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
+  "systemMode": "System",
+  
+  "loadingText": "Loading...",
+  "emptyProjectsMessage": "No projects found",
+  "emptyMessagesMessage": "No conversations",
+  "emptyNotificationsMessage": "No notifications",
+  
+  "userTypeInvestor": "Investor",
+  "userTypeProjectOwner": "Project Owner",
+  "userTypeBoth": "Both",
+  
+  "stageIdea": "Idea",
+  "stagePrototype": "Prototype",
+  "stageDevelopment": "In Development",
+  "stageGrowth": "Growth Stage"
+}
+8.3 Utilisation dans le code
+// Exemple d'utilisation
+class LoginScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // Utilisation directe
+    final localizations = AppLocalizations.of(context)!;
+    
+    // Utilisation via extension
+    final loginTitle = context.loc.loginTitle;
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(localizations.loginTitle),
+      ),
+      body: Column(
+        children: [
+          TextField(
+            decoration: InputDecoration(
+              labelText: context.loc.emailLabel,
+            ),
+          ),
+          TextField(
+            decoration: InputDecoration(
+              labelText: context.loc.passwordLabel,
+            ),
+            obscureText: true,
+          ),
+          ElevatedButton(
+            onPressed: () {},
+            child: Text(context.loc.loginButton),
+          ),
+        ],
+      ),
+    );
+  }
+}
+9. Injection de dépendances
+// config/dependency_injection.dart
+import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dio/dio.dart';
+
+final getIt = GetIt.instance;
+
+Future<void> setupDependencies() async {
+  // Services externes
+  final sharedPreferences = await SharedPreferences.getInstance();
+  getIt.registerSingleton<SharedPreferences>(sharedPreferences);
+  
+  getIt.registerSingleton<FlutterSecureStorage>(const FlutterSecureStorage());
+  
+  getIt.registerSingleton<Dio>(Dio());
+  
+  // Services de base
+  getIt.registerSingleton<NetworkInfo>(NetworkInfoImpl(
+    Connectivity(),
+  ));
+  
+  getIt.registerSingleton<StorageService>(StorageService(
+    getIt<SharedPreferences>(),
+    getIt<FlutterSecureStorage>(),
+  ));
+  
+  getIt.registerSingleton<DioClient>(DioClient(
+    getIt<Dio>(),
+    getIt<StorageService>(),
+  ));
+  
+  // Services Firebase
+  getIt.registerSingleton<AuthService>(AuthService(
+    getIt<ApiService>(),
+  ));
+  
+  getIt.registerSingleton<MessagingService>(MessagingService(
+    getIt<ApiService>(),
+  ));
+  
+  // Services API
+  getIt.registerSingleton<ApiService>(ApiService(
+    getIt<DioClient>(),
+    getIt<StorageService>(),
+  ));
+  
+  // Sources de données
+  getIt.registerSingleton<UserRemoteDataSource>(UserRemoteDataSourceImpl(
+    getIt<ApiService>(),
+  ));
+  
+  getIt.registerSingleton<UserLocalDataSource>(UserLocalDataSourceImpl(
+    getIt<SharedPreferences>(),
+  ));
+  
+  getIt.registerSingleton<ProjectRemoteDataSource>(ProjectRemoteDataSourceImpl(
+    getIt<ApiService>(),
+  ));
+  
+  getIt.registerSingleton<ProjectLocalDataSource>(ProjectLocalDataSourceImpl(
+    getIt<SharedPreferences>(),
+  ));
+  
+  // Repositories
+  getIt.registerSingleton<IUserRepository>(UserRepository(
+    getIt<UserRemoteDataSource>(),
+    getIt<UserLocalDataSource>(),
+    getIt<NetworkInfo>(),
+  ));
+  
+  getIt.registerSingleton<IProjectRepository>(ProjectRepository(
+    getIt<ProjectRemoteDataSource>(),
+    getIt<ProjectLocalDataSource>(),
+    getIt<NetworkInfo>(),
+  ));
+  
+  // Cas d'utilisation
+  getIt.registerFactory<GetCurrentUserUseCase>(() => GetCurrentUserUseCase(
+    getIt<IUserRepository>(),
+  ));
+  
+  getIt.registerFactory<UpdateProfileUseCase>(() => UpdateProfileUseCase(
+    getIt<IUserRepository>(),
+  ));
+  
+  getIt.registerFactory<GetProjectsUseCase>(() => GetProjectsUseCase(
+    getIt<IProjectRepository>(),
+  ));
+  
+  getIt.registerFactory<GetProjectUseCase>(() => GetProjectUseCase(
+    getIt<IProjectRepository>(),
+  ));
+  
+  getIt.registerFactory<CreateProjectUseCase>(() => CreateProjectUseCase(
+    getIt<IProjectRepository>(),
+  ));
+  
+  // Providers globaux
+  getIt.registerSingleton<ThemeProvider>(ThemeProvider(
+    getIt<StorageService>(),
+  ));
+  
+  getIt.registerSingleton<LocaleProvider>(LocaleProvider(
+    getIt<StorageService>(),
+  ));
+  
+  getIt.registerSingleton<AuthProvider>(AuthProvider(
+    getIt<AuthService>(),
+    getIt<StorageService>(),
+  ));
+  
+  getIt.registerSingleton<UserProvider>(UserProvider(
+    getIt<GetCurrentUserUseCase>(),
+  ));
+  
+  // ViewModels
+  getIt.registerFactory<LoginViewModel>(() => LoginViewModel(
+    getIt<AuthProvider>(),
+  ));
+  
+  getIt.registerFactory<RegisterViewModel>(() => RegisterViewModel(
+    getIt<AuthProvider>(),
+  ));
+  
+  getIt.registerFactory<HomeViewModel>(() => HomeViewModel(
+    getIt<GetProjectsUseCase>(),
+  ));
+  
+  getIt.registerFactory<ProjectDetailViewModel>(() => ProjectDetailViewModel(
+    getIt<GetProjectUseCase>(),
+    getIt<GetProjectQuestionsUseCase>(),
+    getIt<AskQuestionUseCase>(),
+    getIt<ExpressInterestUseCase>(),
+    getIt<UserProvider>(),
+  ));
+  
+  getIt.registerFactory<ProfileViewModel>(() => ProfileViewModel(
+    getIt<GetCurrentUserUseCase>(),
+    getIt<UpdateProfileUseCase>(),
+  ));
+}
+10. Tests
+10.1 Tests unitaires
+// test/domain/usecases/get_project_use_case_test.dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:mockito/annotations.dart';
+import 'package:venturelink/domain/entities/project.dart';
+import 'package:venturelink/domain/repositories/i_project_repository.dart';
+import 'package:venturelink/domain/usecases/project/get_project_use_case.dart';
+
+import 'get_project_use_case_test.mocks.dart';
+
+@GenerateMocks([IProjectRepository])
+void main() {
+  late GetProjectUseCase useCase;
+  late MockIProjectRepository mockRepository;
+  
+  setUp(() {
+    mockRepository = MockIProjectRepository();
+    useCase = GetProjectUseCase(mockRepository);
+  });
+  
+  const testProjectId = 'test-project-id';
+  final testProject = Project(
+    id: testProjectId,
+    title: 'Test Project',
+    shortDescription: 'A test project',
+    creator: User(id: 'user-id', firstName: 'John', lastName: 'Doe'),
+    category: ProjectCategory(id: 'category-id', name: 'Technology'),
+    stage: ProjectStage.prototype,
+    createdAt: DateTime.now(),
+    isPremium: false,
+  );
+  
+  test('should get project from repository', () async {
+    // arrange
+    when(mockRepository.getProject(testProjectId))
+        .thenAnswer((_) async => testProject);
+    
+    // act
+    final result = await useCase(testProjectId);
+    
+    // assert
+    expect(result, testProject);
+    verify(mockRepository.getProject(testProjectId));
+    verifyNoMoreInteractions(mockRepository);
+  });
+  
+  test('should throw exception when repository throws', () async {
+    // arrange
+    when(mockRepository.getProject(testProjectId))
+        .thenThrow(Exception('Error'));
+    
+    // act & assert
+    expect(() => useCase(testProjectId), throwsException);
+    verify(mockRepository.getProject(testProjectId));
+    verifyNoMoreInteractions(mockRepository);
+  });
+}
+10.2 Tests de widget
+// test/presentation/screens/project/project_detail_screen_test.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:mockito/annotations.dart';
+import 'package:provider/provider.dart';
+import 'package:venturelink/domain/entities/project.dart';
+import 'package:venturelink/presentation/screens/project/project_detail/project_detail_screen.dart';
+import 'package:venturelink/presentation/screens/project/project_detail/project_detail_viewmodel.dart';
+
+import 'project_detail_screen_test.mocks.dart';
+
+@GenerateMocks([ProjectDetailViewModel])
+void main() {
+  late MockProjectDetailViewModel mockViewModel;
+  
+  setUp(() {
+    mockViewModel = MockProjectDetailViewModel();
+  });
+  
+  final testProject = Project(
+    id: 'test-id',
+    title: 'Test Project',
+    shortDescription: 'A test project',
+    creator: User(id: 'creator-id', firstName: 'John', lastName: 'Doe'),
+    category: ProjectCategory(id: 'category-id', name: 'Technology'),
+    stage: ProjectStage.prototype,
+    createdAt: DateTime.now(),
+    isPremium: false,
+  );
+  
+  testWidgets('should display loading indicator when loading', (WidgetTester tester) async {
+    // arrange
+    when(mockViewModel.isLoading).thenReturn(true);
+    when(mockViewModel.project).thenReturn(null);
+    when(mockViewModel.error).thenReturn(null);
+    
+    // act
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<ProjectDetailViewModel>.value(
+          value: mockViewModel,
+          child: const ProjectDetailScreen(projectId: 'test-id'),
+        ),
+      ),
+    );
+    
+    // assert
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Test Project'), findsNothing);
+  });
+  
+  testWidgets('should display project details when loaded', (WidgetTester tester) async {
+    // arrange
+    when(mockViewModel.isLoading).thenReturn(false);
+    when(mockViewModel.project).thenReturn(testProject);
+    when(mockViewModel.error).thenReturn(null);
+    when(mockViewModel.isCreator).thenReturn(false);
+    when(mockViewModel.canExpressInterest).thenReturn(true);
+    when(mockViewModel.questions).thenReturn([]);
+    
+    // act
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<ProjectDetailViewModel>.value(
+          value: mockViewModel,
+          child: const ProjectDetailScreen(projectId: 'test-id'),
+        ),
+      ),
+    );
+    
+    // assert
+    expect(find.text('Test Project'), findsOneWidget);
+    expect(find.text('A test project'), findsOneWidget);
+    expect(find.text('John Doe'), findsOneWidget);
+    expect(find.text('Technology'), findsOneWidget);
+    expect(find.text('Prototype'), findsOneWidget);
+    
+    // Vérifier que le bouton d'intérêt est présent
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    
+    // Simuler un tap sur le bouton d'intérêt
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pump();
+    
+    // Vérifier que la méthode expressInterest a été appelée
+    verify(mockViewModel.expressInterest()).called(1);
+  });
+  
+  testWidgets('should display error when loading fails', (WidgetTester tester) async {
+    // arrange
+    final testException = Exception('Error loading project');
+    when(mockViewModel.isLoading).thenReturn(false);
+    when(mockViewModel.project).thenReturn(null);
+    when(mockViewModel.error).thenReturn(testException);
+    
+    // act
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider<ProjectDetailViewModel>.value(
+          value: mockViewModel,
+          child: const ProjectDetailScreen(projectId: 'test-id'),
+        ),
+      ),
+    );
+    
+    // assert
+    expect(find.text('Error loading project'), findsOneWidget);
+    expect(find.text('Test Project'), findsNothing);
+  });
+}
+10.3 Tests d'intégration
+// integration_test/app_test.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:venturelink/main.dart' as app;
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  
+  group('end-to-end test', () {
+    testWidgets('login flow test', (WidgetTester tester) async {
+      // Lancer l'application
+      app.main();
+      
+      // Attendre que l'application soit chargée
+      await tester.pumpAndSettle();
+      
+      // Vérifier que l'écran de connexion est affiché
+      expect(find.text('Connexion'), findsOneWidget);
+      
+      // Remplir le formulaire de connexion
+      await tester.enterText(
+        find.byKey(const Key('email_field')),
+        'test@example.com',
+      );
+      await tester.enterText(
+        find.byKey(const Key('password_field')),
+        'password123',
+      );
+      
+      // Simuler le tap sur le bouton de connexion
+      await tester.tap(find.byKey(const Key('login_button')));
+      
+      // Attendre la fin de l'animation et des requêtes réseau
+      await tester.pumpAndSettle(const Duration(seconds: 3));
+      
+      // Vérifier que l'écran d'accueil est affiché
+      expect(find.text('Accueil'), findsOneWidget);
+      
+      // Navigation vers l'écran de profil
+      await tester.tap(find.byKey(const Key('profile_tab')));
+      await tester.pumpAndSettle();
+      
+      // Vérifier que l'écran de profil est affiché
+      expect(find.text('Profil'), findsOneWidget);
+      
+      // Vérifier que les informations de l'utilisateur sont affichées
+      expect(find.text('Test User'), findsOneWidget);
+      
+      // Déconnexion
+      await tester.tap(find.byKey(const Key('logout_button')));
+      await tester.pumpAndSettle();
+      
+      // Confirmer la déconnexion
+      await tester.tap(find.text('Oui'));
+      await tester.pumpAndSettle();
+      
+      // Vérifier que l'écran de connexion est affiché
+      expect(find.text('Connexion'), findsOneWidget);
+    });
+    
+    testWidgets('create project flow test', (WidgetTester tester) async {
+      // Lancer l'application et se connecter (réutiliser le code précédent)
+      app.main();
+      await tester.pumpAndSettle();
+      
+      // Connexion rapide
+      await tester.enterText(find.byKey(const Key('email_field')), 'test@example.com');
+      await tester.enterText(find.byKey(const Key('password_field')), 'password123');
+      await tester.tap(find.byKey(const Key('login_button')));
+      await tester.pumpAndSettle(const Duration(seconds: 3));
+      
+      // Taper sur le bouton "+" pour créer un projet
+      await tester.tap(find.byKey(const Key('create_project_fab')));
+      await tester.pumpAndSettle();
+      
+      // Vérifier que l'écran de création de projet est affiché
+      expect(find.text('Créer un projet'), findsOneWidget);
+      
+      // Remplir le formulaire de création de projet
+      await tester.enterText(
+        find.byKey(const Key('project_title_field')),
+        'Projet de test',
+      );
+      await tester.enterText(
+        find.byKey(const Key('project_short_description_field')),
+        'Description courte du projet de test',
+      );
+      await tester.enterText(
+        find.byKey(const Key('project_full_description_field')),
+        'Description complète du projet de test qui contient plus de détails.',
+      );
+      
+      // Sélectionner une catégorie
+      await tester.tap(find.byKey(const Key('project_category_dropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Technologie').last);
+      await tester.pumpAndSettle();
+      
+      // Sélectionner un stade
+      await tester.tap(find.byKey(const Key('project_stage_dropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Prototype').last);
+      await tester.pumpAndSettle();
+      
+      // Passer à l'étape suivante
+      await tester.tap(find.byKey(const Key('next_button')));
+      await tester.pumpAndSettle();
+      
+      // Ajout des besoins du projet (deuxième écran)
+      await tester.tap(find.byKey(const Key('funding_min_field')));
+      await tester.enterText(
+        find.byKey(const Key('funding_min_field')),
+        '50000',
+      );
+      await tester.tap(find.byKey(const Key('funding_max_field')));
+      await tester.enterText(
+        find.byKey(const Key('funding_max_field')),
+        '100000',
+      );
+      
+      // Sélectionner les compétences recherchées
+      await tester.tap(find.byKey(const Key('skills_needed_dropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Développement Web').last);
+      await tester.pumpAndSettle();
+      
+      // Passer à l'étape suivante
+      await tester.tap(find.byKey(const Key('next_button')));
+      await tester.pumpAndSettle();
+      
+      // Publication du projet
+      await tester.tap(find.byKey(const Key('publish_button')));
+      await tester.pumpAndSettle(const Duration(seconds: 3));
+      
+      // Vérifier que l'écran de détail du projet est affiché
+      expect(find.text('Projet de test'), findsOneWidget);
+      expect(find.text('Description courte du projet de test'), findsOneWidget);
+    });
+  });
+}
+

@@ -1,0 +1,423 @@
+VentureLink MVP - Charte Graphique Détaillée
+Vue d'ensemble
+Cette charte graphique détaille les standards visuels de l'application VentureLink. En s'inspirant de Facebook tout en conservant une identité propre, VentureLink adopte une interface moderne, propre et professionnelle orientée vers la mise en relation entre porteurs de projets et investisseurs.
+1. Système de couleurs
+Couleurs principales
+•	Bleu VentureLink (Primaire): #1877F2 - Couleur principale de l'application, similaire au bleu Facebook
+•	Blanc: #FFFFFF - Fond des interfaces principales et contenu
+•	Noir: #000000 - Texte principal et icônes
+Couleurs secondaires
+•	Gris clair: #F0F2F5 - Fond des sections secondaires, comme Facebook
+•	Gris moyen: #E4E6EB - Boutons inactifs et séparateurs
+•	Gris foncé: #65676B - Texte secondaire et sous-titres
+Couleurs d'accentuation
+•	Vert succès: #42B72A - Actions positives, validations, confirmations
+•	Rouge alerte: #FF3B30 - Erreurs et alertes importantes
+•	Jaune notification: #FFBA00 - Avertissements et notifications
+Couleurs Premium
+•	Or Premium: #FFD700 - Indication des fonctionnalités Premium
+•	Gradient Premium: Dégradé linéaire de #FFD700 à #FFA500 - Badges et éléments Premium
+•	Bleu foncé Premium: #0A2463 - Fond d'écrans exclusifs Premium
+Variantes de transparence
+•	Des variantes avec 10%, 20%, 50% et 80% d'opacité seront utilisées pour les superpositions et les états des composants
+2. Typographie
+Famille de polices
+Police principale: SF Pro Text (iOS) / Roboto (Android)
+•	Cette approche respecte les standards natifs de chaque plateforme, comme Facebook
+Hiérarchie typographique
+•	Titre principal:
+o	Taille: 24px
+o	Poids: Bold (700)
+o	Couleur: #000000
+o	Cas d'usage: Titres d'écran, nom du projet
+•	Titre secondaire:
+o	Taille: 20px
+o	Poids: SemiBold (600)
+o	Couleur: #000000
+o	Cas d'usage: Sections importantes, nom d'utilisateur dans le profil
+•	Titre tertiaire:
+o	Taille: 17px
+o	Poids: Medium (500)
+o	Couleur: #000000
+o	Cas d'usage: Sous-sections, titres de carte
+•	Corps de texte (primaire):
+o	Taille: 15px
+o	Poids: Regular (400)
+o	Couleur: #000000
+o	Cas d'usage: Texte principal, descriptions de projet
+•	Corps de texte (secondaire):
+o	Taille: 15px
+o	Poids: Regular (400)
+o	Couleur: #65676B
+o	Cas d'usage: Métadonnées, informations complémentaires
+•	Petit texte:
+o	Taille: 13px
+o	Poids: Regular (400)
+o	Couleur: #65676B
+o	Cas d'usage: Timestamps, compteurs, tags
+•	Texte de bouton:
+o	Taille: 15px
+o	Poids: Medium (500)
+o	Couleur: Variable selon le type de bouton
+o	Cas d'usage: Libellés des boutons et actions
+Styles spéciaux
+•	Badge Premium:
+o	Taille: 12px
+o	Poids: SemiBold (600)
+o	Couleur: #FFD700
+o	Cas d'usage: Identification des utilisateurs ou projets Premium
+•	Message d'erreur:
+o	Taille: 13px
+o	Poids: Regular (400)
+o	Couleur: #FF3B30
+o	Cas d'usage: Messages d'erreur et alertes
+3. Éléments d'interface
+Icônes
+•	Style: Linéaire avec épaisseur de trait uniforme (2pt)
+•	Taille: 24x24px pour les icônes de navigation, 20x20px pour les actions contextuelles
+•	Couleurs: 
+o	Par défaut: #65676B (gris foncé)
+o	Actif: #1877F2 (bleu VentureLink)
+o	Premium: #FFD700 (or Premium)
+•	Remplissage: Utilisation cohérente du style outline ou filled selon le contexte
+•	Interactions: Changement d'état visuel (couleur, remplissage) selon l'interaction
+•	Bibliothèque: Basée sur Material Design Icons ou SF Symbols avec personnalisation
+Boutons
+Bouton primaire
+•	Style: Fond bleu VentureLink (#1877F2) avec texte blanc
+•	Coins: Légèrement arrondis (8px)
+•	Padding: 12px horizontal, 8px vertical
+•	État normal: Fond plein
+•	État pressé: Assombrissement du fond (opacité 80%)
+•	État désactivé: Opacité réduite (50%)
+•	Cas d'usage: Actions principales (Créer un projet, S'inscrire, Se connecter)
+Bouton secondaire
+•	Style: Fond gris moyen (#E4E6EB) avec texte noir
+•	Coins: Légèrement arrondis (8px)
+•	Padding: 12px horizontal, 8px vertical
+•	État normal: Fond plein
+•	État pressé: Assombrissement du fond (opacité 80%)
+•	État désactivé: Opacité réduite (50%)
+•	Cas d'usage: Actions secondaires (Annuler, Voir plus)
+Bouton tertiaire
+•	Style: Transparent avec bordure fine (1px) et texte bleu VentureLink
+•	Coins: Légèrement arrondis (8px)
+•	Padding: 12px horizontal, 8px vertical
+•	État normal: Bordure visible
+•	État pressé: Fond gris très léger (opacité 10%)
+•	État désactivé: Opacité réduite (50%)
+•	Cas d'usage: Actions tertiaires (Modifier, Voir les détails)
+Bouton Premium
+•	Style: Dégradé Premium (or à orange) avec texte blanc
+•	Coins: Légèrement arrondis (8px)
+•	Padding: 12px horizontal, 8px vertical
+•	État normal: Fond en dégradé
+•	État pressé: Assombrissement du dégradé (opacité 80%)
+•	Cas d'usage: Actions Premium (Passer à Premium, Utiliser fonctionnalité Premium)
+Bouton flottant (FAB)
+•	Style: Rond, bleu VentureLink avec icône blanche
+•	Taille: 56px de diamètre
+•	Ombre: Légère ombre portée (elevation: 6)
+•	Position: Coin inférieur droit
+•	Cas d'usage: Action principale contextuelle (Créer un projet, Nouveau message)
+Champs de formulaire
+Champ de texte
+•	Style: Fond blanc avec bordure fine grise (#E4E6EB)
+•	Coins: Légèrement arrondis (8px)
+•	Padding: 12px horizontal, 10px vertical
+•	État normal: Bordure fine grise
+•	État focus: Bordure bleue VentureLink
+•	État erreur: Bordure rouge alerte
+•	Label: Au-dessus du champ, taille 13px, gris foncé
+•	Texte d'aide: Sous le champ, taille 12px, gris foncé
+•	Message d'erreur: Sous le champ, taille 12px, rouge alerte
+Sélecteur
+•	Style: Similaire au champ de texte avec icône de chevron à droite
+•	Options: Liste déroulante avec options sur fond blanc
+•	Option sélectionnée: Texte en bleu VentureLink
+Commutateur (Switch)
+•	Style: Style iOS/Android natif
+•	Couleur active: Bleu VentureLink
+•	Couleur inactive: Gris moyen
+Cases à cocher et boutons radio
+•	Style: Style iOS/Android natif avec personnalisation des couleurs
+•	Couleur active: Bleu VentureLink
+•	Couleur inactive: Gris moyen
+Cartes et conteneurs
+Carte de projet
+•	Fond: Blanc (#FFFFFF)
+•	Coins: Légèrement arrondis (10px)
+•	Ombre: Très légère (elevation: 1)
+•	Bordure: Optionnelle, gris très clair (1px)
+•	Padding: 16px
+•	Structure: 
+o	En-tête (auteur/créateur)
+o	Média (image principale)
+o	Titre du projet
+o	Description courte
+o	Métadonnées (secteur, montant)
+o	Actions (Intéressé, Favoris, Commentaires)
+•	Badge Premium: Affiché en haut à droite si applicable
+Carte de profil
+•	Fond: Blanc (#FFFFFF)
+•	Coins: Légèrement arrondis (10px)
+•	Ombre: Très légère (elevation: 1)
+•	Bordure: Optionnelle, gris très clair (1px)
+•	Padding: 16px
+•	Structure: 
+o	Photo de profil
+o	Nom et titre
+o	Badges (Premium, Vérifié)
+o	Bio courte
+o	Domaines d'expertise
+o	Actions (Contacter, Voir profil)
+Conteneur de section
+•	Fond: Blanc (#FFFFFF) ou gris clair (#F0F2F5) selon contexte
+•	Coins: Légèrement arrondis (10px)
+•	Marge: 16px horizontal, 12px vertical
+•	Padding: 16px
+•	En-tête: Titre de section en gras, séparateur fin gris
+Bulle de message
+•	Style: Similaire à Facebook Messenger
+•	Messages envoyés: Fond bleu VentureLink, texte blanc, aligné à droite
+•	Messages reçus: Fond gris clair, texte noir, aligné à gauche
+•	Coins: Très arrondis (16px)
+•	Timestamp: Petit texte gris sous le message
+Navigation
+Barre de navigation inférieure
+•	Style: Barre blanche avec ombre légère vers le haut
+•	Icônes: 5 icônes principales
+•	Indication active: Icône en bleu VentureLink
+•	Animation: Léger effet de scale sur pression
+•	Hauteur: 56px
+Barre de navigation supérieure
+•	Fond: Blanc (#FFFFFF)
+•	Ombre: Très légère vers le bas
+•	Logo: Logo VentureLink à gauche
+•	Actions: Icônes à droite (notifications, profil)
+•	Titre: Centre, uniquement sur écrans secondaires
+•	Hauteur: 56px
+Onglets
+•	Style: Texte avec indicateur en dessous
+•	Couleur active: Texte noir, indicateur bleu VentureLink
+•	Couleur inactive: Texte gris, pas d'indicateur
+•	Alignement: Répartition égale ou défilement horizontal selon le nombre
+•	Hauteur: 48px
+Feedbacks et notifications
+Toast
+•	Style: Banière en bas avec coin arrondis
+•	Couleur: 
+o	Succès: Fond vert succès
+o	Erreur: Fond rouge alerte
+o	Info: Fond bleu VentureLink
+•	Durée: 3 secondes par défaut
+•	Animation: Slide up/down
+Badge de notification
+•	Style: Petit cercle rouge
+•	Position: Coin supérieur droit des icônes
+•	Taille: 16px de diamètre
+•	Contenu: Nombre en blanc (ou point si non numérique)
+Dialogue
+•	Fond: Blanc
+•	Coins: Arrondis (12px)
+•	Ombre: Medium (elevation: 8)
+•	Titre: Centré, en gras
+•	Boutons: 1-2 boutons en bas, alignés horizontalement
+•	Animation: Fade in/out avec légère scale
+Indicateur de chargement
+•	Style: Spinner circulaire
+•	Couleur: Bleu VentureLink
+•	Taille: Adaptée au contexte (24px pour général, 16px pour inline)
+•	Position: Centré ou inline selon contexte
+4. Composants spécifiques
+Vignette de projet dans le feed
+•	Style: Carte blanche similaire à un post Facebook
+•	En-tête: Avatar du créateur, nom, date de publication
+•	Contenu: 
+o	Titre du projet en gras
+o	Description courte
+o	Image principale (aspect ratio 16:9)
+o	Métadonnées (secteur, montant recherché)
+•	Actions: Boutons "Intéressé", "Favoris", "Commentaires" en bas
+•	Compteurs: Nombre d'intéressés, commentaires (comme Facebook)
+Profil utilisateur
+•	En-tête: 
+o	Photo de couverture (pleine largeur, 9:3)
+o	Photo de profil (cercle, chevauche la couverture)
+o	Nom et titre en gras
+o	Badges (Premium, Vérifié) à côté du nom
+•	Actions: Boutons "Contacter", "Suivre" sous l'en-tête
+•	Sections: 
+o	À propos (bio, informations personnelles)
+o	Expertise (domaines, compétences)
+o	Projets (liste des projets créés)
+o	Expérience (parcours professionnel)
+o	Évaluations (avis et notes)
+Détail de projet
+•	En-tête: 
+o	Image principale (pleine largeur)
+o	Titre en gras
+o	Créateur (avatar, nom)
+o	Badge Premium si applicable
+•	Corps: 
+o	Description détaillée
+o	Galerie d'images (grille)
+o	Métadonnées (secteur, stade, montant)
+o	Besoins (ce que recherche le projet)
+•	Actions: 
+o	Bouton "Je suis intéressé" (CTA principal)
+o	Bouton "Ajouter aux favoris"
+o	Bouton "Partager"
+•	Sections: 
+o	Questions et réponses
+o	Utilisateurs intéressés
+o	Projets similaires
+Interface de messaging
+•	Liste des conversations: 
+o	Avatar, nom de l'interlocuteur
+o	Aperçu du dernier message
+o	Timestamp
+o	Indicateur non lu
+•	Conversation: 
+o	En-tête avec avatar et nom
+o	Bulles de messages
+o	Champ de saisie en bas
+o	Bouton d'envoi de fichier
+o	Indicateur de saisie
+Bannière Premium
+•	Style: Carte avec dégradé Premium (or à orange)
+•	Contenu: 
+o	Titre accrocheur en blanc
+o	Description des avantages
+o	Badge "PREMIUM"
+•	CTA: Bouton "Passer à Premium"
+•	Position: Intégrée dans le feed ou dans les sections pertinentes
+5. États et animations
+États des composants
+•	État normal: Apparence standard
+•	État désactivé: Opacité réduite (50%)
+•	État pressé/hover: Légère modification visuelle (assombrissement, highlight)
+•	État actif/sélectionné: Changement de couleur (bleu VentureLink)
+•	État d'erreur: Indication en rouge
+•	État de succès: Indication en vert
+Animations et transitions
+•	Transitions entre écrans: 
+o	iOS: Slide horizontal
+o	Android: Fade ou slide selon contexte
+•	Ouverture de modal: Slide up
+•	Chargement de contenu: Fade in
+•	Retour haptique: Vibration légère sur actions importantes
+•	Animations de bouton: Légère réduction d'échelle lors du toucher
+•	Animations de succès: Check animé ou confetti pour réalisations importantes
+6. Adaptation et accessibilité
+Mode sombre
+•	Fond principal: #121212
+•	Fond secondaire: #1E1E1E
+•	Texte principal: #FFFFFF
+•	Texte secondaire: #BBBBBB
+•	Cartes: #242424
+•	Séparateurs: #3A3A3A
+•	Couleurs primaires: Ajustées pour meilleur contraste
+Accessibilité
+•	Contraste: Ratio minimum de 4.5:1 pour texte sur fond
+•	Taille de texte: Adaptable jusqu'à 200%
+•	Interaction: Zones tactiles minimum 44x44px
+•	Alternatives textuelles: Pour toutes les images fonctionnelles
+•	Support VoiceOver/TalkBack: Labels appropriés sur tous les contrôles
+•	Navigation sans souris: Support du focus clavier
+•	Daltonisme: Palette testée pour toutes formes de daltonisme
+Responsive design
+•	Téléphones compacts: Adaptation de la mise en page pour écrans < 375px
+•	Téléphones standards: Design optimisé pour écrans 375-428px
+•	Grands téléphones: Mise à profit de l'espace pour écrans > 428px
+•	Orientation paysage: Adaptation des listes et détails pour format horizontal
+•	Mode tablette: Layout optimisé pour grands écrans (iPad, etc.)
+7. Médias et illustrations
+Photographie
+•	Style: Images professionnelles, lumineuses, montrant l'innovation et la collaboration
+•	Traitement: Légèrement contrasté, lumineux, tons légèrement chauds
+•	Sujets: Entrepreneurs, réunions, espaces de travail modernes, technologies
+•	Ratio: 16:9 pour les images principales, 1:1 pour les avatars
+Illustrations
+•	Style: Moderne, minimaliste avec touches de bleu VentureLink
+•	Usage: États vides, onboarding, succès, erreurs
+•	Animation: Légères animations pour renforcer le message
+•	Cohérence: Style unifié dans toute l'application
+Icônes des catégories
+•	Style: Outline avec remplissage léger
+•	Couleur: Variable selon la catégorie avec palette harmonieuse
+•	Fond: Cercle très léger de la couleur de l'icône
+•	Taille: 32x32px dans les listes, 48x48px dans les détails
+Avatars
+•	Style: Cercles parfaits
+•	Fallback: Initiales sur fond coloré généré par algorithme
+•	Badge: Petit indicateur Premium en bas à droite si applicable
+•	Bordure: Fine bordure blanche pour contraste sur fonds variés
+8. Assets spécifiques
+Logo
+•	Version principale: Logo complet "VentureLink" avec symbole
+•	Version réduite: Symbole seul pour espaces restreints
+•	Variantes: 
+o	Couleur sur fond clair
+o	Blanc sur fond foncé/coloré
+o	Monochrome noir (rare)
+Icônes de navigation
+•	Accueil: Maison stylisée
+•	Découvrir: Boussole/exploration
+•	Créer: Plus dans cercle
+•	Notifications: Cloche
+•	Profil: Avatar de l'utilisateur
+Badges
+•	Vérifié: Checkmark dans cercle bleu
+•	Premium: Étoile dorée
+•	Nouveau: Étiquette "NEW" verte
+•	Populaire: Flamme orange
+•	Recommandé: Pouce en l'air bleu
+Splash screen et onboarding
+•	Splash: Logo centré sur fond bleu VentureLink
+•	Onboarding: 
+o	Illustrations par étape
+o	Texte explicatif concis
+o	Indicateur de progression en bas
+o	Bouton "Suivant" bleu VentureLink
+9. Mise en œuvre technique
+Implémentation Flutter
+•	Thème: Définition complète du ThemeData
+•	Text styles: TextStyle pour chaque niveau hiérarchique
+•	Color scheme: Définition des couleurs primaires et secondaires
+•	Component themes: Personnalisation des ButtonTheme, InputDecorationTheme, etc.
+•	Dark mode: Thème sombre alternatif
+Widgets personnalisés
+•	AppBar personnalisé: Comportement et style spécifique à VentureLink
+•	Boutons: Ensemble de widgets boutons respectant la charte
+•	Cartes: Templates de cartes pour projets et profils
+•	Composants de feed: Style propre à VentureLink
+•	Input fields: Champs personnalisés cohérents
+Assets et ressources
+•	Organisation: Structure claire des assets par type et usage
+•	Résolution: Support des différentes densités d'écran
+•	Optimisation: Taille des images optimisée pour le mobile
+•	Icônes: Package d'icônes personnalisées en SVG ou PNG
+•	Polices: Intégration des polices système ou personnalisées
+Variantes
+•	Light/Dark: Support du mode sombre natif
+•	Densité: Adaptation aux préférences d'accessibilité
+•	Langue: Support RTL pour langues comme l'arabe
+10. Documentation et ressources
+Bibliothèque de composants
+•	Kit UI complet documenté
+•	Exemples d'utilisation
+•	Variantes des composants
+Guide d'utilisation
+•	Principes de design
+•	Usage correct des composants
+•	Patterns à suivre et à éviter
+Ressources pour designers
+•	Fichiers Figma source
+•	Bibliothèque de composants
+•	Guide des styles
+Ressources pour développeurs
+•	Code des widgets customisés
+•	Implémentation des thèmes
+•	Documentation d'utilisation
+

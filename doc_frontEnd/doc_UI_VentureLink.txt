@@ -1,0 +1,460 @@
+Document descriptif complet et détaillé de l'UI de VentureLink
+1. Vue d'ensemble
+VentureLink est une application mobile développée avec Flutter permettant de mettre en relation des porteurs de projets et des investisseurs potentiels. L'interface utilisateur suit une approche moderne, inspirée de Facebook tout en conservant une identité propre, avec une UI professionnelle et épurée qui respecte les standards natifs de chaque plateforme (Material Design pour Android, Cupertino pour iOS).
+2. Principes généraux de l'UI
+2.1 Système de couleurs
+Couleurs principales
+•	Bleu VentureLink (Primaire): #1877F2 - Couleur principale de l'application
+•	Blanc: #FFFFFF - Fond des interfaces principales et contenu
+•	Noir: #000000 - Texte principal et icônes
+Couleurs secondaires
+•	Gris clair: #F0F2F5 - Fond des sections secondaires
+•	Gris moyen: #E4E6EB - Boutons inactifs et séparateurs
+•	Gris foncé: #65676B - Texte secondaire et sous-titres
+Couleurs d'accentuation
+•	Vert succès: #42B72A - Actions positives, validations, confirmations
+•	Rouge alerte: #FF3B30 - Erreurs et alertes importantes
+•	Jaune notification: #FFBA00 - Avertissements et notifications
+Couleurs Premium
+•	Or Premium: #FFD700 - Indication des fonctionnalités Premium
+•	Gradient Premium: Dégradé linéaire de #FFD700 à #FFA500 - Badges et éléments Premium
+•	Bleu foncé Premium: #0A2463 - Fond d'écrans exclusifs Premium
+2.2 Typographie
+Hiérarchie typographique
+•	Titre principal: 24px, Bold (700), #000000
+•	Titre secondaire: 20px, SemiBold (600), #000000
+•	Titre tertiaire: 17px, Medium (500), #000000
+•	Corps de texte (primaire): 15px, Regular (400), #000000
+•	Corps de texte (secondaire): 15px, Regular (400), #65676B
+•	Petit texte: 13px, Regular (400), #65676B
+•	Texte de bouton: 15px, Medium (500), couleur variable selon le type de bouton
+Polices
+•	iOS: SF Pro Text
+•	Android: Roboto
+2.3 Éléments d'interface communs
+Icônes
+•	Style linéaire avec épaisseur de trait uniforme (2pt)
+•	Taille: 24x24px pour navigation, 20x20px pour actions contextuelles
+•	Couleurs: Gris foncé par défaut (#65676B), Bleu VentureLink actif (#1877F2), Or pour Premium (#FFD700)
+Boutons
+1.	Bouton primaire:
+o	Fond bleu VentureLink (#1877F2) avec texte blanc
+o	Coins légèrement arrondis (8px)
+o	Padding: 12px horizontal, 8px vertical
+o	États: normal (fond plein), pressé (assombrissement 80%), désactivé (opacité 50%)
+2.	Bouton secondaire:
+o	Fond gris moyen (#E4E6EB) avec texte noir
+o	Coins légèrement arrondis (8px)
+o	Padding: 12px horizontal, 8px vertical
+3.	Bouton tertiaire:
+o	Transparent avec bordure fine (1px) et texte bleu VentureLink
+o	Coins légèrement arrondis (8px)
+o	Padding: 12px horizontal, 8px vertical
+4.	Bouton Premium:
+o	Dégradé Premium (or à orange) avec texte blanc
+o	Coins légèrement arrondis (8px)
+o	Padding: 12px horizontal, 8px vertical
+5.	Bouton flottant (FAB):
+o	Rond, bleu VentureLink avec icône blanche
+o	Taille: 56px de diamètre
+o	Ombre légère (elevation: 6)
+o	Position: coin inférieur droit
+Champs de formulaire
+1.	Champ de texte:
+o	Fond blanc avec bordure fine grise (#E4E6EB)
+o	Coins légèrement arrondis (8px)
+o	Padding: 12px horizontal, 10px vertical
+o	États: normal (bordure grise), focus (bordure bleue), erreur (bordure rouge)
+o	Label au-dessus du champ, taille 13px, gris foncé
+o	Message d'aide/erreur sous le champ, taille 12px
+2.	Sélecteur:
+o	Similaire au champ de texte avec icône de chevron à droite
+o	Liste déroulante avec options sur fond blanc
+o	Option sélectionnée en bleu VentureLink
+3.	Commutateur (Switch):
+o	Style natif (iOS/Android)
+o	Couleur active: Bleu VentureLink
+o	Couleur inactive: Gris moyen
+Cartes et conteneurs
+1.	Carte de projet:
+o	Fond blanc (#FFFFFF)
+o	Coins légèrement arrondis (10px)
+o	Ombre très légère (elevation: 1)
+o	Padding: 16px
+o	Structure: 
+	En-tête (auteur/créateur)
+	Média (image principale)
+	Titre du projet
+	Description courte
+	Métadonnées (secteur, montant)
+	Actions (Intéressé, Favoris, Commentaires)
+o	Badge Premium en haut à droite si applicable
+2.	Carte de profil:
+o	Fond blanc (#FFFFFF)
+o	Coins légèrement arrondis (10px)
+o	Ombre très légère (elevation: 1)
+o	Padding: 16px
+o	Structure: 
+	Photo de profil
+	Nom et titre
+	Badges (Premium, Vérifié)
+	Bio courte
+	Domaines d'expertise
+	Actions (Contacter, Voir profil)
+Navigation
+1.	Barre de navigation inférieure:
+o	Barre blanche avec ombre légère vers le haut
+o	5 icônes principales
+o	Indication active: Icône en bleu VentureLink
+o	Animation: Léger effet de scale sur pression
+o	Hauteur: 56px
+2.	Barre de navigation supérieure:
+o	Fond blanc (#FFFFFF)
+o	Ombre très légère vers le bas
+o	Logo VentureLink à gauche
+o	Actions à droite (notifications, profil)
+o	Titre au centre (écrans secondaires uniquement)
+o	Hauteur: 56px
+3.	Onglets:
+o	Texte avec indicateur en dessous
+o	Couleur active: Texte noir, indicateur bleu VentureLink
+o	Couleur inactive: Texte gris, pas d'indicateur
+o	Répartition égale ou défilement horizontal
+o	Hauteur: 48px
+Feedback et notifications
+1.	Toast:
+o	Bannière en bas avec coins arrondis
+o	Couleurs selon type: vert (succès), rouge (erreur), bleu (info)
+o	Durée: 3 secondes par défaut
+o	Animation: Slide up/down
+2.	Badge de notification:
+o	Petit cercle rouge
+o	Position: coin supérieur droit des icônes
+o	Taille: 16px de diamètre
+o	Contenu: Nombre en blanc (ou point si non numérique)
+3.	Dialogue:
+o	Fond blanc
+o	Coins arrondis (12px)
+o	Ombre moyenne (elevation: 8)
+o	Titre centré, en gras
+o	1-2 boutons en bas, alignés horizontalement
+o	Animation: Fade in/out avec légère scale
+4.	Indicateur de chargement:
+o	Spinner circulaire
+o	Couleur: Bleu VentureLink
+o	Taille adaptée au contexte (24px général, 16px inline)
+o	Position centrée ou inline selon contexte
+3. Écrans principaux
+3.1 Écran de démarrage (Splash Screen)
+•	Logo VentureLink centré sur fond bleu primaire (#1877F2)
+•	Animation de fade-in
+•	Transition automatique vers l'écran d'accueil ou d'authentification
+3.2 Authentification et Onboarding
+Écran d'accueil pré-connexion
+•	Logo VentureLink en haut
+•	Tagline ou slogan de l'application
+•	Bouton "Connexion" (primaire)
+•	Bouton "Inscription" (secondaire)
+•	Options de connexion sociale (Google, LinkedIn) avec leurs logos respectifs
+Écran de connexion
+•	Champs: Email et Mot de passe
+•	Option "Mot de passe oublié"
+•	Bouton "Se connecter" (primaire)
+•	Lien "Pas encore inscrit ? Créer un compte"
+•	Options de connexion sociale
+Écran d'inscription
+•	Champs: Prénom, Nom, Email, Mot de passe, Confirmation du mot de passe
+•	Checkbox pour les conditions d'utilisation
+•	Bouton "S'inscrire" (primaire)
+•	Lien "Déjà inscrit ? Se connecter"
+•	Options d'inscription sociale
+Écrans d'onboarding (4-5 écrans)
+1.	Bienvenue: Présentation de VentureLink
+2.	Type de profil: Choix porteur de projet / investisseur
+3.	Centres d'intérêt: Sélection des secteurs d'activité (multiple)
+4.	Complétion du profil: Indications pour compléter le profil
+5.	Fonctionnalités Premium: Présentation des avantages Premium
+3.3 Navigation principale
+Barre de navigation inférieure
+•	Icône "Accueil" (maison stylisée)
+•	Icône "Découvrir" (boussole/exploration)
+•	Icône "Créer" (plus dans cercle) au centre, légèrement plus grande
+•	Icône "Notifications" (cloche)
+•	Icône "Profil" (avatar de l'utilisateur)
+3.4 Feed et Découverte
+Écran d'accueil (Feed)
+•	Barre supérieure avec logo et actions (recherche, messagerie)
+•	Stories ou carrousel de projets mis en avant (pour Premium)
+•	Feed de projets: 
+o	Carte de projet standard
+o	Indicateurs d'engagement (nombre d'intéressés, etc.)
+o	Boutons d'action (Intéressé, Favoris, Commentaires)
+•	Intercalation occasionnelle de bannières Premium
+•	Pull-to-refresh pour actualiser le feed
+•	Chargement infini (pagination automatique)
+Écran de découverte
+•	Barre de recherche en haut avec filtres rapides
+•	Onglets de catégories (secteurs d'activité)
+•	Grille ou liste de projets (toggle de vue)
+•	Filtres avancés: 
+o	Secteur d'activité
+o	Localisation
+o	Stade du projet
+o	Montant recherché
+o	Compétences (Premium uniquement)
+•	Indication visuelle des projets déjà consultés
+3.5 Profil et Projets
+Écran de profil utilisateur
+•	Photo de couverture (pleine largeur, 9:3)
+•	Photo de profil (cercle, chevauchant la couverture)
+•	Nom, titre et badges (Premium, Vérifié)
+•	Boutons d'action (Contacter, Suivre)
+•	Onglets de sections: 
+o	À propos
+o	Expertise
+o	Projets
+o	Expérience (Premium)
+o	Évaluations
+Écran d'édition de profil
+•	Photo de profil avec bouton d'édition
+•	Photo de couverture avec bouton d'édition
+•	Formulaires pour chaque section: 
+o	Informations personnelles
+o	Biographie
+o	Expertise et compétences
+o	Expérience professionnelle
+o	Formation
+•	Bouton "Enregistrer" (primaire) flottant en bas
+Écran de détail de projet
+•	Image principale (pleine largeur)
+•	Titre et badges (Premium, Nouveau)
+•	Créateur (avatar, nom) avec lien vers profil
+•	Indicateurs d'engagement
+•	Description détaillée
+•	Galerie d'images (grille)
+•	Métadonnées (secteur, stade, montant)
+•	Section "Besoins" (ce que recherche le projet)
+•	Boutons d'action: 
+o	"Je suis intéressé" (CTA principal)
+o	"Ajouter aux favoris"
+o	"Partager"
+•	Sections: 
+o	Questions et réponses
+o	Utilisateurs intéressés
+o	Projets similaires
+Écran de création/édition de projet
+•	Formulaire par étapes: 
+1.	Informations de base: Titre, secteur, stade
+2.	Description: Description courte et détaillée
+3.	Médias: Téléchargement d'images et vidéos
+4.	Besoins: Montant, types de partenaires, compétences
+5.	Visibilité: Paramètres de confidentialité
+•	Aperçu en temps réel
+•	Progression visuelle des étapes
+•	Bouton "Publier" (primaire) ou "Enregistrer comme brouillon" (tertiaire)
+•	Indicateurs de limite (caractères, images selon niveau d'abonnement)
+3.6 Messagerie et Communication
+Liste des conversations
+•	Barre de recherche en haut
+•	Liste des conversations avec: 
+o	Avatar de l'interlocuteur
+o	Nom
+o	Aperçu du dernier message
+o	Timestamp
+o	Indicateur non lu
+•	Filtres: Toutes, Non lues, Récentes
+•	Bouton "Nouvelle conversation" (FAB)
+Écran de conversation
+•	En-tête avec avatar et nom de l'interlocuteur, lien vers profil
+•	Bulles de messages: 
+o	Envoyés: Bleu VentureLink, alignés à droite
+o	Reçus: Gris clair, alignés à gauche
+o	Timestamp sous chaque message
+o	Indicateurs de statut (envoyé, lu)
+•	Champ de saisie en bas avec: 
+o	Zone de texte extensible
+o	Bouton d'envoi de médias
+o	Bouton d'envoi de message
+•	Indicateur de saisie ("X est en train d'écrire...")
+•	Pour Premium: Bouton d'appel audio
+3.7 Tableau de bord et statistiques
+Tableau de bord (version standard)
+•	Cartes de statistiques basiques: 
+o	Nombre de vues des projets
+o	Nombre de marques d'intérêt reçues
+o	Liste des projets favoris
+•	Liste des projets publiés avec indicateurs d'engagement
+•	État des conversations en cours
+Tableau de bord (version Premium)
+•	Analytics détaillés avec graphiques: 
+o	Évolution des vues et interactions
+o	Démographie des visiteurs
+o	Performances comparatives
+•	Vue calendrier des rendez-vous
+•	Suivi des étapes du projet avec jalons
+•	Rapports exportables (PDF, CSV)
+•	Suggestions de connexions pertinentes
+3.8 Notifications et alertes
+Centre de notifications
+•	Onglets: Toutes, Intérêts, Messages, Activités
+•	Liste des notifications avec: 
+o	Icône de type
+o	Contenu de la notification
+o	Timestamp
+o	État (lue/non lue)
+•	Bouton "Marquer toutes comme lues"
+•	Paramètres de notification
+Types de notifications visuelles
+•	Toast pour confirmations d'actions
+•	Badges numériques sur les icônes
+•	Push notifications avec aperçu
+•	Alertes in-app pour événements importants
+3.9 Abonnement Premium
+Écran de présentation Premium
+•	Bannière avec dégradé Premium
+•	Titre accrocheur et valeur proposée
+•	Liste des avantages Premium avec icônes
+•	Comparaison Standard vs Premium
+•	Options d'abonnement (mensuel, annuel)
+•	Bouton "Passer à Premium" (bouton Premium)
+•	FAQ et conditions d'abonnement
+Écran de paiement
+•	WebView sécurisée pour le processus de paiement
+•	Résumé de l'abonnement choisi
+•	Indication de la période d'essai (si applicable)
+•	Conditions de renouvellement
+•	Politique d'annulation
+4. Composants spécifiques et variations
+4.1 Mode sombre
+•	Fond principal: #121212
+•	Fond secondaire: #1E1E1E
+•	Texte principal: #FFFFFF
+•	Texte secondaire: #BBBBBB
+•	Cartes: #242424
+•	Séparateurs: #3A3A3A
+•	Couleurs primaires ajustées pour meilleur contraste
+4.2 Adaptations responsive
+•	Layout ajusté pour différentes tailles d'écran: 
+o	Téléphones compacts (<375px)
+o	Téléphones standards (375-428px)
+o	Grands téléphones (>428px)
+•	Adaptation pour orientation paysage
+•	Mode tablette pour grands écrans
+4.3 Accessibilité
+•	Contraste élevé pour le texte (ratio minimum 4.5:1)
+•	Taille de texte adaptable (jusqu'à 200%)
+•	Zones tactiles minimales de 44x44px
+•	Alternatives textuelles pour les images
+•	Support des lecteurs d'écran (VoiceOver/TalkBack)
+•	Design adapté pour daltonisme
+4.4 Internationalisation
+•	Support complet du français et de l'anglais
+•	Adaptation des layouts pour les textes plus longs
+•	Support RTL pour langues futures (arabe, hébreu)
+•	Formatage localisé des dates, nombres et devises
+4.5 États d'erreur et vides
+•	Pages d'erreur stylisées
+•	États vides avec illustrations et CTA
+•	Écrans de maintenance
+•	Indications de connexion perdue
+•	Pages de conseils pour les nouveaux utilisateurs
+4.6 Animations et transitions
+•	Transitions entre écrans: 
+o	iOS: Slide horizontal
+o	Android: Fade ou slide selon contexte
+•	Animations de micro-interactions: 
+o	Boutons: Scale down sur pression
+o	Formulaires: Highlight des champs actifs
+o	Cartes: Légère élévation au toucher
+•	Animations de succès et confirmation: 
+o	Check mark animé
+o	Confetti pour réalisations importantes
+•	Animations de chargement: 
+o	Skeleton screens pendant le chargement de contenu
+o	Shimmer effect sur placeholders
+5. Guides d'implémentation technique
+5.1 Structure Flutter
+•	Utilisation du ThemeData Flutter pour définir les styles globaux
+•	Widgets personnalisés pour les composants récurrents
+•	Séparation des styles dans des fichiers dédiés
+•	Utilisation des MediaQuery pour adaptations responsive
+•	Extensions sur les types de base pour faciliter l'accès aux styles
+5.2 Hiérarchie des composants
+1.	Atomes: Boutons, champs, textes, icônes
+2.	Molécules: Cartes, barres de navigation, formulaires simples
+3.	Organismes: Sections de feed, profils, formulaires complexes
+4.	Templates: Layouts d'écrans réutilisables
+5.	Pages: Écrans complets de l'application
+5.3 Gestion des assets
+•	Organisation par type et usage: 
+•	assets/├── images/│   ├── logo/│   ├── icons/│   ├── illustrations/│   ├── backgrounds/│   └── placeholders/├── animations/└── data/
+•	Support des différentes densités d'écran
+•	Optimisation des images pour le mobile
+•	Utilisation de SVG quand possible pour meilleure scalabilité
+5.4 Implémentation des thèmes
+•	Définition des TextStyle pour chaque niveau hiérarchique
+•	Définition des ColorScheme pour les couleurs primaires et secondaires
+•	Personnalisation des ButtonTheme, InputDecorationTheme, etc.
+•	Thème sombre alternatif
+•	Gestion des variations par plateforme (iOS/Android)
+6. Flux utilisateur principaux
+6.1 Flux d'onboarding
+1.	Splash Screen → Écran d'accueil pré-connexion
+2.	Inscription → Vérification email → Onboarding
+3.	Onboarding → Complétion du profil → Feed principal
+6.2 Flux de création de projet
+1.	Clic sur "+" → Choix "Nouveau projet"
+2.	Formulaire par étapes (5 étapes)
+3.	Prévisualisation → Publication → Confirmation
+4.	Redirection vers le projet publié
+6.3 Flux de découverte et interaction
+1.	Navigation vers Découverte → Filtrage → Sélection de projet
+2.	Consultation du projet → Marquer intérêt → Attente de confirmation
+3.	Confirmation reçue → Ouverture messagerie → Démarrage conversation
+6.4 Flux de passage au Premium
+1.	Bouton Premium / Bannière → Écran de présentation Premium
+2.	Sélection offre → WebView paiement
+3.	Confirmation → Déblocage fonctionnalités → Écran de bienvenue Premium
+7. Spécificités par type d'utilisateur
+7.1 Porteur de projet
+•	Mise en avant des fonctionnalités de création et gestion de projet
+•	Dashboard orienté statistiques et intérêts reçus
+•	Suggestions d'investisseurs potentiels
+7.2 Investisseur
+•	Mise en avant des fonctionnalités de découverte
+•	Dashboard orienté projets favoris et conversations
+•	Suggestions de projets correspondant aux critères
+7.3 Utilisateur standard vs Premium
+•	Indicateurs visuels des limites atteintes
+•	Rappels des avantages Premium sur fonctionnalités limitées
+•	Variations visuelles (badges, dégradés, etc.)
+8. Tests et validation de l'UI
+8.1 Tests d'utilisabilité
+•	Parcours utilisateur complets
+•	Tests A/B sur éléments critiques
+•	Feedback utilisateur structuré
+8.2 Tests de performance UI
+•	Fluidité des animations
+•	Temps de chargement des composants
+•	Performance sur appareils bas de gamme
+8.3 Validation d'accessibilité
+•	Conformité WCAG 2.1 niveau AA
+•	Tests avec lecteurs d'écran
+•	Tests de navigation au clavier
+•	Validation des contrastes et tailles
+9. Évolutions futures de l'UI (post-MVP)
+9.1 Personnalisation avancée
+•	Thèmes personnalisés pour utilisateurs Premium
+•	Mode saisonniers et événementiels
+•	Widgets personnalisables pour le dashboard
+9.2 Nouvelles sections
+•	Marketplace de services
+•	Système de mentorat
+•	Événements et webinaires
+•	Communauté et forum
+9.3 Intégrations visuelles
+•	Visualisation de données avancée
+•	Outils de gestion de projet intégrés
+•	Vidéoconférence intégrée
+•	Calendrier partagé
+

@@ -1,0 +1,314 @@
+{
+  "@@locale": "fr",
+  "appTitle": "VentureLink",
+  "welcomeMessage": "Bienvenue sur VentureLink",
+  "login": "Connexion",
+  "register": "Inscription",
+  "email": "Email",
+  "password": "Mot de passe",
+  "forgotPassword": "Mot de passe oublié ?",
+  "loginButton": "Se connecter",
+  "createAccount": "Créer un compte",
+  "fullName": "Nom complet",
+  "confirmPassword": "Confirmer le mot de passe",
+  "registerButton": "S'inscrire",
+  "alreadyHaveAccount": "Vous avez déjà un compte ?",
+  "home": "Accueil",
+  "discover": "Découvrir",
+  "create": "Créer",
+  "messages": "Messages",
+  "profile": "Profil",
+  "settings": "Paramètres",
+  "notifications": "Notifications",
+  "projectTitle": "Titre du projet",
+  "projectDescription": "Description du projet",
+  "sector": "Secteur d'activité",
+  "stage": "Stade du projet",
+  "fundingNeeded": "Financement recherché",
+  "partnersNeeded": "Partenaires recherchés",
+  "saveAsDraft": "Enregistrer brouillon",
+  "publishProject": "Publier",
+  "editProfile": "Modifier le profil",
+  "myProjects": "Mes projets",
+  "favorites": "Favoris",
+  "interests": "Intérêts",
+  "activity": "Activité",
+  "contactButton": "Contacter",
+  "showInterest": "Marquer mon intérêt",
+  "addToFavorites": "Ajouter aux favoris",
+  "comments": "Commentaires",
+  "writeComment": "Écrire un commentaire",
+  "send": "Envoyer",
+  "search": "Rechercher",
+  "filters": "Filtres",
+  "apply": "Appliquer",
+  "reset": "Réinitialiser",
+  "language": "Langue",
+  "languageDescription": "Choisissez la langue de l'application. Le changement sera appliqué immédiatement.",
+  "theme": "Thème",
+  "lightTheme": "Thème clair",
+  "darkTheme": "Thème sombre",
+  "privacySettings": "Paramètres de confidentialité",
+  "notificationSettings": "Paramètres de notification",
+  "changePassword": "Changer le mot de passe",
+  "deleteAccount": "Supprimer mon compte",
+  "help": "Aide et support",
+  "logout": "Déconnexion",
+  "emailRequired": "Veuillez entrer votre email",
+  "passwordRequired": "Veuillez entrer votre mot de passe",
+  "nameRequired": "Veuillez entrer votre nom",
+  "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+  "invalidEmail": "Email invalide",
+  "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères",
+  "projectTitleRequired": "Veuillez entrer un titre pour votre projet",
+  "projectDescriptionRequired": "Veuillez entrer une description pour votre projet",
+  "sectorRequired": "Veuillez sélectionner un secteur d'activité",
+  "stageRequired": "Veuillez sélectionner le stade de votre projet",
+  "noProjects": "Aucun projet trouvé",
+  "noMessages": "Aucun message",
+  "noNotifications": "Aucune notification",
+  "startConversation": "Démarrer une conversation",
+  "typeMessage": "Tapez votre message...",
+  "premium": "Premium",
+  "upgrade": "Passer à Premium",
+  "cancel": "Annuler",
+  "save": "Enregistrer",
+  "delete": "Supprimer",
+  "edit": "Modifier",
+  "viewAll": "Voir tout",
+  "readMore": "Lire plus",
+  "showLess": "Voir moins",
+  "loading": "Chargement...",
+  "error": "Une erreur est survenue",
+  "retry": "Réessayer",
+  "success": "Succès",
+  "confirm": "Confirmer",
+  "areYouSure": "Êtes-vous sûr ?",
+  "thisActionCannot": "Cette action ne peut pas être annulée",
+  "featuredProjects": "Projets en vedette",
+  "recentProjects": "Projets récents",
+  "interestShown": "Vous avez exprimé votre intérêt pour ce projet",
+  "addedToFavorites": "Projet ajouté aux favoris",
+  "mainMenu": "Menu principal",
+  
+  "aboutMe": "À propos",
+  "expertise": "Domaines d'expertise",
+  "professionalExperience": "Expérience professionnelle",
+  "education": "Formation",
+  "present": "Présent",
+  "reviews": "avis",
+  "projectTags": "Tags",
+  "viewsCount": "vues",
+  "likesCount": "j'aime",
+  "commentsCount": "commentaires",
+  "projectDetails": "Détails du projet",
+  "fundingAmount": "Montant du financement",
+  "duration": "Durée",
+  "location": "Localisation",
+  "createdBy": "Créé par",
+  "similarProjects": "Projets similaires",
+  "projectActions": "Actions",
+  
+  "markAllAsRead": "Tout marquer comme lu",
+  "noNotificationsDescription": "Vous n'avez pas de notifications pour le moment.",
+  "returnHome": "Retour à l'accueil",
+  
+  "xDaysAgo": "Il y a {days} jour(s)",
+  "@xDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "xHoursAgo": "Il y a {hours} heure(s)",
+  "@xHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "xMinutesAgo": "Il y a {minutes} minute(s)",
+  "@xMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "justNow": "À l'instant",
+  "allNotificationsRead": "Toutes les notifications ont été marquées comme lues",
+  
+  "projectDetail": "Détail du projet",
+  "projectCreator": "Porteur de projet",
+  "contact": "Contacter",
+  "views": "Vues",
+  "interested": "Intéressés",
+  "favorites": "Favoris",
+  "comments": "Commentaires",
+  "projectInfo": "Informations du projet",
+  "sector": "Secteur",
+  "stage": "Stade",
+  "fundingNeeded": "Financement recherché",
+  "creationDate": "Date de création",
+  "description": "Description",
+  "partnersAndSkills": "Partenaires et compétences recherchés",
+  "partnerTypes": "Types de partenaires",
+  "requiredSkills": "Compétences recherchées",
+  "tags": "Tags",
+  "actions": "Actions",
+  "showInterest": "Marquer l'intérêt",
+  "addToFavorites": "Ajouter aux favoris",
+  "interested": "Intéressé",
+  "favorite": "Favori",
+  "commentPlaceholder": "Ajouter un commentaire...",
+  "publish": "Publier",
+  "noComments": "Aucun commentaire pour le moment",
+  "projectInterestShown": "Vous avez exprimé votre intérêt pour ce projet",
+  "projectInterestRemoved": "Vous avez retiré votre intérêt pour ce projet",
+  "projectAddedToFavorites": "Projet ajouté aux favoris",
+  "projectRemovedFromFavorites": "Projet retiré des favoris",
+  "ideaStage": "Idée",
+  "prototypeStage": "Prototype",
+  "developmentStage": "Développement",
+  "growthStage": "Croissance",
+  "investorPartner": "Investisseur",
+  "associatePartner": "Associé",
+  "mentorPartner": "Mentor",
+
+  "welcomeToApp": "Bienvenue sur\n{appName}",
+  "@welcomeToApp": {
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
+  "emailHint": "Entrez votre email",
+  "passwordHint": "Entrez votre mot de passe",
+  "rememberMe": "Se souvenir de moi",
+  "loginButtonText": "Se connecter",
+  "continueWith": "Ou continuer avec",
+  "googleLogin": "Google",
+  "appleLogin": "Apple",
+  "passwordVisibility": "Afficher/masquer le mot de passe",
+  "enterEmail": "Veuillez entrer votre email",
+  "enterValidEmail": "Veuillez entrer un email valide",
+  "enterPassword": "Veuillez entrer votre mot de passe",
+  "passwordMinLength": "Le mot de passe doit contenir au moins {length} caractères",
+  "@passwordMinLength": {
+    "placeholders": {
+      "length": {
+        "type": "int"
+      }
+    }
+  },
+
+  "registration": "Inscription",
+  "createYourAccount": "Créez votre compte",
+  "joinCommunity": "Rejoignez la communauté VentureLink",
+  "firstName": "Prénom",
+  "lastName": "Nom",
+  "confirmPasswordLabel": "Confirmer le mot de passe",
+  "enterFirstName": "Veuillez entrer votre prénom",
+  "enterLastName": "Veuillez entrer votre nom",
+  "enterConfirmPassword": "Veuillez confirmer votre mot de passe",
+  "agreeToTerms": "J'accepte les ",
+  "termsOfUse": "conditions d'utilisation",
+  "and": " et la ",
+  "privacyPolicy": "politique de confidentialité",
+  "or": "ou",
+  "signUpWithGoogle": "S'inscrire avec Google",
+  "signUpWithApple": "S'inscrire avec Apple",
+  "newProject": "Nouveau",
+  
+  "notifNewInterest": "Nouvel intérêt",
+  "notifNewMessage": "Nouveau message",
+  "notifNewComment": "Nouveau commentaire",
+  "notifSystemUpdate": "Mise à jour du système",
+  "notifInterestMessage": "{userName} a exprimé son intérêt pour votre projet \"{projectName}\"",
+  "@notifInterestMessage": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      },
+      "projectName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMessageReceived": "Vous avez reçu un nouveau message de {userName}",
+  "@notifMessageReceived": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCommentMessage": "{userName} a commenté votre projet \"{projectName}\"",
+  "@notifCommentMessage": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      },
+      "projectName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSystemUpdateMessage": "Découvrez les nouvelles fonctionnalités de VentureLink dans notre dernière mise à jour !",
+  "deleteNotification": "Supprimer la notification",
+
+  "markAllRead": "Tout marquer comme lu",
+  "clearAll": "Tout effacer",
+  "all": "Tous",
+  "unread": "Non lus",
+  "errorLoadingNotifications": "Erreur lors du chargement des notifications",
+  "noUnreadNotifications": "Aucune notification non lue",
+  "searchNotifications": "Rechercher dans les notifications",
+  "investments": "Investissements",
+  "projects": "Projets",
+  "system": "Système",
+  "sort": "Trier",
+  "sortBy": "Trier par",
+  "newest": "Plus récents",
+  "oldest": "Plus anciens",
+  "important": "Important",
+  "clearAllNotifications": "Effacer toutes les notifications",
+  "clearAllNotificationsConfirm": "Êtes-vous sûr de vouloir supprimer toutes les notifications ? Cette action est irréversible.",
+  "clear": "Effacer",
+  "deliveryChannels": "Canaux de notification",
+  "pushNotifications": "Notifications push",
+  "emailNotifications": "Notifications par email",
+  "notificationTypes": "Types de notifications",
+  "projectUpdates": "Mises à jour de projets",
+  "systemNotifications": "Notifications système",
+  "settingsSaved": "Paramètres enregistrés",
+  "markAsRead": "Marquer comme lu",
+  "minutesAgo": "Il y a {minutes} min",
+  "@minutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "Il y a {hours}h",
+  "@hoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "Il y a {days} jours",
+  "@daysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "yesterday": "Hier"
+}

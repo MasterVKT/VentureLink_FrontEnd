@@ -1,0 +1,309 @@
+{
+  "@@locale": "en",
+  "appTitle": "VentureLink",
+  "welcomeMessage": "Welcome to VentureLink",
+  "login": "Login",
+  "register": "Register",
+  "email": "Email",
+  "password": "Password",
+  "forgotPassword": "Forgot password?",
+  "loginButton": "Login",
+  "createAccount": "Create an account",
+  "fullName": "Full name",
+  "confirmPassword": "Confirm password",
+  "registerButton": "Register",
+  "alreadyHaveAccount": "Already have an account?",
+  "home": "Home",
+  "discover": "Discover",
+  "create": "Create",
+  "messages": "Messages",
+  "profile": "Profile",
+  "settings": "Settings",
+  "notifications": "Notifications",
+  "projectTitle": "Project title",
+  "projectDescription": "Project description",
+  "sector": "Sector",
+  "stage": "Project stage",
+  "fundingNeeded": "Funding needed",
+  "partnersNeeded": "Partners needed",
+  "saveAsDraft": "Save draft",
+  "publishProject": "Publish",
+  "editProfile": "Edit profile",
+  "myProjects": "My projects",
+  "favorites": "Favorites",
+  "favorite": "Favorite",
+  "interests": "Interests",
+  "activity": "Activity",
+  "contactButton": "Contact",
+  "showInterest": "Show interest",
+  "addToFavorites": "Add to favorites",
+  "comments": "Comments",
+  "writeComment": "Write a comment",
+  "send": "Send",
+  "search": "Search",
+  "filters": "Filters",
+  "apply": "Apply",
+  "reset": "Reset",
+  "language": "Language",
+  "languageDescription": "Choose the application language. The change will be applied immediately.",
+  "theme": "Theme",
+  "lightTheme": "Light theme",
+  "darkTheme": "Dark theme",
+  "privacySettings": "Privacy settings",
+  "notificationSettings": "Notification settings",
+  "changePassword": "Change password",
+  "deleteAccount": "Delete my account",
+  "help": "Help and support",
+  "logout": "Logout",
+  "emailRequired": "Please enter your email",
+  "passwordRequired": "Please enter your password",
+  "nameRequired": "Please enter your name",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "invalidEmail": "Invalid email",
+  "passwordTooShort": "Password must be at least 8 characters long",
+  "projectTitleRequired": "Please enter a title for your project",
+  "projectDescriptionRequired": "Please enter a description for your project",
+  "sectorRequired": "Please select a sector",
+  "stageRequired": "Please select your project stage",
+  "noProjects": "No projects found",
+  "noMessages": "No messages",
+  "noNotifications": "No notifications",
+  "startConversation": "Start a conversation",
+  "typeMessage": "Type your message...",
+  "premium": "Premium",
+  "upgrade": "Upgrade to Premium",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "viewAll": "View all",
+  "readMore": "Read more",
+  "showLess": "Show less",
+  "loading": "Loading...",
+  "error": "An error occurred",
+  "retry": "Retry",
+  "success": "Success",
+  "confirm": "Confirm",
+  "areYouSure": "Are you sure?",
+  "thisActionCannot": "This action cannot be undone",
+  "featuredProjects": "Featured Projects",
+  "recentProjects": "Recent Projects",
+  "interestShown": "You have shown interest in this project",
+  "addedToFavorites": "Project added to favorites",
+  "mainMenu": "Main Menu",
+  
+  "aboutMe": "About me",
+  "expertise": "Areas of expertise",
+  "professionalExperience": "Professional experience",
+  "education": "Education",
+  "present": "Present",
+  "reviews": "reviews",
+  "projectTags": "Tags",
+  "viewsCount": "views",
+  "likesCount": "likes",
+  "commentsCount": "comments",
+  "projectDetails": "Project details",
+  "fundingAmount": "Funding amount",
+  "duration": "Duration",
+  "location": "Location",
+  "createdBy": "Created by",
+  "similarProjects": "Similar projects",
+  "projectActions": "Actions",
+  
+  "markAllAsRead": "Mark all as read",
+  "noNotificationsDescription": "You don't have any notifications at the moment.",
+  "returnHome": "Return to home",
+  
+  "xDaysAgo": "{days} day(s) ago",
+  "@xDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "xHoursAgo": "{hours} hour(s) ago",
+  "@xHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "xMinutesAgo": "{minutes} minute(s) ago",
+  "@xMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "justNow": "Just now",
+  "allNotificationsRead": "All notifications have been marked as read",
+  
+  "projectDetail": "Project details",
+  "projectCreator": "Project creator",
+  "contact": "Contact",
+  "views": "Views",
+  "interested": "Interested",
+  "favorites": "Favorites",
+  "favorite": "Favorite",
+  "comments": "Comments",
+  "projectInfo": "Project information",
+  "creationDate": "Creation date",
+  "description": "Description",
+  "partnersAndSkills": "Partners and skills needed",
+  "partnerTypes": "Partner types",
+  "requiredSkills": "Required skills",
+  "tags": "Tags",
+  "actions": "Actions",
+  "commentPlaceholder": "Add a comment...",
+  "publish": "Publish",
+  "noComments": "No comments yet",
+  "projectInterestShown": "You have shown interest in this project",
+  "projectInterestRemoved": "You have removed your interest from this project",
+  "projectAddedToFavorites": "Project added to favorites",
+  "projectRemovedFromFavorites": "Project removed from favorites",
+  "ideaStage": "Idea",
+  "prototypeStage": "Prototype",
+  "developmentStage": "Development",
+  "growthStage": "Growth",
+  "investorPartner": "Investor",
+  "associatePartner": "Associate",
+  "mentorPartner": "Mentor",
+
+  "welcomeToApp": "Welcome to\n{appName}",
+  "@welcomeToApp": {
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
+  "emailHint": "Enter your email",
+  "passwordHint": "Enter your password",
+  "rememberMe": "Remember me",
+  "loginButtonText": "Login",
+  "continueWith": "Or continue with",
+  "googleLogin": "Google",
+  "appleLogin": "Apple",
+  "passwordVisibility": "Show/hide password",
+  "enterEmail": "Please enter your email",
+  "enterValidEmail": "Please enter a valid email",
+  "enterPassword": "Please enter your password",
+  "passwordMinLength": "Password must be at least {length} characters",
+  "@passwordMinLength": {
+    "placeholders": {
+      "length": {
+        "type": "int"
+      }
+    }
+  },
+
+  "registration": "Registration",
+  "createYourAccount": "Create your account",
+  "joinCommunity": "Join the VentureLink community",
+  "firstName": "First name",
+  "lastName": "Last name",
+  "confirmPasswordLabel": "Confirm password",
+  "enterFirstName": "Please enter your first name",
+  "enterLastName": "Please enter your last name",
+  "enterConfirmPassword": "Please confirm your password",
+  "agreeToTerms": "I agree to the ",
+  "termsOfUse": "terms of use",
+  "and": " and the ",
+  "privacyPolicy": "privacy policy",
+  "or": "or",
+  "signUpWithGoogle": "Sign up with Google",
+  "signUpWithApple": "Sign up with Apple",
+  "newProject": "New",
+  
+  "notifNewInterest": "New Interest",
+  "notifNewMessage": "New Message",
+  "notifNewComment": "New Comment",
+  "notifSystemUpdate": "System Update",
+  "notifInterestMessage": "{userName} has shown interest in your project \"{projectName}\"",
+  "@notifInterestMessage": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      },
+      "projectName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMessageReceived": "You have received a new message from {userName}",
+  "@notifMessageReceived": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCommentMessage": "{userName} commented on your project \"{projectName}\"",
+  "@notifCommentMessage": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      },
+      "projectName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSystemUpdateMessage": "Discover the new features of VentureLink in our latest update!",
+  "deleteNotification": "Delete notification",
+
+  "markAllRead": "Mark all as read",
+  "clearAll": "Clear all",
+  "all": "All",
+  "unread": "Unread",
+  "errorLoadingNotifications": "Error loading notifications",
+  "noUnreadNotifications": "No unread notifications",
+  "searchNotifications": "Search notifications",
+  "investments": "Investments",
+  "projects": "Projects",
+  "system": "System",
+  "sort": "Sort",
+  "sortBy": "Sort by",
+  "newest": "Newest",
+  "oldest": "Oldest",
+  "important": "Important",
+  "clearAllNotifications": "Clear all notifications",
+  "clearAllNotificationsConfirm": "Are you sure you want to delete all notifications? This action cannot be undone.",
+  "clear": "Clear",
+  "deliveryChannels": "Delivery channels",
+  "pushNotifications": "Push notifications",
+  "emailNotifications": "Email notifications",
+  "notificationTypes": "Notification types",
+  "projectUpdates": "Project updates",
+  "systemNotifications": "System notifications",
+  "settingsSaved": "Settings saved",
+  "markAsRead": "Mark as read",
+  "minutesAgo": "{minutes} min ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{hours}h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{days} days ago",
+  "@daysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "yesterday": "Yesterday"
+}

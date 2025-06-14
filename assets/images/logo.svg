@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fond du logo -->
+  <circle cx="100" cy="100" r="90" fill="#1877F2"/>
+  
+  <!-- Lettre V stylisée -->
+  <path d="M60 40 L100 160 L140 40" 
+        stroke="white" 
+        stroke-width="12" 
+        stroke-linecap="round" 
+        fill="none"/>
+  
+  <!-- Point stylisé -->
+  <circle cx="100" cy="160" r="8" fill="white"/>
+</svg> 
