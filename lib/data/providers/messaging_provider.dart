@@ -87,7 +87,7 @@ class MessagingProvider extends ChangeNotifier {
           await _messagingService.getConversationById(conversationId);
       _currentConversation = conversation;
       await loadMessages(conversationId, refresh: true);
-        } catch (e) {
+    } catch (e) {
       _setError(e.toString());
     } finally {
       _setLoading(false);
@@ -483,6 +483,30 @@ class MessagingProvider extends ChangeNotifier {
   void dispose() {
     _closeWebSocketConnection();
     super.dispose();
+  }
+
+  /// Supprimer une conversation
+  Future<bool> deleteConversation(String conversationId) async {
+    try {
+      // Appeler l'API pour supprimer la conversation
+      // Note: Cette méthode n'existe pas encore dans l'API service
+      // Pour l'instant, on simule la suppression locale
+
+      // Supprimer localement
+      _conversations.removeWhere((c) => c.id == conversationId);
+
+      // Si c'est la conversation courante, la vider
+      if (_currentConversation?.id == conversationId) {
+        _currentConversation = null;
+        _messages.clear();
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
   }
 }
 

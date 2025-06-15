@@ -167,7 +167,7 @@ class ProjectCard extends StatelessWidget {
 
                   // Description
                   Text(
-                    project.shortDescription ?? project.description ?? '',
+                    project.shortDescription,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[700],
@@ -196,7 +196,7 @@ class ProjectCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _formatAmount(project.fundingGoal ?? 0),
+                              _formatAmount(project.fundingMax),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -220,7 +220,7 @@ class ProjectCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _formatAmount(project.fundingRaised ?? 0),
+                              '0€', // TODO: Implémenter la propriété fundingRaised
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -243,7 +243,7 @@ class ProjectCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${_calculateProgress(project.fundingRaised ?? 0, project.fundingGoal ?? 1).toStringAsFixed(0)}%',
+                              '0%', // TODO: Calculer avec les vraies valeurs
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -260,11 +260,7 @@ class ProjectCard extends StatelessWidget {
 
                   // Barre de progression
                   LinearProgressIndicator(
-                    value: _calculateProgress(
-                          project.fundingRaised ?? 0,
-                          project.fundingGoal ?? 1,
-                        ) /
-                        100,
+                    value: 0.0, // TODO: Calculer avec les vraies valeurs
                     backgroundColor: Colors.grey[300],
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       AppTheme.accentColor,
@@ -284,7 +280,7 @@ class ProjectCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${project.viewsCount ?? 0} vues',
+                          '${project.viewsCount} vues',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -332,12 +328,6 @@ class ProjectCard extends StatelessWidget {
     } else {
       return '${amount.toStringAsFixed(0)}€';
     }
-  }
-
-  double _calculateProgress(double raised, double goal) {
-    if (goal == 0) return 0;
-    final progress = (raised / goal) * 100;
-    return progress > 100 ? 100 : progress;
   }
 
   String _formatDate(DateTime date) {

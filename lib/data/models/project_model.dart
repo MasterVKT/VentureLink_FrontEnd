@@ -98,11 +98,11 @@ class ProjectModel {
   final int interestsCount;
   @JsonKey(name: 'favorites_count')
   final int favoritesCount;
-  @JsonKey(name: 'published_at')
+  @JsonKey(name: 'published_at', fromJson: _dateTimeFromJson)
   final DateTime? publishedAt;
-  @JsonKey(name: 'created_at')
+  @JsonKey(name: 'created_at', fromJson: _dateTimeFromJsonRequired)
   final DateTime createdAt;
-  @JsonKey(name: 'updated_at')
+  @JsonKey(name: 'updated_at', fromJson: _dateTimeFromJsonRequired)
   final DateTime updatedAt;
   final List<TagModel>? tags;
 
@@ -162,6 +162,34 @@ class ProjectModel {
       }
     }
     return 0.0;
+  }
+
+  // Fonction de conversion sécurisée pour les dates (nullable)
+  static DateTime? _dateTimeFromJson(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        debugPrint('Erreur parsing date: $value -> $e');
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Fonction de conversion sécurisée pour les dates (obligatoires)
+  static DateTime _dateTimeFromJsonRequired(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        debugPrint('Erreur parsing date obligatoire: $value -> $e');
+        return DateTime.now();
+      }
+    }
+    return DateTime.now();
   }
 
   ProjectModel({

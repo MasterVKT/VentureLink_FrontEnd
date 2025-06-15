@@ -11,6 +11,7 @@ import 'package:venturelink/core/navigation/navigation_service.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/core/theme/app_theme.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
+import 'package:venturelink/data/providers/content_provider.dart';
 import 'package:venturelink/data/providers/notification_provider.dart';
 import 'package:venturelink/data/providers/subscription_provider.dart';
 import 'package:venturelink/data/providers/theme_provider.dart';
@@ -124,6 +125,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => serviceLocator<MatchingProvider>(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ContentProvider(),
         ),
       ],
       child: MyApp(

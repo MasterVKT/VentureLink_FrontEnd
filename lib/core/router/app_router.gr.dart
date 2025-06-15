@@ -32,16 +32,16 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    ContentRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const ContentScreen(),
+      );
+    },
     DashboardRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const DashboardScreen(),
-      );
-    },
-    DiscoverRoute.name: (routeData) {
-      return AutoRoutePage<dynamic>(
-        routeData: routeData,
-        child: const DiscoverScreen(),
       );
     },
     ForgotPasswordRoute.name: (routeData) {
@@ -56,6 +56,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const HomeScreen(),
       );
     },
+    HomeRouteEnhanced.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const HomeScreenEnhanced(),
+      );
+    },
     InvestmentCreateRoute.name: (routeData) {
       final args = routeData.argsAs<InvestmentCreateRouteArgs>();
       return AutoRoutePage<dynamic>(
@@ -63,6 +69,16 @@ abstract class _$AppRouter extends RootStackRouter {
         child: InvestmentCreateScreen(
           key: args.key,
           projectId: args.projectId,
+        ),
+      );
+    },
+    InvestmentDetailRoute.name: (routeData) {
+      final args = routeData.argsAs<InvestmentDetailRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: InvestmentDetailScreen(
+          key: args.key,
+          investmentId: args.investmentId,
         ),
       );
     },
@@ -90,6 +106,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const MessagingScreen(),
       );
     },
+    NewConversationRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const NewConversationScreen(),
+      );
+    },
     NotificationsRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -100,6 +122,17 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const OnboardingScreen(),
+      );
+    },
+    PaymentRoute.name: (routeData) {
+      final args = routeData.argsAs<PaymentRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: PaymentScreen(
+          key: args.key,
+          plan: args.plan,
+          selectedCurrency: args.selectedCurrency,
+        ),
       );
     },
     PaymentWebViewRoute.name: (routeData) {
@@ -121,6 +154,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const PremiumScreen(),
       );
     },
+    PrivacyRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const PrivacyScreen(),
+      );
+    },
     ProfileEditRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -139,6 +178,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const ProjectCreateScreen(),
       );
     },
+    ProjectCreateRouteEnhanced.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const ProjectCreateScreenEnhanced(),
+      );
+    },
     ProjectDetailRoute.name: (routeData) {
       final args = routeData.argsAs<ProjectDetailRouteArgs>();
       return AutoRoutePage<dynamic>(
@@ -146,6 +191,17 @@ abstract class _$AppRouter extends RootStackRouter {
         child: ProjectDetailScreen(
           key: args.key,
           projectId: args.projectId,
+        ),
+      );
+    },
+    PublicationDetailRoute.name: (routeData) {
+      final args = routeData.argsAs<PublicationDetailRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: PublicationDetailScreen(
+          key: args.key,
+          publicationId: args.publicationId,
+          tab: args.tab,
         ),
       );
     },
@@ -167,10 +223,28 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const SettingsScreen(),
       );
     },
+    SimpleSubscriptionRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SimpleSubscriptionScreen(),
+      );
+    },
     SplashRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const SplashScreen(),
+      );
+    },
+    SubscriptionRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SubscriptionScreen(),
+      );
+    },
+    SupportRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SupportScreen(),
       );
     },
   };
@@ -233,6 +307,20 @@ class ChatRouteArgs {
 }
 
 /// generated route for
+/// [ContentScreen]
+class ContentRoute extends PageRouteInfo<void> {
+  const ContentRoute({List<PageRouteInfo>? children})
+      : super(
+          ContentRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'ContentRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [DashboardScreen]
 class DashboardRoute extends PageRouteInfo<void> {
   const DashboardRoute({List<PageRouteInfo>? children})
@@ -242,20 +330,6 @@ class DashboardRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'DashboardRoute';
-
-  static const PageInfo<void> page = PageInfo<void>(name);
-}
-
-/// generated route for
-/// [DiscoverScreen]
-class DiscoverRoute extends PageRouteInfo<void> {
-  const DiscoverRoute({List<PageRouteInfo>? children})
-      : super(
-          DiscoverRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'DiscoverRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -284,6 +358,20 @@ class HomeRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'HomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [HomeScreenEnhanced]
+class HomeRouteEnhanced extends PageRouteInfo<void> {
+  const HomeRouteEnhanced({List<PageRouteInfo>? children})
+      : super(
+          HomeRouteEnhanced.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'HomeRouteEnhanced';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -323,6 +411,44 @@ class InvestmentCreateRouteArgs {
   @override
   String toString() {
     return 'InvestmentCreateRouteArgs{key: $key, projectId: $projectId}';
+  }
+}
+
+/// generated route for
+/// [InvestmentDetailScreen]
+class InvestmentDetailRoute extends PageRouteInfo<InvestmentDetailRouteArgs> {
+  InvestmentDetailRoute({
+    Key? key,
+    required String investmentId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InvestmentDetailRoute.name,
+          args: InvestmentDetailRouteArgs(
+            key: key,
+            investmentId: investmentId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InvestmentDetailRoute';
+
+  static const PageInfo<InvestmentDetailRouteArgs> page =
+      PageInfo<InvestmentDetailRouteArgs>(name);
+}
+
+class InvestmentDetailRouteArgs {
+  const InvestmentDetailRouteArgs({
+    this.key,
+    required this.investmentId,
+  });
+
+  final Key? key;
+
+  final String investmentId;
+
+  @override
+  String toString() {
+    return 'InvestmentDetailRouteArgs{key: $key, investmentId: $investmentId}';
   }
 }
 
@@ -383,6 +509,20 @@ class MessagingRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [NewConversationScreen]
+class NewConversationRoute extends PageRouteInfo<void> {
+  const NewConversationRoute({List<PageRouteInfo>? children})
+      : super(
+          NewConversationRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'NewConversationRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [NotificationsScreen]
 class NotificationsRoute extends PageRouteInfo<void> {
   const NotificationsRoute({List<PageRouteInfo>? children})
@@ -408,6 +548,49 @@ class OnboardingRoute extends PageRouteInfo<void> {
   static const String name = 'OnboardingRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [PaymentScreen]
+class PaymentRoute extends PageRouteInfo<PaymentRouteArgs> {
+  PaymentRoute({
+    Key? key,
+    required SubscriptionPlanModel plan,
+    String? selectedCurrency,
+    List<PageRouteInfo>? children,
+  }) : super(
+          PaymentRoute.name,
+          args: PaymentRouteArgs(
+            key: key,
+            plan: plan,
+            selectedCurrency: selectedCurrency,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'PaymentRoute';
+
+  static const PageInfo<PaymentRouteArgs> page =
+      PageInfo<PaymentRouteArgs>(name);
+}
+
+class PaymentRouteArgs {
+  const PaymentRouteArgs({
+    this.key,
+    required this.plan,
+    this.selectedCurrency,
+  });
+
+  final Key? key;
+
+  final SubscriptionPlanModel plan;
+
+  final String? selectedCurrency;
+
+  @override
+  String toString() {
+    return 'PaymentRouteArgs{key: $key, plan: $plan, selectedCurrency: $selectedCurrency}';
+  }
 }
 
 /// generated route for
@@ -478,6 +661,20 @@ class PremiumRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [PrivacyScreen]
+class PrivacyRoute extends PageRouteInfo<void> {
+  const PrivacyRoute({List<PageRouteInfo>? children})
+      : super(
+          PrivacyRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'PrivacyRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [ProfileEditScreen]
 class ProfileEditRoute extends PageRouteInfo<void> {
   const ProfileEditRoute({List<PageRouteInfo>? children})
@@ -520,6 +717,20 @@ class ProjectCreateRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [ProjectCreateScreenEnhanced]
+class ProjectCreateRouteEnhanced extends PageRouteInfo<void> {
+  const ProjectCreateRouteEnhanced({List<PageRouteInfo>? children})
+      : super(
+          ProjectCreateRouteEnhanced.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'ProjectCreateRouteEnhanced';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [ProjectDetailScreen]
 class ProjectDetailRoute extends PageRouteInfo<ProjectDetailRouteArgs> {
   ProjectDetailRoute({
@@ -554,6 +765,49 @@ class ProjectDetailRouteArgs {
   @override
   String toString() {
     return 'ProjectDetailRouteArgs{key: $key, projectId: $projectId}';
+  }
+}
+
+/// generated route for
+/// [PublicationDetailScreen]
+class PublicationDetailRoute extends PageRouteInfo<PublicationDetailRouteArgs> {
+  PublicationDetailRoute({
+    Key? key,
+    required String publicationId,
+    String? tab,
+    List<PageRouteInfo>? children,
+  }) : super(
+          PublicationDetailRoute.name,
+          args: PublicationDetailRouteArgs(
+            key: key,
+            publicationId: publicationId,
+            tab: tab,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'PublicationDetailRoute';
+
+  static const PageInfo<PublicationDetailRouteArgs> page =
+      PageInfo<PublicationDetailRouteArgs>(name);
+}
+
+class PublicationDetailRouteArgs {
+  const PublicationDetailRouteArgs({
+    this.key,
+    required this.publicationId,
+    this.tab,
+  });
+
+  final Key? key;
+
+  final String publicationId;
+
+  final String? tab;
+
+  @override
+  String toString() {
+    return 'PublicationDetailRouteArgs{key: $key, publicationId: $publicationId, tab: $tab}';
   }
 }
 
@@ -600,6 +854,20 @@ class SettingsRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [SimpleSubscriptionScreen]
+class SimpleSubscriptionRoute extends PageRouteInfo<void> {
+  const SimpleSubscriptionRoute({List<PageRouteInfo>? children})
+      : super(
+          SimpleSubscriptionRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SimpleSubscriptionRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [SplashScreen]
 class SplashRoute extends PageRouteInfo<void> {
   const SplashRoute({List<PageRouteInfo>? children})
@@ -609,6 +877,34 @@ class SplashRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'SplashRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SubscriptionScreen]
+class SubscriptionRoute extends PageRouteInfo<void> {
+  const SubscriptionRoute({List<PageRouteInfo>? children})
+      : super(
+          SubscriptionRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SubscriptionRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SupportScreen]
+class SupportRoute extends PageRouteInfo<void> {
+  const SupportRoute({List<PageRouteInfo>? children})
+      : super(
+          SupportRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SupportRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

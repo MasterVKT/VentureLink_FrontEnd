@@ -52,11 +52,9 @@ ProjectModel _$ProjectModelFromJson(Map<String, dynamic> json) => ProjectModel(
       viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
       interestsCount: (json['interests_count'] as num?)?.toInt() ?? 0,
       favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
-      publishedAt: json['published_at'] == null
-          ? null
-          : DateTime.parse(json['published_at'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      publishedAt: ProjectModel._dateTimeFromJson(json['published_at']),
+      createdAt: ProjectModel._dateTimeFromJsonRequired(json['created_at']),
+      updatedAt: ProjectModel._dateTimeFromJsonRequired(json['updated_at']),
       tags: (json['tags'] as List<dynamic>?)
           ?.map((e) => TagModel.fromJson(e as Map<String, dynamic>))
           .toList(),

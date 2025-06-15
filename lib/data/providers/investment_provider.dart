@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:venturelink/data/models/investment_model.dart';
+import 'package:venturelink/data/models/investment_stats_model.dart'
+    as stats_model;
 import 'package:venturelink/data/services/investment_api_service.dart';
 import 'package:venturelink/data/services/api_service.dart';
 
@@ -10,13 +12,13 @@ class InvestmentProvider extends ChangeNotifier {
   InvestmentModel? _currentInvestment;
   bool _isLoading = false;
   String? _error;
-  InvestmentStatsModel? _stats;
+  stats_model.InvestmentStatsModel? _stats;
 
   List<InvestmentModel> get investments => _investments;
   InvestmentModel? get currentInvestment => _currentInvestment;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  InvestmentStatsModel? get stats => _stats;
+  stats_model.InvestmentStatsModel? get stats => _stats;
 
   InvestmentProvider() {
     _investmentApiService = InvestmentApiService(ApiService());
@@ -43,7 +45,6 @@ class InvestmentProvider extends ChangeNotifier {
     String? status,
     String? investmentType,
     String? projectId,
-    String? investorId,
   }) async {
     _setLoading(true);
     _setError(null);
@@ -53,7 +54,6 @@ class InvestmentProvider extends ChangeNotifier {
         status: status,
         investmentType: investmentType,
         projectId: projectId,
-        investorId: investorId,
       );
     } catch (e) {
       _setError(e.toString());
@@ -100,7 +100,7 @@ class InvestmentProvider extends ChangeNotifier {
       final investment = await _investmentApiService.createInvestment(
         projectId: projectId,
         amount: amount,
-        currency: currency,
+        currency: currency ?? 'EUR',
         investmentType: investmentType,
         equityPercentage: equityPercentage,
         interestRate: interestRate,

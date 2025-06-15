@@ -233,7 +233,15 @@ class ApiService implements IApiService {
           } else if (data.containsKey('message')) {
             message = data['message'];
           } else if (data.containsKey('error')) {
-            message = data['error'];
+            // Gérer les erreurs structurées
+            final errorData = data['error'];
+            if (errorData is Map<String, dynamic>) {
+              message = errorData['message'] ?? errorData.toString();
+            } else if (errorData is String) {
+              message = errorData;
+            } else {
+              message = errorData.toString();
+            }
           } else {
             // Gérer les erreurs de champs
             final errors = <String>[];

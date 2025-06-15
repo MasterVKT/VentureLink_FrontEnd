@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:venturelink/core/config/config_service.dart';
+import 'package:share_plus/share_plus.dart';
+
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
 
 import 'package:venturelink/presentation/widgets/project/universal_media_carousel_widget.dart';
+import 'package:venturelink/presentation/widgets/project/social_project_card.dart';
+import 'package:venturelink/presentation/widgets/home/home_filters_widget.dart';
 import 'package:venturelink/presentation/screens/debug/media_debug_screen.dart';
+import 'package:venturelink/core/router/app_router.dart';
 
 @RoutePage()
 class HomeScreen extends StatefulWidget {
@@ -20,6 +25,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
+  bool _showFilters = false;
+
+  // Filtres
+  String? _selectedCategory;
+  String? _selectedStage;
+  String? _selectedLocation;
+  String? _searchQuery;
 
   @override
   void initState() {
@@ -30,20 +42,29 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       debugPrint('[HomeScreen] Initialisation - début chargement des projets');
       final projectProvider = context.read<ProjectProvider>();
-      debugPrint(
-          '[HomeScreen] ProjectProvider trouvé, nbr projets actuels: ${projectProvider.projects.length}');
-      debugPrint(
-          '[HomeScreen] État initial - isLoading: ${projectProvider.isLoading}, error: ${projectProvider.error}');
 
       projectProvider.loadProjects(refresh: true).then((_) {
         debugPrint(
             '[HomeScreen] Chargement terminé - nbr projets: ${projectProvider.projects.length}');
-        debugPrint(
-            '[HomeScreen] État final - isLoading: ${projectProvider.isLoading}, error: ${projectProvider.error}');
+
+        // Charger aussi les projets spécialisés
+        _loadSpecializedProjects();
       }).catchError((error) {
         debugPrint('[HomeScreen] Erreur lors du chargement: $error');
       });
     });
+  }
+
+  Future<void> _loadSpecializedProjects() async {
+    final projectProvider = context.read<ProjectProvider>();
+
+    // Charger les projets tendance et recommandés en parallèle
+    await Future.wait([
+      projectProvider.loadTrendingProjects(),
+      projectProvider.loadFeaturedProjects(),
+      if (context.read<AuthProvider>().isAuthenticated)
+        projectProvider.loadRecommendedProjects(),
+    ]);
   }
 
   @override
@@ -60,26 +81,65 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onSearch(String query) {
+    setState(() {
+      _searchQuery = query.isEmpty ? null : query;
+    });
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    final projectProvider = context.read<ProjectProvider>();
+    projectProvider.loadProjects(
+      refresh: true,
+      search: _searchQuery,
+      category: _selectedCategory,
+      stage: _selectedStage,
+      location: _selectedLocation,
+    );
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedCategory = null;
+      _selectedStage = null;
+      _selectedLocation = null;
+      _searchQuery = null;
+    });
+    context.read<ProjectProvider>().loadProjects(refresh: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text('Bonjour ${user?.firstName ?? 'Utilisateur'}'),
+        elevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
+          // Bouton de recherche/filtres
+          IconButton(
+            icon:
+                Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list),
+            onPressed: () {
+              setState(() {
+                _showFilters = !_showFilters;
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: Restaurer après génération des routes
-              // context.router.push(const SearchRoute());
+              _showSearchDialog();
             },
           ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // TODO: Restaurer après génération des routes
-              // context.router.push(const NotificationsRoute());
+              context.router.push(const NotificationsRoute());
             },
           ),
           IconButton(
@@ -97,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           await context.read<ProjectProvider>().loadProjects(refresh: true);
+          await _loadSpecializedProjects();
         },
         child: Consumer<ProjectProvider>(
           builder: (context, projectProvider, child) {
@@ -106,89 +167,145 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (projectProvider.error != null &&
                 projectProvider.projects.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Erreur de chargement',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      projectProvider.error!,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        projectProvider.loadProjects(refresh: true);
-                      },
-                      child: const Text('Réessayer'),
-                    ),
-                  ],
-                ),
-              );
+              return _buildErrorState(projectProvider.error!);
             }
 
             if (projectProvider.projects.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.folder_open, size: 64, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text(
-                      'Aucun projet trouvé',
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Soyez le premier à créer un projet !',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              );
+              return _buildEmptyState();
             }
+
+            // Organiser les projets en sections
+            final featuredProjects = projectProvider.featuredProjects;
+            final trendingProjects = projectProvider.trendingProjects;
+            final recentProjects = _getRecentProjects(projectProvider.projects);
+            final recommendedProjects = projectProvider.recommendedProjects;
 
             return CustomScrollView(
               controller: _scrollController,
               slivers: [
-                // Section des projets mis en avant
-                if (projectProvider.projects.any((p) => p.isFeatured))
+                // Filtres (si affichés)
+                if (_showFilters)
                   SliverToBoxAdapter(
-                    child: _buildFeaturedSection(context, projectProvider),
-                  ),
-
-                // Section des projets récents
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(ConfigService.defaultPadding),
-                    child: Text(
-                      'Projets récents',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                    child: HomeFiltersWidget(
+                      selectedCategory: _selectedCategory,
+                      selectedStage: _selectedStage,
+                      selectedLocation: _selectedLocation,
+                      categories: projectProvider.categories,
+                      onCategoryChanged: (category) {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                        _applyFilters();
+                      },
+                      onStageChanged: (stage) {
+                        setState(() {
+                          _selectedStage = stage;
+                        });
+                        _applyFilters();
+                      },
+                      onLocationChanged: (location) {
+                        setState(() {
+                          _selectedLocation = location;
+                        });
+                        _applyFilters();
+                      },
+                      onClearFilters: _clearFilters,
+                      onAdvancedFilters: _showAdvancedFilters,
                     ),
                   ),
-                ),
 
-                // Liste des projets
+                // Section "Projets mis en avant" (carousel horizontal)
+                if (featuredProjects.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildFeaturedSection(featuredProjects),
+                  ),
+
+                // Section "Pour vous" (si utilisateur connecté)
+                if (user != null && recommendedProjects.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildSectionHeader(
+                        'Pour vous', 'Projets recommandés pour votre profil'),
+                  ),
+                if (user != null && recommendedProjects.isNotEmpty)
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SocialProjectCard(
+                          project: recommendedProjects[index],
+                          onLike: () => _handleLike(recommendedProjects[index]),
+                          onInterest: () =>
+                              _handleInterest(recommendedProjects[index]),
+                          onComment: () =>
+                              _handleComment(recommendedProjects[index]),
+                          onShare: () =>
+                              _handleShare(recommendedProjects[index]),
+                          onProfileTap: () =>
+                              _handleProfileTap(recommendedProjects[index]),
+                          onMenuTap: () =>
+                              _handleMenuTap(recommendedProjects[index]),
+                        ),
+                      ),
+                      childCount:
+                          recommendedProjects.length.clamp(0, 3), // Limiter à 3
+                    ),
+                  ),
+
+                // Section "Tendances"
+                if (trendingProjects.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildSectionHeader(
+                        'Tendances', 'Projets qui font le buzz cette semaine'),
+                  ),
+                if (trendingProjects.isNotEmpty)
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SocialProjectCard(
+                          project: trendingProjects[index],
+                          onLike: () => _handleLike(trendingProjects[index]),
+                          onInterest: () =>
+                              _handleInterest(trendingProjects[index]),
+                          onComment: () =>
+                              _handleComment(trendingProjects[index]),
+                          onShare: () => _handleShare(trendingProjects[index]),
+                          onProfileTap: () =>
+                              _handleProfileTap(trendingProjects[index]),
+                          onMenuTap: () =>
+                              _handleMenuTap(trendingProjects[index]),
+                        ),
+                      ),
+                      childCount:
+                          trendingProjects.length.clamp(0, 5), // Limiter à 5
+                    ),
+                  ),
+
+                // Section "Récents"
+                SliverToBoxAdapter(
+                  child: _buildSectionHeader(
+                      'Récents', 'Derniers projets publiés'),
+                ),
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      if (index < projectProvider.projects.length) {
-                        return _buildProjectCard(
-                            context, projectProvider.projects[index]);
+                      if (index < recentProjects.length) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SocialProjectCard(
+                            project: recentProjects[index],
+                            onLike: () => _handleLike(recentProjects[index]),
+                            onInterest: () =>
+                                _handleInterest(recentProjects[index]),
+                            onComment: () =>
+                                _handleComment(recentProjects[index]),
+                            onShare: () => _handleShare(recentProjects[index]),
+                            onProfileTap: () =>
+                                _handleProfileTap(recentProjects[index]),
+                            onMenuTap: () =>
+                                _handleMenuTap(recentProjects[index]),
+                          ),
+                        );
                       } else if (projectProvider.hasMore) {
                         return const Padding(
                           padding: EdgeInsets.all(16.0),
@@ -198,9 +315,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         return const SizedBox.shrink();
                       }
                     },
-                    childCount: projectProvider.projects.length +
+                    childCount: recentProjects.length +
                         (projectProvider.hasMore ? 1 : 0),
                   ),
+                ),
+
+                // Espace pour le FAB
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 100),
                 ),
               ],
             );
@@ -209,72 +331,78 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Restaurer après génération des routes
-          // context.router.push(const ProjectCreateRoute());
+          context.router.push(const ProjectCreateRoute());
         },
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildFeaturedSection(
-      BuildContext context, ProjectProvider projectProvider) {
-    final featuredProjects =
-        projectProvider.projects.where((p) => p.isFeatured).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(ConfigService.defaultPadding),
-          child: Text(
-            'Projets mis en avant',
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
-        ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturedSection(List<ProjectModel> featuredProjects) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+            'Mis en avant', 'Projets sélectionnés par notre équipe'),
         SizedBox(
-          height: 245,
+          height: 280,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-                horizontal: ConfigService.defaultPadding),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: featuredProjects.length,
             itemBuilder: (context, index) {
-              return _buildFeaturedProjectCard(
-                  context, featuredProjects[index]);
+              return _buildFeaturedProjectCard(featuredProjects[index]);
             },
           ),
         ),
-        const SizedBox(height: ConfigService.defaultPadding),
       ],
     );
   }
 
-  Widget _buildFeaturedProjectCard(BuildContext context, ProjectModel project) {
+  Widget _buildFeaturedProjectCard(ProjectModel project) {
     return Container(
       width: 300,
-      margin: const EdgeInsets.only(
-        right: ConfigService.defaultSpacing,
-        bottom: 4,
-      ),
+      margin: const EdgeInsets.only(right: 16),
       child: Card(
         clipBehavior: Clip.antiAlias,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: InkWell(
           onTap: () {
-            // TODO: Restaurer après génération des routes
-            // context.router.push(ProjectDetailRoute(projectId: project.id));
+            context.router.push(ProjectDetailRoute(projectId: project.id));
           },
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image du projet avec carrousel de médias
+              // Image avec overlay
               Stack(
                 children: [
                   Container(
-                    height: 115,
+                    height: 160,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -296,35 +424,104 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                   ),
 
-                  // Badge de comptage de médias (coin supérieur droit)
+                  // Overlay avec info du créateur
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundImage: project
+                                        .creator.profile?.profilePicture !=
+                                    null
+                                ? CachedNetworkImageProvider(
+                                    project.creator.profile!.profilePicture!)
+                                : null,
+                            child: project.creator.profile?.profilePicture ==
+                                    null
+                                ? Text(
+                                    project.creator.firstName[0].toUpperCase(),
+                                    style: const TextStyle(fontSize: 12),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              project.creator.fullName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Badges
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: MediaCountBadge(project: project),
-                  ),
-
-                  // Badge Premium (coin supérieur gauche)
-                  if (project.isPremium)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.amber,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          'PREMIUM',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (project.isPremium)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'PREMIUM',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        if (project.isVerified) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'VÉRIFIÉ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
+                  ),
                 ],
               ),
 
@@ -350,26 +547,34 @@ class _HomeScreenState extends State<HomeScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
+
+                    // Stats
                     Row(
                       children: [
-                        Icon(
-                          Icons.euro,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        Icon(Icons.visibility,
+                            size: 14, color: Colors.grey[600]),
                         const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            '${_formatAmount(project.fundingMin)} - ${_formatAmount(project.fundingMax)}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          project.viewsCount.toString(),
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(Icons.favorite_border,
+                            size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          project.interestsCount.toString(),
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${_formatAmount(project.fundingMin)} - ${_formatAmount(project.fundingMax)}',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -384,276 +589,466 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, ProjectModel project) {
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: ConfigService.defaultPadding,
-        vertical: ConfigService.defaultSpacing / 2,
-      ),
-      child: InkWell(
-        onTap: () {
-          // TODO: Restaurer après génération des routes
-          // context.router.push(ProjectDetailRoute(projectId: project.id));
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(ConfigService.defaultPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // En-tête avec créateur
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundImage:
-                        project.creator.profile?.profilePicture != null
-                            ? CachedNetworkImageProvider(
-                                project.creator.profile!.profilePicture!)
-                            : null,
-                    child: project.creator.profile?.profilePicture == null
-                        ? Text(project.creator.firstName[0].toUpperCase())
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          project.creator.fullName,
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                        Text(
-                          project.creator.profile?.title ?? 'Entrepreneur',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (project.isPremium)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.amber,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'PREMIUM',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Titre et description
-              Text(
-                project.title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                project.shortDescription,
-                style: Theme.of(context).textTheme.bodyMedium,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              const SizedBox(height: 12),
-
-              // Carrousel de médias du projet (si disponible)
-              if (project.hasAnyMedia)
-                Stack(
-                  children: [
-                    FeedUniversalMediaCarouselWidget(
-                      mediaList: project.allMedia,
-                      debugContext: 'Feed-${project.title}',
-                    ),
-
-                    // Badge de comptage de médias (coin supérieur droit)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: MediaCountBadge(project: project),
-                    ),
-                  ],
-                ),
-
-              // Tags
-              if (project.tags?.isNotEmpty == true)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: project.tags!.take(2).map((tag) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        tag.getName('fr'), // TODO: Utiliser la locale actuelle
-                        style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
-                          fontSize: 12,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-              const SizedBox(height: 12),
-
-              // Informations du projet
-              SizedBox(
-                height: 32,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _buildInfoChip(
-                      context,
-                      Icons.category_outlined,
-                      project.category
-                          .getName('fr'), // TODO: Utiliser la locale actuelle
-                    ),
-                    const SizedBox(width: 8),
-                    _buildInfoChip(
-                      context,
-                      Icons.timeline,
-                      _getStageLabel(project.stage),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildInfoChip(
-                      context,
-                      Icons.euro,
-                      '${_formatAmount(project.fundingMin)} - ${_formatAmount(project.fundingMax)}',
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Actions et statistiques
-              Row(
-                children: [
-                  _buildStatChip(
-                      Icons.visibility, project.viewsCount.toString()),
-                  const SizedBox(width: 8),
-                  _buildStatChip(
-                      Icons.favorite_border, project.favoritesCount.toString()),
-                  const SizedBox(width: 8),
-                  _buildStatChip(Icons.thumb_up_outlined,
-                      project.interestsCount.toString()),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.favorite_border),
-                    onPressed: () {
-                      context
-                          .read<ProjectProvider>()
-                          .toggleFavorite(project.id);
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.thumb_up_outlined),
-                    onPressed: () {
-                      context
-                          .read<ProjectProvider>()
-                          .toggleInterest(project.id);
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoChip(BuildContext context, IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 14),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          Icon(
+            Icons.error_outline,
+            size: 64,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Erreur de chargement',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              context.read<ProjectProvider>().loadProjects(refresh: true);
+            },
+            child: const Text('Réessayer'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatChip(IconData icon, String count) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 4),
-        Text(
-          count,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.folder_open, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'Aucun projet trouvé',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
           ),
-        ),
-      ],
+          SizedBox(height: 8),
+          Text(
+            'Soyez le premier à créer un projet !',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
     );
   }
 
-  String _getStageLabel(String stage) {
-    switch (stage) {
-      case 'IDEA':
-        return 'Idée';
-      case 'PROTOTYPE':
-        return 'Prototype';
-      case 'MVP':
-        return 'MVP';
-      case 'GROWTH':
-        return 'Croissance';
-      case 'EXPANSION':
-        return 'Expansion';
-      default:
-        return stage;
-    }
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final controller = TextEditingController(text: _searchQuery ?? '');
+        return AlertDialog(
+          title: const Text('Rechercher des projets'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Entrez votre recherche...',
+              prefixIcon: Icon(Icons.search),
+            ),
+            autofocus: true,
+            onSubmitted: (value) {
+              _onSearch(value);
+              Navigator.pop(context);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _onSearch('');
+                Navigator.pop(context);
+              },
+              child: const Text('Effacer'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () {
+                _onSearch(controller.text);
+                Navigator.pop(context);
+              },
+              child: const Text('Rechercher'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  // Formater un montant financier pour un affichage plus lisible
+  List<ProjectModel> _getRecentProjects(List<ProjectModel> projects) {
+    // Tous les projets triés par date de publication
+    return projects.toList()
+      ..sort((a, b) => (b.publishedAt ?? b.createdAt)
+          .compareTo(a.publishedAt ?? a.createdAt));
+  }
+
+  // Actions améliorées sur les projets
+  void _handleLike(ProjectModel project) {
+    context.read<ProjectProvider>().toggleFavorite(project.id);
+
+    // Feedback haptique
+    HapticFeedback.lightImpact();
+
+    // Afficher un snackbar de confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Statut des favoris mis à jour'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _handleInterest(ProjectModel project) {
+    // Afficher un bottom sheet pour exprimer l'intérêt
+    _showInterestBottomSheet(project);
+  }
+
+  void _handleComment(ProjectModel project) {
+    // Naviguer vers l'écran de détail du projet (onglet commentaires)
+    context.router.push(ProjectDetailRoute(projectId: project.id));
+  }
+
+  void _handleShare(ProjectModel project) {
+    final shareUrl = 'https://venturelink.com/projects/${project.id}';
+    final shareText =
+        'Découvrez ce projet: ${project.title}\n\n${project.shortDescription}\n\n$shareUrl';
+
+    Share.share(
+      shareText,
+      subject: 'Projet VentureLink: ${project.title}',
+    );
+  }
+
+  void _handleProfileTap(ProjectModel project) {
+    // Navigation vers le profil du créateur
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Profil de ${project.creator.fullName}'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _handleMenuTap(ProjectModel project) {
+    _showProjectMenu(project);
+  }
+
+  void _showAdvancedFilters() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _buildAdvancedFiltersSheet(),
+    );
+  }
+
+  void _showInterestBottomSheet(ProjectModel project) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _buildInterestBottomSheet(project),
+    );
+  }
+
+  void _showProjectMenu(ProjectModel project) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _buildProjectMenuSheet(project),
+    );
+  }
+
+  Widget _buildAdvancedFiltersSheet() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      height: MediaQuery.of(context).size.height * 0.7,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Filtres avancés',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+
+          // Filtres de financement
+          Text(
+            'Financement recherché',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: 'Montant minimum',
+                    prefixText: '€ ',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: 'Montant maximum',
+                    prefixText: '€ ',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Filtres par tags
+          Text(
+            'Tags',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          // TODO: Implémenter sélection de tags
+
+          const Spacer(),
+
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annuler'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    // TODO: Appliquer les filtres avancés
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Appliquer'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInterestBottomSheet(ProjectModel project) {
+    final messageController = TextEditingController();
+    final amountController = TextEditingController();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      height: MediaQuery.of(context).size.height * 0.6,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Exprimer votre intérêt',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pour: ${project.title}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+          ),
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: messageController,
+            decoration: const InputDecoration(
+              labelText: 'Message (optionnel)',
+              hintText: 'Expliquez votre intérêt pour ce projet...',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: amountController,
+            decoration: const InputDecoration(
+              labelText: 'Montant d\'investissement envisagé',
+              prefixText: '€ ',
+              hintText: '50000',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Checkbox(
+                value: false,
+                onChanged: (value) {},
+              ),
+              Expanded(
+                child: Text(
+                  'Exprimer cet intérêt de manière anonyme',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annuler'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Appeler l'API pour exprimer l'intérêt
+                    context.read<ProjectProvider>().expressInterest(
+                          project.id,
+                          message: messageController.text,
+                          amount: double.tryParse(amountController.text),
+                          isAnonymous: false,
+                        );
+
+                    Navigator.pop(context);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Intérêt exprimé avec succès!'),
+                      ),
+                    );
+                  },
+                  child: const Text('Exprimer l\'intérêt'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProjectMenuSheet(ProjectModel project) {
+    final currentUser = context.read<AuthProvider>().currentUser;
+    final isOwner = currentUser?.id == project.creator.id;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isOwner) ...[
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: const Text('Signaler ce projet'),
+              onTap: () {
+                Navigator.pop(context);
+                _showReportDialog(project);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.visibility_off_outlined),
+              title: const Text('Masquer ce projet'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Implémenter masquage
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_border),
+              title: const Text('Ajouter/Retirer des favoris'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleLike(project);
+              },
+            ),
+          ] else ...[
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Modifier le projet'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigation vers les détails du projet en mode édition
+                context.router.push(ProjectDetailRoute(projectId: project.id));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.analytics_outlined),
+              title: const Text('Voir les statistiques'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigation vers les détails du projet
+                context.router.push(ProjectDetailRoute(projectId: project.id));
+              },
+            ),
+          ],
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.close),
+            title: const Text('Fermer'),
+            onTap: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportDialog(ProjectModel project) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Signaler ce projet'),
+        content: const Text('Pourquoi souhaitez-vous signaler ce projet ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implémenter signalement
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content:
+                      Text('Signalement envoyé. Merci pour votre vigilance.'),
+                ),
+              );
+            },
+            child: const Text('Signaler'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatAmount(double amount) {
     if (amount >= 1000000) {
-      return '${(amount / 1000000).toStringAsFixed(1)}M';
+      return '${(amount / 1000000).toStringAsFixed(1)}M€';
     } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(0)}k';
+      return '${(amount / 1000).toStringAsFixed(0)}k€';
     }
-    return amount.toStringAsFixed(0);
+    return '${amount.toStringAsFixed(0)}€';
   }
 }
 

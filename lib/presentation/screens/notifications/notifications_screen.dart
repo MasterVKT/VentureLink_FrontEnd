@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:provider/provider.dart';
 import 'package:venturelink/data/providers/notification_provider.dart';
 import 'package:venturelink/data/models/notification_model.dart';
-import 'package:venturelink/core/config/app_config.dart';
+
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 @RoutePage()
 class NotificationsScreen extends StatefulWidget {
@@ -17,44 +19,36 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  // Filtres
-  String _currentFilter = 'all';
-  final List<String> _availableFilters = [
-    'all',
-    'unread',
-    'message',
-    'investment',
-    'project',
-    'system'
-  ];
-
-  // Tri
-  String _currentSort = 'newest';
-  final List<String> _availableSorts = ['newest', 'oldest', 'important'];
-
-  // Recherche
+    with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
   bool _isSearchActive = false;
+  Timer? _searchDebounce;
+  String? _selectedFilter;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
 
-    // Charger les notifications
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<NotificationProvider>().loadNotifications();
+      _fadeController.forward();
     });
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
+    _searchDebounce?.cancel();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -62,194 +56,107 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
+    final isTablet = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
       appBar: AppBar(
         title: _isSearchActive ? _buildSearchBar() : Text(l10n.notifications),
+        elevation: 0,
+        backgroundColor: theme.colorScheme.surface,
+        titleSpacing: _isSearchActive ? 0 : null,
         actions: [
-          // Bouton recherche
           IconButton(
             icon: Icon(_isSearchActive ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _isSearchActive = !_isSearchActive;
-                if (!_isSearchActive) {
-                  _searchController.clear();
-                  _searchQuery = '';
-                }
-              });
-            },
+            onPressed: _toggleSearch,
+            tooltip: _isSearchActive ? 'Fermer la recherche' : l10n.search,
+            iconSize: 24,
           ),
-          // Bouton menu
           PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'mark_all_read':
-                  context.read<NotificationProvider>().markAllAsRead();
-                  break;
-                case 'clear_all':
-                  _showClearAllDialog();
-                  break;
-                case 'settings':
-                  _showSettingsDialog();
-                  break;
-              }
-            },
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Plus d\'options',
+            iconSize: 24,
+            onSelected: _handleMenuAction,
             itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'mark_all_read',
-                child: Row(
-                  children: [
-                    const Icon(Icons.mark_email_read),
-                    const SizedBox(width: 8),
-                    Text(l10n.markAllRead),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'clear_all',
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete_sweep),
-                    const SizedBox(width: 8),
-                    Text(l10n.clearAll),
-                  ],
+                child: _buildMenuRow(
+                  Icons.mark_email_read,
+                  l10n.markAllRead,
                 ),
               ),
               PopupMenuItem(
                 value: 'settings',
-                child: Row(
-                  children: [
-                    const Icon(Icons.settings),
-                    const SizedBox(width: 8),
-                    Text(l10n.settings),
-                  ],
+                child: _buildMenuRow(
+                  Icons.settings,
+                  l10n.notificationSettings,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'refresh',
+                child: _buildMenuRow(
+                  Icons.refresh,
+                  'Actualiser',
                 ),
               ),
             ],
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: l10n.all),
-            Tab(text: l10n.unread),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          children: [
+            if (!_isSearchActive) _buildFilterChips(),
+            Expanded(
+              child: Consumer<NotificationProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return _buildLoadingWidget();
+                  }
+
+                  if (provider.error != null) {
+                    return _buildErrorWidget(provider.error!, provider);
+                  }
+
+                  final notifications = _getFilteredNotifications(provider);
+
+                  if (notifications.isEmpty) {
+                    return _buildEmptyWidget();
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () => provider.loadNotifications(),
+                    child: ListView.builder(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: isTablet ? 24 : 16,
+                      ),
+                      itemCount: notifications.length,
+                      itemBuilder: (context, index) {
+                        return _buildNotificationCard(
+                          notifications[index],
+                          index,
+                          isTablet,
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
-      ),
-      body: Column(
-        children: [
-          if (!_isSearchActive) _buildFilterChips(),
-          Expanded(
-            child: Consumer<NotificationProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          l10n.errorLoadingNotifications,
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          provider.error!,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            provider.loadNotifications();
-                          },
-                          child: Text(l10n.retry),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                // Filtrer les notifications selon l'onglet
-                List<NotificationModel> tabNotifications =
-                    _tabController.index == 0
-                        ? provider.notifications
-                        : provider.unreadNotifications;
-
-                // Filtrer selon le filtre actif
-                tabNotifications = _filterNotifications(tabNotifications);
-
-                // Filtrer selon la recherche
-                if (_searchQuery.isNotEmpty) {
-                  tabNotifications = tabNotifications.where((n) {
-                    return n.title
-                            .toLowerCase()
-                            .contains(_searchQuery.toLowerCase()) ||
-                        n.message
-                            .toLowerCase()
-                            .contains(_searchQuery.toLowerCase());
-                  }).toList();
-                }
-
-                // Trier les notifications
-                _sortNotifications(tabNotifications);
-
-                if (tabNotifications.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.notifications_none,
-                          size: 64,
-                          color: theme.colorScheme.secondary.withOpacity(0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _tabController.index == 0
-                              ? l10n.noNotifications
-                              : l10n.noUnreadNotifications,
-                          style: theme.textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: provider.loadNotifications,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.only(top: 8, bottom: 16),
-                    itemCount: tabNotifications.length,
-                    itemBuilder: (context, index) {
-                      return _buildNotificationCard(tabNotifications[index]);
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
-    return TextField(
-      controller: _searchController,
-      autofocus: true,
-      decoration: InputDecoration(
-        hintText: AppLocalizations.of(context)!.searchNotifications,
-        border: InputBorder.none,
-      ),
-      onChanged: (value) {
-        setState(() {
-          _searchQuery = value;
-        });
-      },
+  Widget _buildMenuRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 12),
+        Text(text),
+      ],
     );
   }
 
@@ -257,477 +164,726 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
-    Map<String, String> filterLabels = {
-      'all': l10n.all,
-      'unread': l10n.unread,
-      'message': l10n.messages,
-      'investment': l10n.investments,
-      'project': l10n.projects,
-      'system': l10n.system,
-    };
+    final filters = <Map<String, String?>>[
+      {'value': null, 'label': l10n.all},
+      {'value': 'PROJECT', 'label': l10n.projects},
+      {'value': 'INVESTMENT', 'label': l10n.investments},
+      {'value': 'MESSAGE', 'label': l10n.messages},
+      {'value': 'PAYMENT', 'label': 'Paiements'},
+      {'value': 'SYSTEM', 'label': l10n.system},
+    ];
 
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: filters.length,
+        itemBuilder: (context, index) {
+          final filter = filters[index];
+          final isSelected = _selectedFilter == filter['value'];
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(filter['label'] as String),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedFilter =
+                      selected ? filter['value'] as String? : null;
+                });
+                HapticFeedback.lightImpact();
+              },
+              backgroundColor: theme.colorScheme.surface,
+              selectedColor: theme.colorScheme.primaryContainer,
+              checkmarkColor: theme.colorScheme.primary,
+              labelStyle: TextStyle(
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  List<NotificationModel> _getFilteredNotifications(
+      NotificationProvider provider) {
+    List<NotificationModel> notifications;
+
+    if (_isSearchActive && provider.searchQuery.isNotEmpty) {
+      notifications = provider.searchResults;
+    } else {
+      notifications = provider.notifications;
+    }
+
+    if (_selectedFilter != null) {
+      notifications =
+          notifications.where((n) => n.category == _selectedFilter).toList();
+    }
+
+    return notifications;
+  }
+
+  Widget _buildLoadingWidget() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: _availableFilters.map((filter) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(filterLabels[filter]!),
-                    selected: _currentFilter == filter,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _currentFilter = filter;
-                        });
-                      }
-                    },
-                    backgroundColor: theme.colorScheme.surface,
-                    selectedColor: theme.colorScheme.primaryContainer,
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Chargement des notifications...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    final l10n = AppLocalizations.of(context)!;
+    return TextField(
+      controller: _searchController,
+      autofocus: true,
+      style: Theme.of(context).textTheme.titleMedium,
+      decoration: InputDecoration(
+        hintText: l10n.searchNotifications,
+        border: InputBorder.none,
+        hintStyle: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        ),
+      ),
+      onChanged: _onSearchChanged,
+    );
+  }
+
+  void _onSearchChanged(String value) {
+    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      context.read<NotificationProvider>().searchNotifications(value);
+    });
+  }
+
+  Widget _buildNotificationCard(
+    NotificationModel notification,
+    int index,
+    bool isTablet,
+  ) {
+    final theme = Theme.of(context);
+    final isUnread = notification.isUnread;
+
+    // Taille responsive pour l'icône
+    final iconSize = isTablet ? 44.0 : 40.0;
+    final iconContainerSize = isTablet ? 52.0 : 48.0;
+
+    return Container(
+      margin: EdgeInsets.only(
+        bottom: index == 0 ? 12 : 8, // Plus d'espace pour la première carte
+      ),
+      decoration: BoxDecoration(
+        color: isUnread
+            ? theme.colorScheme.primaryContainer.withOpacity(0.08)
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isUnread
+              ? theme.colorScheme.primary.withOpacity(0.15)
+              : theme.colorScheme.outline.withOpacity(0.12),
+          width: isUnread ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () => _handleNotificationTap(notification),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: EdgeInsets.all(isTablet ? 20 : 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildNotificationIcon(
+                  notification,
+                  iconContainerSize,
+                  iconSize,
+                  isUnread,
+                ),
+                SizedBox(width: isTablet ? 16 : 12),
+                Expanded(
+                  child: _buildNotificationContent(
+                    notification,
+                    isUnread,
+                    isTablet,
                   ),
-                );
-              }).toList(),
+                ),
+                _buildNotificationMenu(notification, isUnread),
+              ],
             ),
           ),
-          // Bouton de tri
-          IconButton(
-            icon: const Icon(Icons.sort),
-            onPressed: _showSortDialog,
-            tooltip: l10n.sort,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationIcon(
+    NotificationModel notification,
+    double containerSize,
+    double iconSize,
+    bool isUnread,
+  ) {
+    final theme = Theme.of(context);
+
+    return Stack(
+      children: [
+        Container(
+          width: containerSize,
+          height: containerSize,
+          decoration: BoxDecoration(
+            color: notification.categoryColor.withOpacity(0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            notification.categoryIcon,
+            color: notification.categoryColor,
+            size: iconSize * 0.6, // Taille proportionnelle au container
+          ),
+        ),
+        if (isUnread)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: theme.colorScheme.surface,
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationContent(
+    NotificationModel notification,
+    bool isUnread,
+    bool isTablet,
+  ) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          notification.title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: isUnread ? FontWeight.w600 : FontWeight.w500,
+            height: 1.3,
+          ),
+          maxLines: isTablet ? 3 : 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          notification.content,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color:
+                theme.colorScheme.onSurface.withOpacity(isUnread ? 0.75 : 0.65),
+            height: 1.4,
+          ),
+          maxLines: isTablet ? 4 : 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 10),
+        _buildNotificationMetadata(notification),
+      ],
+    );
+  }
+
+  Widget _buildNotificationMetadata(NotificationModel notification) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Text(
+          _formatNotificationTime(notification.createdAt),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          width: 4,
+          height: 4,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.onSurface.withOpacity(0.3),
+            shape: BoxShape.circle,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: notification.categoryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            _getCategoryLabel(notification.category),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: notification.categoryColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        if (notification.isHighPriority) ...[
+          const SizedBox(width: 8),
+          Icon(
+            notification.isUrgent ? Icons.priority_high : Icons.star,
+            size: 16,
+            color: notification.priorityColor,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNotificationMenu(NotificationModel notification, bool isUnread) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: PopupMenuButton<String>(
+        icon: Icon(
+          Icons.more_vert,
+          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          size: 20,
+        ),
+        tooltip: 'Plus d\'options',
+        onSelected: (value) => _handleNotificationAction(value, notification),
+        itemBuilder: (context) => [
+          if (isUnread)
+            PopupMenuItem(
+              value: 'mark_read',
+              child: _buildMenuRow(Icons.mark_email_read, l10n.markAsRead),
+            ),
+          PopupMenuItem(
+            value: 'archive',
+            child: _buildMenuRow(Icons.archive_outlined, 'Archiver'),
+          ),
+          PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  l10n.delete,
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationCard(NotificationModel notification) {
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppConfig.defaultPadding,
-        vertical: 4,
-      ),
-      child: ListTile(
-        leading: Stack(
+  Widget _buildErrorWidget(String error, NotificationProvider provider) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _getNotificationColor(notification.notificationType)
-                    .withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _getNotificationIcon(notification.notificationType),
-                color: _getNotificationColor(notification.notificationType),
-                size: 24,
-              ),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: theme.colorScheme.error,
             ),
-            if (!notification.isRead)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        title: Text(
-          notification.title,
-          style: TextStyle(
-            fontWeight:
-                notification.isRead ? FontWeight.normal : FontWeight.bold,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+            const SizedBox(height: 16),
             Text(
-              notification.message,
-              maxLines: 2,
+              l10n.errorLoadingNotifications,
+              style: theme.textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
-            Text(
-              _formatNotificationTime(notification.createdAt),
-              style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () {
+                provider.clearError();
+                provider.loadNotifications();
+              },
+              icon: const Icon(Icons.refresh),
+              label: Text(l10n.retry),
             ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            switch (value) {
-              case 'mark_read':
-                context
-                    .read<NotificationProvider>()
-                    .markAsRead(notification.id);
-                break;
-              case 'delete':
-                context
-                    .read<NotificationProvider>()
-                    .deleteNotification(notification.id);
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            if (!notification.isRead)
-              PopupMenuItem(
-                value: 'mark_read',
-                child: Row(
-                  children: [
-                    const Icon(Icons.mark_email_read),
-                    const SizedBox(width: 8),
-                    Text(AppLocalizations.of(context)!.markAsRead),
-                  ],
-                ),
-              ),
-            PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  const Icon(Icons.delete_outline),
-                  const SizedBox(width: 8),
-                  Text(AppLocalizations.of(context)!.delete),
-                ],
-              ),
-            ),
-          ],
-        ),
-        onTap: () => _handleNotificationTap(notification),
       ),
     );
   }
 
+  Widget _buildEmptyWidget() {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _isSearchActive ? Icons.search_off : Icons.notifications_none,
+            size: 80,
+            color: theme.colorScheme.onSurface.withOpacity(0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _isSearchActive ? 'Aucun résultat' : l10n.noNotifications,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+          if (_isSearchActive) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Essayez d\'autres mots-clés',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchActive = !_isSearchActive;
+      if (!_isSearchActive) {
+        _searchController.clear();
+        _searchDebounce?.cancel();
+        context.read<NotificationProvider>().clearSearch();
+      }
+    });
+    HapticFeedback.lightImpact();
+  }
+
+  void _handleMenuAction(String action) {
+    final provider = context.read<NotificationProvider>();
+    final l10n = AppLocalizations.of(context)!;
+
+    switch (action) {
+      case 'mark_all_read':
+        _showConfirmationDialog(
+          title: l10n.markAllRead,
+          content:
+              'Êtes-vous sûr de vouloir marquer toutes les notifications comme lues ?',
+          confirmText: l10n.markAsRead,
+          onConfirm: () {
+            provider.markAllAsRead();
+            _showFeedback(
+                'Toutes les notifications ont été marquées comme lues');
+          },
+        );
+        break;
+      case 'settings':
+        _showNotificationSettings();
+        break;
+      case 'refresh':
+        provider.loadNotifications();
+        HapticFeedback.lightImpact();
+        break;
+    }
+  }
+
+  void _handleNotificationAction(
+      String action, NotificationModel notification) {
+    final provider = context.read<NotificationProvider>();
+    final l10n = AppLocalizations.of(context)!;
+
+    switch (action) {
+      case 'mark_read':
+        provider.markAsRead(notification.id);
+        _showFeedback('Notification marquée comme lue');
+        HapticFeedback.lightImpact();
+        break;
+      case 'archive':
+        provider.archiveNotification(notification.id);
+        _showFeedback('Notification archivée');
+        HapticFeedback.lightImpact();
+        break;
+      case 'delete':
+        _showConfirmationDialog(
+          title: 'Supprimer la notification',
+          content: 'Êtes-vous sûr de vouloir supprimer cette notification ?',
+          confirmText: l10n.delete,
+          isDestructive: true,
+          onConfirm: () {
+            provider.deleteNotification(notification.id);
+            _showFeedback('Notification supprimée');
+          },
+        );
+        break;
+    }
+  }
+
+  void _showConfirmationDialog({
+    required String title,
+    required String content,
+    required String confirmText,
+    required VoidCallback onConfirm,
+    bool isDestructive = false,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            style: isDestructive
+                ? FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.error,
+                    foregroundColor: theme.colorScheme.onError,
+                  )
+                : null,
+            child: Text(confirmText),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFeedback(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _handleNotificationTap(NotificationModel notification) {
+    if (notification.isUnread) {
+      context.read<NotificationProvider>().markAsRead(notification.id);
+    }
+
+    HapticFeedback.lightImpact();
+
+    // Navigation selon la catégorie
+    switch (notification.category) {
+      case 'PROJECT':
+        if (notification.objectId != null) {
+          context.router
+              .push(ProjectDetailRoute(projectId: notification.objectId!));
+        } else {
+          context.router.push(const HomeRoute());
+        }
+        break;
+      case 'INVESTMENT':
+        // Rediriger vers la liste des investissements ou détail si objectId disponible
+        context.router
+            .push(const HomeRoute()); // TODO: Créer InvestmentListRoute
+        break;
+      case 'MESSAGE':
+        // Rediriger vers la messagerie ou conversation spécifique si objectId disponible
+        context.router.push(const HomeRoute()); // TODO: Créer MessagingRoute
+        break;
+      case 'PAYMENT':
+        // Rediriger vers les paiements
+        context.router.push(const SubscriptionRoute());
+        break;
+      default:
+        context.router.push(const HomeRoute());
+    }
+  }
+
+  void _showNotificationSettings() {
+    final l10n = AppLocalizations.of(context)!;
+    final provider = context.read<NotificationProvider>();
+    final theme = Theme.of(context);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(l10n.notificationSettings),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPreferenceSwitch(
+                  l10n.pushNotifications,
+                  'enable_push',
+                  provider,
+                  setDialogState,
+                  Icons.notifications,
+                ),
+                _buildPreferenceSwitch(
+                  l10n.emailNotifications,
+                  'enable_email',
+                  provider,
+                  setDialogState,
+                  Icons.email,
+                ),
+                const Divider(),
+                Text(
+                  l10n.notificationTypes,
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                _buildPreferenceSwitch(
+                  'Notifications de projet',
+                  'project_notifications',
+                  provider,
+                  setDialogState,
+                  Icons.work,
+                ),
+                _buildPreferenceSwitch(
+                  'Notifications d\'investissement',
+                  'investment_notifications',
+                  provider,
+                  setDialogState,
+                  Icons.attach_money,
+                ),
+                _buildPreferenceSwitch(
+                  'Notifications de message',
+                  'message_notifications',
+                  provider,
+                  setDialogState,
+                  Icons.message,
+                ),
+                _buildPreferenceSwitch(
+                  'Notifications de paiement',
+                  'payment_notifications',
+                  provider,
+                  setDialogState,
+                  Icons.payment,
+                ),
+                _buildPreferenceSwitch(
+                  'Notifications système',
+                  'system_notifications',
+                  provider,
+                  setDialogState,
+                  Icons.settings,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Fermer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreferenceSwitch(
+    String title,
+    String key,
+    NotificationProvider provider,
+    StateSetter setDialogState,
+    IconData icon,
+  ) {
+    return SwitchListTile(
+      title: Row(
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 12),
+          Expanded(child: Text(title)),
+        ],
+      ),
+      value: provider.preferences[key] ?? true,
+      onChanged: (value) {
+        provider.updateNotificationPreferences({key: value});
+        setDialogState(() {});
+        HapticFeedback.lightImpact();
+      },
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+
   String _formatNotificationTime(DateTime dateTime) {
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return AppLocalizations.of(context)!.justNow;
+      return l10n.justNow;
     } else if (difference.inMinutes < 60) {
-      return AppLocalizations.of(context)!.minutesAgo(difference.inMinutes);
+      return l10n.minutesAgo(difference.inMinutes);
     } else if (difference.inHours < 24) {
-      return AppLocalizations.of(context)!.hoursAgo(difference.inHours);
-    } else if (difference.inDays == 1) {
-      return AppLocalizations.of(context)!.yesterday;
+      return l10n.hoursAgo(difference.inHours);
     } else if (difference.inDays < 7) {
-      return AppLocalizations.of(context)!.daysAgo(difference.inDays);
+      return l10n.daysAgo(difference.inDays);
     } else {
       return DateFormat('dd/MM/yyyy').format(dateTime);
     }
   }
 
-  IconData _getNotificationIcon(String type) {
-    switch (type) {
-      case 'MESSAGE':
-        return Icons.message_outlined;
+  String _getCategoryLabel(String category) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (category) {
+      case 'PROJECT':
+        return l10n.projects;
       case 'INVESTMENT':
-        return Icons.account_balance_wallet_outlined;
-      case 'PROJECT_UPDATE':
-        return Icons.update_outlined;
+        return l10n.investments;
+      case 'MESSAGE':
+        return l10n.messages;
+      case 'PAYMENT':
+        return 'Paiements';
       case 'SYSTEM':
-        return Icons.info_outline;
-      case 'MATCH':
-        return Icons.handshake_outlined;
+        return l10n.system;
       default:
-        return Icons.notifications_outlined;
+        return 'Général';
     }
-  }
-
-  Color _getNotificationColor(String type) {
-    switch (type) {
-      case 'MESSAGE':
-        return Colors.blue;
-      case 'INVESTMENT':
-        return Colors.green;
-      case 'PROJECT_UPDATE':
-        return Colors.orange;
-      case 'SYSTEM':
-        return Colors.grey;
-      case 'MATCH':
-        return Colors.purple;
-      default:
-        return Theme.of(context).colorScheme.primary;
-    }
-  }
-
-  void _handleNotificationTap(NotificationModel notification) {
-    // Marquer comme lu
-    context.read<NotificationProvider>().markAsRead(notification.id);
-
-    // Navigation selon le type
-    switch (notification.notificationType) {
-      case 'MESSAGE':
-        context.router.push(const MessagingRoute());
-        break;
-      case 'INVESTMENT':
-        context.router.push(const InvestmentListRoute());
-        break;
-      case 'PROJECT_UPDATE':
-        if (notification.relatedObjectId != null) {
-          context.router.push(
-              ProjectDetailRoute(projectId: notification.relatedObjectId!));
-        }
-        break;
-      case 'MATCH':
-        // Naviguer vers l'écran de matching
-        context.router.push(const DiscoverRoute());
-        break;
-      default:
-        // Vérifier s'il y a une URL d'action définie
-        if (notification.actionUrl != null &&
-            notification.actionUrl!.isNotEmpty) {
-          // Traiter l'URL d'action (dépend de la structure de l'URL)
-          // Ex: /projects/:id -> ProjectDetailRoute(projectId: id)
-          final parts = notification.actionUrl!.split('/');
-          if (parts.length >= 3 && parts[1] == 'projects') {
-            context.router.push(ProjectDetailRoute(projectId: parts[2]));
-          }
-        }
-        break;
-    }
-  }
-
-  // Méthode pour filtrer les notifications
-  List<NotificationModel> _filterNotifications(
-      List<NotificationModel> notifications) {
-    switch (_currentFilter) {
-      case 'unread':
-        return notifications.where((n) => !n.isRead).toList();
-      case 'message':
-        return notifications
-            .where((n) => n.notificationType == 'MESSAGE')
-            .toList();
-      case 'investment':
-        return notifications
-            .where((n) => n.notificationType == 'INVESTMENT')
-            .toList();
-      case 'project':
-        return notifications
-            .where((n) => n.notificationType == 'PROJECT_UPDATE')
-            .toList();
-      case 'system':
-        return notifications
-            .where((n) => n.notificationType == 'SYSTEM')
-            .toList();
-      case 'all':
-      default:
-        return notifications;
-    }
-  }
-
-  // Méthode pour trier les notifications
-  void _sortNotifications(List<NotificationModel> notifications) {
-    switch (_currentSort) {
-      case 'oldest':
-        notifications.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        break;
-      case 'important':
-        notifications.sort((a, b) {
-          if (a.isImportant && !b.isImportant) return -1;
-          if (!a.isImportant && b.isImportant) return 1;
-          return b.createdAt.compareTo(a.createdAt);
-        });
-        break;
-      case 'newest':
-      default:
-        notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        break;
-    }
-  }
-
-  // Dialogue de tri
-  void _showSortDialog() {
-    final l10n = AppLocalizations.of(context)!;
-
-    Map<String, String> sortLabels = {
-      'newest': l10n.newest,
-      'oldest': l10n.oldest,
-      'important': l10n.important,
-    };
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.sortBy),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _availableSorts.map((sort) {
-            return RadioListTile<String>(
-              title: Text(sortLabels[sort]!),
-              value: sort,
-              groupValue: _currentSort,
-              onChanged: (value) {
-                setState(() {
-                  _currentSort = value!;
-                });
-                Navigator.pop(context);
-              },
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Dialogue de confirmation pour effacer toutes les notifications
-  void _showClearAllDialog() {
-    final l10n = AppLocalizations.of(context)!;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.clearAllNotifications),
-        content: Text(l10n.clearAllNotificationsConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<NotificationProvider>().clearAllNotifications();
-              Navigator.pop(context);
-            },
-            child: Text(l10n.clear),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Dialogue des paramètres de notification
-  void _showSettingsDialog() {
-    final l10n = AppLocalizations.of(context)!;
-
-    // État local pour les paramètres
-    bool pushEnabled = true;
-    bool emailEnabled = true;
-    bool messageNotifications = true;
-    bool investmentNotifications = true;
-    bool projectNotifications = true;
-    bool systemNotifications = true;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: Text(l10n.notificationSettings),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Canaux de livraison
-                  Text(
-                    l10n.deliveryChannels,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  SwitchListTile(
-                    title: Text(l10n.pushNotifications),
-                    value: pushEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        pushEnabled = value;
-                      });
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(l10n.emailNotifications),
-                    value: emailEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        emailEnabled = value;
-                      });
-                    },
-                  ),
-                  const Divider(),
-
-                  // Types de notifications
-                  Text(
-                    l10n.notificationTypes,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  SwitchListTile(
-                    title: Text(l10n.messages),
-                    value: messageNotifications,
-                    onChanged: (value) {
-                      setState(() {
-                        messageNotifications = value;
-                      });
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(l10n.investments),
-                    value: investmentNotifications,
-                    onChanged: (value) {
-                      setState(() {
-                        investmentNotifications = value;
-                      });
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(l10n.projectUpdates),
-                    value: projectNotifications,
-                    onChanged: (value) {
-                      setState(() {
-                        projectNotifications = value;
-                      });
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(l10n.systemNotifications),
-                    value: systemNotifications,
-                    onChanged: (value) {
-                      setState(() {
-                        systemNotifications = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.cancel),
-              ),
-              TextButton(
-                onPressed: () {
-                  // TODO: Sauvegarder les paramètres
-                  // Pour l'instant, on ferme simplement le dialogue
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.settingsSaved),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-                child: Text(l10n.save),
-              ),
-            ],
-          );
-        },
-      ),
-    );
   }
 }

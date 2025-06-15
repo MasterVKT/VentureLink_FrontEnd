@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:venturelink/data/models/user_model.dart';
 import 'package:venturelink/data/services/user_api_service.dart';
 
 class ProfileProvider extends ChangeNotifier {
   final UserApiService _userApiService;
+  final ImagePicker _imagePicker = ImagePicker();
 
   ProfileProvider(this._userApiService);
 
@@ -95,10 +97,54 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Upload photo de profil depuis la caméra
+  Future<bool> updateProfilePictureFromCamera() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image == null) return false;
+
+      return await uploadProfilePicture(File(image.path));
+    } catch (e) {
+      _setError('Erreur lors de la prise de photo: ${e.toString()}');
+      return false;
+    }
+  }
+
+  /// Upload photo de profil depuis la galerie
+  Future<bool> updateProfilePictureFromGallery() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image == null) return false;
+
+      return await uploadProfilePicture(File(image.path));
+    } catch (e) {
+      _setError('Erreur lors de la sélection d\'image: ${e.toString()}');
+      return false;
+    }
+  }
+
   /// Upload photo de profil
   Future<bool> uploadProfilePicture(File imageFile) async {
     _setUploadingProfilePicture(true);
     try {
+      // Validation de la taille du fichier (max 5MB)
+      final fileSize = await imageFile.length();
+      if (fileSize > 5 * 1024 * 1024) {
+        throw Exception('Le fichier est trop volumineux (max 5MB)');
+      }
+
       _user = await _userApiService.uploadProfilePicture(imageFile);
       _clearError();
       return true;
@@ -114,6 +160,12 @@ class ProfileProvider extends ChangeNotifier {
   Future<bool> uploadCoverPicture(File imageFile) async {
     _setUploadingCoverPicture(true);
     try {
+      // Validation de la taille du fichier (max 5MB)
+      final fileSize = await imageFile.length();
+      if (fileSize > 5 * 1024 * 1024) {
+        throw Exception('Le fichier est trop volumineux (max 5MB)');
+      }
+
       _user = await _userApiService.uploadCoverPicture(imageFile);
       _clearError();
       return true;

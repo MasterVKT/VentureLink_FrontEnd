@@ -5,7 +5,8 @@ import 'package:venturelink/presentation/screens/auth/register_screen.dart';
 import 'package:venturelink/presentation/screens/auth/forgot_password_screen.dart';
 import 'package:venturelink/presentation/screens/main/main_screen.dart';
 import 'package:venturelink/presentation/screens/home/home_screen.dart';
-import 'package:venturelink/presentation/screens/discover/discover_screen.dart';
+import 'package:venturelink/presentation/screens/content/content_screen.dart';
+import 'package:venturelink/presentation/screens/content/publication_detail_screen.dart';
 import 'package:venturelink/presentation/screens/messaging/messaging_screen.dart';
 import 'package:venturelink/presentation/screens/messaging/chat_screen.dart';
 import 'package:venturelink/presentation/screens/notifications/notifications_screen.dart';
@@ -17,11 +18,16 @@ import 'package:venturelink/presentation/screens/project/project_create_screen.d
 import 'package:venturelink/presentation/screens/project/project_detail_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_list_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_create_screen.dart';
+import 'package:venturelink/presentation/screens/investment/investment_detail_screen.dart';
 import 'package:venturelink/presentation/screens/onboarding/onboarding_screen.dart';
 import 'package:venturelink/presentation/screens/subscription/premium_screen.dart';
 import 'package:venturelink/presentation/screens/subscription/payment_webview_screen.dart';
+import 'package:venturelink/presentation/screens/subscription/subscription_screen.dart';
+import 'package:venturelink/presentation/screens/subscription/payment_screen.dart';
+import 'package:venturelink/presentation/screens/subscription/simple_subscription_screen.dart';
 import 'package:venturelink/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:venturelink/presentation/screens/search/advanced_search_screen.dart';
+import 'package:venturelink/data/models/subscription_plan_model.dart';
 import 'package:flutter/widgets.dart';
 
 part 'app_router.gr.dart';
@@ -52,30 +58,34 @@ class AppRouter extends _$AppRouter {
           page: MainRoute.page,
           children: [
             AutoRoute(
-              path: 'home',
+              path: '/home',
               page: HomeRoute.page,
             ),
             AutoRoute(
-              path: 'discover',
-              page: DiscoverRoute.page,
+              path: '/content',
+              page: ContentRoute.page,
             ),
             AutoRoute(
-              path: 'investments',
+              path: '/investments',
               page: InvestmentListRoute.page,
             ),
             AutoRoute(
-              path: 'messaging',
+              path: '/messaging',
               page: MessagingRoute.page,
             ),
             AutoRoute(
-              path: 'notifications',
+              path: '/notifications',
               page: NotificationsRoute.page,
             ),
             AutoRoute(
-              path: 'profile',
+              path: '/profile',
               page: ProfileRoute.page,
             ),
           ],
+        ),
+        AutoRoute(
+          path: '/publication-detail/:publicationId',
+          page: PublicationDetailRoute.page,
         ),
         AutoRoute(
           path: '/chat/:conversationId/:otherUserName',
@@ -110,12 +120,24 @@ class AppRouter extends _$AppRouter {
           page: InvestmentCreateRoute.page,
         ),
         AutoRoute(
+          path: '/investment-detail/:investmentId',
+          page: InvestmentDetailRoute.page,
+        ),
+        AutoRoute(
           path: '/onboarding',
           page: OnboardingRoute.page,
         ),
         AutoRoute(
           path: '/premium',
           page: PremiumRoute.page,
+        ),
+        AutoRoute(
+          path: '/subscription',
+          page: SimpleSubscriptionRoute.page,
+        ),
+        AutoRoute(
+          path: '/payment',
+          page: PaymentRoute.page,
         ),
         AutoRoute(
           path: '/payment-webview',

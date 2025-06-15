@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -11,6 +12,7 @@ import '../../common_widgets/vl_loading_indicator.dart';
 import '../../common_widgets/vl_button.dart';
 import 'payment_screen.dart';
 
+@RoutePage()
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
 

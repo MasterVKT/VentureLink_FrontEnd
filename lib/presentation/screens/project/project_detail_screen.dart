@@ -1,11 +1,15 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
+import 'package:venturelink/data/providers/messaging_provider.dart';
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/core/config/app_config.dart';
 import 'package:venturelink/core/router/app_router.dart';
+import 'package:venturelink/presentation/widgets/project/interest_expression_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
@@ -22,56 +26,76 @@ class ProjectDetailScreen extends StatefulWidget {
   State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
 }
 
-class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
+class _ProjectDetailScreenState extends State<ProjectDetailScreen>
+    with SingleTickerProviderStateMixin {
+  bool _isFavorited = false;
+  bool _hasInterest = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.elasticOut,
+    ));
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProjectProvider>().loadProject(widget.projectId);
+      _loadProject();
     });
   }
 
   @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProject() async {
+    final projectProvider = context.read<ProjectProvider>();
+
+    // Optimisation : vérifier si le projet est déjà en cache
+    if (projectProvider.currentProject?.id == widget.projectId) {
+      return; // Projet déjà chargé
+    }
+
+    await projectProvider.loadProject(widget.projectId);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+
+    // Hauteur responsive du SliverAppBar
+    final expandedHeight =
+        isTablet ? 300.0 : (screenHeight * 0.35).clamp(200.0, 280.0);
+
+    // Padding adaptatif
+    final horizontalPadding =
+        isTablet ? AppConfig.defaultPadding * 2 : AppConfig.defaultPadding;
+
     return Scaffold(
       body: Consumer<ProjectProvider>(
         builder: (context, projectProvider, child) {
+          // État de chargement amélioré
           if (projectProvider.isLoading ||
               projectProvider.currentProject == null) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildLoadingState();
           }
 
+          // État d'erreur amélioré
           if (projectProvider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Erreur de chargement',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    projectProvider.error!,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      projectProvider.loadProject(widget.projectId);
-                    },
-                    child: const Text('Réessayer'),
-                  ),
-                ],
-              ),
-            );
+            return _buildErrorState(projectProvider.error!);
           }
 
           final project = projectProvider.currentProject!;
@@ -80,106 +104,48 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
           return CustomScrollView(
             slivers: [
-              // App Bar avec image
-              SliverAppBar(
-                expandedHeight: 250,
-                pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: project.media?.isNotEmpty == true
-                      ? CachedNetworkImage(
-                          imageUrl: project.media!.first.fileUrl ?? '',
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color:
-                                Theme.of(context).colorScheme.primaryContainer,
-                            child: const Center(
-                                child: CircularProgressIndicator()),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Theme.of(context).colorScheme.primary,
-                                  Theme.of(context).colorScheme.secondary,
-                                ],
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.lightbulb_outline,
-                              color: Colors.white,
-                              size: 64,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Theme.of(context).colorScheme.primary,
-                                Theme.of(context).colorScheme.secondary,
-                              ],
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.lightbulb_outline,
-                            color: Colors.white,
-                            size: 64,
-                          ),
-                        ),
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.favorite_border),
-                    onPressed: () {
-                      projectProvider.toggleFavorite(project.id);
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.share),
-                    onPressed: () {
-                      // TODO: Implémenter le partage
-                    },
-                  ),
-                ],
-              ),
+              // App Bar avec image améliorée
+              _buildSliverAppBar(project, expandedHeight),
 
-              // Contenu principal
+              // Contenu principal avec padding adaptatif
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppConfig.defaultPadding),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: AppConfig.defaultPadding,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // En-tête du projet
+                      // En-tête du projet avec animations
                       _buildProjectHeader(project),
 
-                      const SizedBox(height: 24),
+                      _buildSpacer(isTablet ? 32 : 24),
 
-                      // Actions principales
+                      // Actions principales avec feedback visuel
                       if (!isOwner) _buildActionButtons(project),
 
-                      const SizedBox(height: 24),
+                      _buildSpacer(isTablet ? 32 : 24),
 
                       // Description
                       _buildDescription(project),
 
-                      const SizedBox(height: 24),
+                      _buildSpacer(isTablet ? 32 : 24),
 
-                      // Informations du projet
-                      _buildProjectInfo(project),
+                      // Informations du projet améliorées
+                      _buildProjectInfo(project, isTablet),
 
-                      const SizedBox(height: 24),
+                      _buildSpacer(isTablet ? 32 : 24),
 
-                      // Tags
+                      // Tags améliorés
                       if (project.tags?.isNotEmpty == true) _buildTags(project),
 
-                      const SizedBox(height: 24),
+                      _buildSpacer(isTablet ? 32 : 24),
 
-                      // Créateur
+                      // Créateur avec accessibilité améliorée
                       _buildCreatorInfo(project),
 
-                      const SizedBox(
-                          height: 100), // Espace pour le bouton flottant
+                      _buildSpacer(120), // Espace pour le bouton flottant
                     ],
                   ),
                 ),
@@ -188,26 +154,175 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           );
         },
       ),
-      floatingActionButton: Consumer<ProjectProvider>(
-        builder: (context, projectProvider, child) {
-          final project = projectProvider.currentProject;
-          final currentUser = context.watch<AuthProvider>().currentUser;
+      floatingActionButton: _buildInvestmentButton(),
+    );
+  }
 
-          if (project == null || currentUser?.id == project.creator.id) {
-            return const SizedBox.shrink();
-          }
-
-          return FloatingActionButton.extended(
-            onPressed: () {
-              context.router.push(InvestmentCreateRoute(projectId: project.id));
-            },
-            icon: const Icon(Icons.account_balance_wallet),
-            label: const Text('Investir'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-          );
-        },
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Chargement du projet...'),
+        ],
       ),
     );
+  }
+
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConfig.defaultPadding),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+              semanticLabel: 'Erreur',
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Erreur de chargement',
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.7),
+                  ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadProject,
+              child: const Text('Réessayer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar(ProjectModel project, double expandedHeight) {
+    return SliverAppBar(
+      expandedHeight: expandedHeight,
+      pinned: true,
+      flexibleSpace: FlexibleSpaceBar(
+        background: _buildProjectImage(project),
+      ),
+      actions: [
+        // Bouton favori avec animation
+        AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _isFavorited ? _scaleAnimation.value : 1.0,
+              child: IconButton(
+                icon: Icon(
+                  _isFavorited ? Icons.favorite : Icons.favorite_border,
+                  color: _isFavorited ? Colors.red : null,
+                  semanticLabel: _isFavorited
+                      ? 'Retirer des favoris'
+                      : 'Ajouter aux favoris',
+                ),
+                onPressed: () => _handleToggleFavorite(project),
+              ),
+            );
+          },
+        ),
+        // Bouton partage fonctionnel
+        IconButton(
+          icon: const Icon(Icons.share),
+          onPressed: () => _handleShare(project),
+          tooltip: 'Partager ce projet',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProjectImage(ProjectModel project) {
+    // Utilisation du nouveau système de médias
+    final imageUrl = project.hasAnyMedia ? project.allMedia.first.url : null;
+
+    if (imageUrl != null) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        errorWidget: (context, url, error) => _buildImageError(),
+      );
+    }
+
+    return _buildDefaultBackground();
+  }
+
+  Widget _buildImageError() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.errorContainer,
+            Theme.of(context).colorScheme.error.withOpacity(0.8),
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_not_supported_outlined,
+            color: Theme.of(context).colorScheme.onErrorContainer,
+            size: 48,
+            semanticLabel: 'Image non disponible',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Image non disponible',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onErrorContainer,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDefaultBackground() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.secondary,
+          ],
+        ),
+      ),
+      child: Icon(
+        Icons.lightbulb_outline,
+        color: Theme.of(context).colorScheme.onPrimary,
+        size: 64,
+        semanticLabel: 'Icône de projet',
+      ),
+    );
+  }
+
+  Widget _buildSpacer(double height) {
+    return SizedBox(height: height);
   }
 
   Widget _buildProjectHeader(ProjectModel project) {
@@ -216,6 +331,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       children: [
         // Titre et badges
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Text(
@@ -225,86 +341,119 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     ),
               ),
             ),
-            if (project.isPremium)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.amber,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Text(
-                  'PREMIUM',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+            const SizedBox(width: 12),
+            if (project.isPremium) _buildPremiumBadge(),
           ],
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
 
         Text(
           project.shortDescription,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
-        // Statistiques
-        Row(
-          children: [
-            _buildStatChip(Icons.visibility, project.viewsCount.toString()),
-            const SizedBox(width: 12),
-            _buildStatChip(
-                Icons.favorite_border, project.favoritesCount.toString()),
-            const SizedBox(width: 12),
-            _buildStatChip(
-                Icons.thumb_up_outlined, project.interestsCount.toString()),
-            const Spacer(),
-            Text(
-              'Publié le ${DateFormat('dd/MM/yyyy').format(project.publishedAt ?? project.createdAt)}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-          ],
+        // Statistiques avec meilleur alignement
+        _buildStatsRow(project),
+      ],
+    );
+  }
+
+  Widget _buildPremiumBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.amber,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        'PREMIUM',
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onPrimary,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsRow(ProjectModel project) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      children: [
+        _buildStatChip(
+          Icons.visibility,
+          project.viewsCount.toString(),
+          'Vues',
+        ),
+        _buildStatChip(
+          Icons.favorite_border,
+          project.favoritesCount.toString(),
+          'Favoris',
+        ),
+        _buildStatChip(
+          Icons.thumb_up_outlined,
+          project.interestsCount.toString(),
+          'Intérêts',
+        ),
+        Text(
+          'Publié le ${DateFormat('dd/MM/yyyy').format(project.publishedAt ?? project.createdAt)}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              ),
         ),
       ],
     );
   }
 
   Widget _buildActionButtons(ProjectModel project) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              context.read<ProjectProvider>().toggleInterest(project.id);
-            },
-            icon: const Icon(Icons.thumb_up_outlined),
-            label: const Text('Manifester mon intérêt'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _handleToggleInterest(project),
+                icon: Icon(
+                  _hasInterest ? Icons.thumb_up : Icons.thumb_up_outlined,
+                  semanticLabel:
+                      _hasInterest ? 'Retirer intérêt' : 'Manifester intérêt',
+                ),
+                label: Text(_hasInterest
+                    ? 'Intérêt manifesté'
+                    : 'Manifester mon intérêt'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  minimumSize: const Size(0, 48), // Accessibilité
+                  backgroundColor: _hasInterest
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                      : null,
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        ElevatedButton.icon(
-          onPressed: () {
-            // TODO: Implémenter la messagerie
-          },
-          icon: const Icon(Icons.message_outlined),
-          label: const Text('Contacter'),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _handleContact(project),
+                icon: const Icon(
+                  Icons.message_outlined,
+                  semanticLabel: 'Contacter le créateur',
+                ),
+                label: const Text('Contacter'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  minimumSize: const Size(0, 48), // Accessibilité
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -320,16 +469,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 fontWeight: FontWeight.bold,
               ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Text(
           project.fullDescription,
-          style: Theme.of(context).textTheme.bodyLarge,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                height: 1.6, // Meilleure lisibilité
+              ),
         ),
       ],
     );
   }
 
-  Widget _buildProjectInfo(ProjectModel project) {
+  Widget _buildProjectInfo(ProjectModel project, bool isTablet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -341,7 +492,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         ),
         const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isTablet ? 20 : 16),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
@@ -349,14 +500,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           child: Column(
             children: [
               _buildInfoRow('Catégorie', project.category.getName('fr')),
-              const Divider(),
+              const Divider(height: 24),
               _buildInfoRow('Stade', _getStageLabel(project.stage)),
-              const Divider(),
+              const Divider(height: 24),
               _buildInfoRow('Financement recherché',
-                  '${project.fundingMin.toInt()}k - ${project.fundingMax.toInt()}k ${project.fundingCurrency}'),
+                  '${_formatAmount(project.fundingMin)} - ${_formatAmount(project.fundingMax)} ${project.fundingCurrency}'),
               if (project.locationCity != null ||
                   project.locationCountry != null) ...[
-                const Divider(),
+                const Divider(height: 24),
                 _buildInfoRow('Localisation',
                     '${project.locationCity ?? ''} ${project.locationCountry ?? ''}'),
               ],
@@ -369,20 +520,26 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
+          Flexible(
+            flex: 2,
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.8),
                   ),
             ),
           ),
-          Expanded(
+          const SizedBox(width: 16),
+          Flexible(
+            flex: 3,
             child: Text(
               value,
               style: Theme.of(context).textTheme.bodyMedium,
@@ -403,22 +560,23 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 fontWeight: FontWeight.bold,
               ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: project.tags!.map((tag) {
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 tag.getName('fr'),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                   fontWeight: FontWeight.w500,
+                  fontSize: 13,
                 ),
               ),
             );
@@ -440,7 +598,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         ),
         const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
@@ -448,7 +606,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           child: Row(
             children: [
               CircleAvatar(
-                radius: 30,
+                radius: 32,
                 backgroundImage: project.creator.profile?.profilePicture != null
                     ? CachedNetworkImageProvider(
                         project.creator.profile!.profilePicture!)
@@ -472,18 +630,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                     ),
-                    if (project.creator.profile?.title != null)
+                    if (project.creator.profile?.title != null) ...[
+                      const SizedBox(height: 4),
                       Text(
                         project.creator.profile!.title!,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.7),
                             ),
                       ),
+                    ],
                     if (project.creator.profile?.bioShort != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         project.creator.profile!.bioShort!,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              height: 1.4,
+                            ),
                       ),
                     ],
                   ],
@@ -496,17 +661,48 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     );
   }
 
-  Widget _buildStatChip(IconData icon, String count) {
+  Widget _buildInvestmentButton() {
+    return Consumer<ProjectProvider>(
+      builder: (context, projectProvider, child) {
+        final project = projectProvider.currentProject;
+        final currentUser = context.watch<AuthProvider>().currentUser;
+
+        if (project == null || currentUser?.id == project.creator.id) {
+          return const SizedBox.shrink();
+        }
+
+        return FloatingActionButton.extended(
+          onPressed: () {
+            context.router.push(InvestmentCreateRoute(projectId: project.id));
+          },
+          icon: const Icon(
+            Icons.account_balance_wallet,
+            semanticLabel: 'Investir dans ce projet',
+          ),
+          label: const Text('Investir'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        );
+      },
+    );
+  }
+
+  Widget _buildStatChip(IconData icon, String count, String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
+        Icon(
+          icon,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          semanticLabel: label,
+        ),
         const SizedBox(width: 4),
         Text(
           count,
           style: TextStyle(
-            color: Colors.grey[600],
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -525,6 +721,228 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         return 'Croissance';
       default:
         return stage;
+    }
+  }
+
+  String _formatAmount(double amount) {
+    if (amount >= 1000000) {
+      return '${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount >= 1000) {
+      return '${(amount / 1000).toStringAsFixed(0)}k';
+    }
+    return amount.toStringAsFixed(0);
+  }
+
+  // Actions avec feedback visuel et haptique
+  Future<void> _handleToggleFavorite(ProjectModel project) async {
+    // Feedback haptique
+    HapticFeedback.lightImpact();
+
+    // Animation
+    if (!_isFavorited) {
+      _animationController.forward().then((_) {
+        _animationController.reverse();
+      });
+    }
+
+    setState(() {
+      _isFavorited = !_isFavorited;
+    });
+
+    try {
+      final success =
+          await context.read<ProjectProvider>().toggleFavorite(project.id);
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_isFavorited
+                  ? 'Projet ajouté aux favoris'
+                  : 'Projet retiré des favoris'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        // Annuler le changement en cas d'échec
+        setState(() {
+          _isFavorited = !_isFavorited;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors de la mise à jour des favoris'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Annuler le changement en cas d'erreur
+      setState(() {
+        _isFavorited = !_isFavorited;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur de connexion'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleToggleInterest(ProjectModel project) async {
+    // Feedback haptique
+    HapticFeedback.selectionClick();
+
+    if (_hasInterest) {
+      // Si l'utilisateur a déjà manifesté son intérêt, le retirer directement
+      setState(() {
+        _hasInterest = false;
+      });
+
+      try {
+        final success =
+            await context.read<ProjectProvider>().toggleInterest(project.id);
+
+        if (success) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Intérêt retiré'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } else {
+          // Annuler le changement en cas d'échec
+          setState(() {
+            _hasInterest = true;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Erreur lors de la suppression de l\'intérêt'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        // Annuler le changement en cas d'erreur
+        setState(() {
+          _hasInterest = true;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur de connexion'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else {
+      // Utiliser le widget avancé pour manifester l'intérêt
+      await InterestExpressionHelper.show(
+        context,
+        project,
+        onSuccess: () {
+          setState(() {
+            _hasInterest = true;
+          });
+        },
+      );
+    }
+  }
+
+  Future<void> _handleShare(ProjectModel project) async {
+    // Feedback haptique
+    HapticFeedback.selectionClick();
+
+    try {
+      final shareUrl = 'https://venturelink.com/projects/${project.id}';
+      final shareText = 'Découvrez ce projet innovant sur VentureLink !\n\n'
+          '📋 ${project.title}\n'
+          '💡 ${project.shortDescription}\n\n'
+          '🔗 $shareUrl';
+
+      await Share.share(
+        shareText,
+        subject: 'Projet VentureLink: ${project.title}',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors du partage'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleContact(ProjectModel project) async {
+    // Feedback haptique
+    HapticFeedback.selectionClick();
+
+    try {
+      final messagingProvider = context.read<MessagingProvider>();
+
+      // Créer ou récupérer la conversation directe avec message initial
+      final conversation = await messagingProvider.createConversation(
+        project.creator.id,
+        'Bonjour, je suis intéressé par votre projet "${project.title}". Pourrions-nous en discuter ?',
+      );
+
+      if (mounted && conversation != null) {
+        // Naviguer vers la conversation
+        context.router.push(MessagingRoute());
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Conversation ouverte avec ${project.creator.fullName}'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors de l\'ouverture de la conversation'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur de connexion'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 }

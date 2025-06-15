@@ -1,4 +1,5 @@
 import 'package:venturelink/data/models/investment_model.dart';
+import 'package:venturelink/data/models/investment_stats_model.dart' as stats;
 import 'package:venturelink/data/services/api_service.dart';
 
 class InvestmentApiService {
@@ -6,24 +7,22 @@ class InvestmentApiService {
 
   InvestmentApiService(this._apiService);
 
-  /// Récupérer la liste des investissements
+  /// Récupérer la liste des investissements avec filtres
   Future<List<InvestmentModel>> getInvestments({
+    String? projectId,
     String? status,
     String? investmentType,
-    String? projectId,
-    String? investorId,
-    int page = 1,
-    int limit = 20,
+    String? ordering = '-created_at',
+    int? page,
+    int? pageSize,
   }) async {
-    final queryParams = <String, dynamic>{
-      'page': page,
-      'limit': limit,
-    };
-
+    final queryParams = <String, dynamic>{};
+    if (projectId != null) queryParams['project_id'] = projectId;
     if (status != null) queryParams['status'] = status;
     if (investmentType != null) queryParams['investment_type'] = investmentType;
-    if (projectId != null) queryParams['project_id'] = projectId;
-    if (investorId != null) queryParams['investor_id'] = investorId;
+    if (ordering != null) queryParams['ordering'] = ordering;
+    if (page != null) queryParams['page'] = page;
+    if (pageSize != null) queryParams['page_size'] = pageSize;
 
     final response = await _apiService.get(
       '/investments/',
@@ -31,10 +30,11 @@ class InvestmentApiService {
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = response.data['results'] ?? response.data;
-      return data.map((json) => InvestmentModel.fromJson(json)).toList();
+      final data = response.data;
+      final results = data['results'] as List? ?? data as List;
+      return results.map((json) => InvestmentModel.fromJson(json)).toList();
     } else {
-      throw Exception('Erreur lors du chargement des investissements');
+      throw Exception('Failed to load investments: ${response.statusCode}');
     }
   }
 
@@ -47,7 +47,7 @@ class InvestmentApiService {
     } else if (response.statusCode == 404) {
       return null;
     } else {
-      throw Exception('Erreur lors du chargement de l\'investissement');
+      throw Exception('Failed to load investment: ${response.statusCode}');
     }
   }
 
@@ -55,186 +55,123 @@ class InvestmentApiService {
   Future<InvestmentModel?> createInvestment({
     required String projectId,
     required double amount,
-    String? currency,
+    String currency = 'EUR',
     required String investmentType,
     double? equityPercentage,
     double? interestRate,
     int? termMonths,
     String? description,
   }) async {
-    final data = {
+    final body = {
       'project_id': projectId,
-      'amount': amount,
-      'currency': currency ?? 'EUR',
+      'amount': amount.toString(),
+      'currency': currency,
       'investment_type': investmentType,
-      if (equityPercentage != null) 'equity_percentage': equityPercentage,
-      if (interestRate != null) 'interest_rate': interestRate,
+      if (equityPercentage != null)
+        'equity_percentage': equityPercentage.toString(),
+      if (interestRate != null) 'interest_rate': interestRate.toString(),
       if (termMonths != null) 'term_months': termMonths,
       if (description != null) 'description': description,
     };
 
-    final response = await _apiService.post('/investments/', data: data);
+    final response = await _apiService.post('/investments/', data: body);
 
     if (response.statusCode == 201) {
       return InvestmentModel.fromJson(response.data);
     } else {
-      throw Exception('Erreur lors de la création de l\'investissement');
+      // Essayer de parser l'erreur pour un message plus spécifique
+      try {
+        final errorData = response.data;
+        if (errorData is Map<String, dynamic>) {
+          final errors = <String>[];
+          errorData.forEach((key, value) {
+            if (value is List) {
+              errors.addAll(value.map((e) => '$key: $e'));
+            } else {
+              errors.add('$key: $value');
+            }
+          });
+          throw Exception('Erreur de validation: ${errors.join(', ')}');
+        }
+      } catch (_) {
+        // Ignorer les erreurs de parsing et utiliser le message générique
+      }
+
+      throw Exception('Failed to create investment: ${response.statusCode}');
     }
   }
 
-  /// Mettre à jour un investissement
+  /// Mettre à jour un investissement (uniquement si PENDING)
   Future<InvestmentModel?> updateInvestment(
-    String investmentId,
-    Map<String, dynamic> data,
-  ) async {
-    final response = await _apiService.patch(
-      '/investments/$investmentId/',
-      data: data,
-    );
+      String investmentId, Map<String, dynamic> data) async {
+    final response =
+        await _apiService.put('/investments/$investmentId/', data: data);
 
     if (response.statusCode == 200) {
       return InvestmentModel.fromJson(response.data);
     } else {
-      throw Exception('Erreur lors de la mise à jour de l\'investissement');
+      throw Exception('Failed to update investment: ${response.statusCode}');
     }
   }
 
-  /// Approuver un investissement
-  Future<bool> approveInvestment(String investmentId) async {
-    final response = await _apiService.post(
-      '/investments/$investmentId/approve/',
-    );
+  /// Mettre à jour le statut d'un investissement
+  Future<bool> updateInvestmentStatus(String investmentId, String status,
+      {String? comment}) async {
+    final body = {
+      'status': status,
+      if (comment != null) 'comment': comment,
+    };
 
+    final response = await _apiService
+        .patch('/investments/$investmentId/update_status/', data: body);
     return response.statusCode == 200;
+  }
+
+  /// Approuver un investissement
+  Future<bool> approveInvestment(String investmentId, {String? comment}) async {
+    return updateInvestmentStatus(investmentId, 'APPROVED', comment: comment);
   }
 
   /// Rejeter un investissement
   Future<bool> rejectInvestment(String investmentId, {String? reason}) async {
-    final data = <String, dynamic>{};
-    if (reason != null) data['reason'] = reason;
-
-    final response = await _apiService.post(
-      '/investments/$investmentId/reject/',
-      data: data,
-    );
-
-    return response.statusCode == 200;
+    return updateInvestmentStatus(investmentId, 'REJECTED', comment: reason);
   }
 
   /// Annuler un investissement
   Future<bool> cancelInvestment(String investmentId, {String? reason}) async {
-    final data = <String, dynamic>{};
-    if (reason != null) data['reason'] = reason;
-
-    final response = await _apiService.post(
-      '/investments/$investmentId/cancel/',
-      data: data,
-    );
-
-    return response.statusCode == 200;
+    return updateInvestmentStatus(investmentId, 'CANCELLED', comment: reason);
   }
 
   /// Finaliser un investissement
   Future<bool> completeInvestment(String investmentId) async {
-    final response = await _apiService.post(
-      '/investments/$investmentId/complete/',
-    );
-
-    return response.statusCode == 200;
+    return updateInvestmentStatus(investmentId, 'COMPLETED');
   }
 
   /// Récupérer les statistiques d'investissement
-  Future<InvestmentStatsModel?> getInvestmentStats() async {
+  Future<stats.InvestmentStatsModel?> getInvestmentStats() async {
     final response = await _apiService.get('/investments/stats/');
 
     if (response.statusCode == 200) {
-      return InvestmentStatsModel.fromJson(response.data);
+      return stats.InvestmentStatsModel.fromJson(response.data);
     } else {
-      throw Exception('Erreur lors du chargement des statistiques');
+      throw Exception(
+          'Failed to load investment statistics: ${response.statusCode}');
     }
   }
 
-  /// Télécharger un contrat d'investissement
-  Future<String?> downloadContract(String investmentId) async {
-    final response = await _apiService.get(
-      '/investments/$investmentId/contract/',
-    );
-
-    if (response.statusCode == 200) {
-      return response.data['download_url'];
-    } else {
-      throw Exception('Erreur lors du téléchargement du contrat');
-    }
+  /// Récupérer les investissements par statut
+  Future<List<InvestmentModel>> getInvestmentsByStatus(String status) async {
+    return getInvestments(status: status);
   }
 
-  /// Uploader un contrat signé
-  Future<bool> uploadSignedContract(
-    String investmentId,
-    String filePath,
-  ) async {
-    // TODO: Implémenter l'upload de fichiers quand la méthode sera disponible
-    return false;
+  /// Récupérer les investissements d'un projet
+  Future<List<InvestmentModel>> getProjectInvestments(String projectId) async {
+    return getInvestments(projectId: projectId);
   }
-}
 
-// Modèles supplémentaires pour l'historique et les paiements
-class InvestmentHistoryModel {
-  final String id;
-  final String investmentId;
-  final String action;
-  final String? description;
-  final DateTime createdAt;
-
-  InvestmentHistoryModel({
-    required this.id,
-    required this.investmentId,
-    required this.action,
-    this.description,
-    required this.createdAt,
-  });
-
-  factory InvestmentHistoryModel.fromJson(Map<String, dynamic> json) {
-    return InvestmentHistoryModel(
-      id: json['id'],
-      investmentId: json['investment_id'],
-      action: json['action'],
-      description: json['description'],
-      createdAt: DateTime.parse(json['created_at']),
-    );
-  }
-}
-
-class PaymentModel {
-  final String id;
-  final String investmentId;
-  final double amount;
-  final String currency;
-  final String paymentMethod;
-  final String status;
-  final String? description;
-  final DateTime createdAt;
-
-  PaymentModel({
-    required this.id,
-    required this.investmentId,
-    required this.amount,
-    required this.currency,
-    required this.paymentMethod,
-    required this.status,
-    this.description,
-    required this.createdAt,
-  });
-
-  factory PaymentModel.fromJson(Map<String, dynamic> json) {
-    return PaymentModel(
-      id: json['id'],
-      investmentId: json['investment_id'],
-      amount: json['amount'].toDouble(),
-      currency: json['currency'],
-      paymentMethod: json['payment_method'],
-      status: json['status'],
-      description: json['description'],
-      createdAt: DateTime.parse(json['created_at']),
-    );
+  /// Supprimer un investissement (uniquement si PENDING)
+  Future<bool> deleteInvestment(String investmentId) async {
+    final response = await _apiService.delete('/investments/$investmentId/');
+    return response.statusCode == 204;
   }
 }

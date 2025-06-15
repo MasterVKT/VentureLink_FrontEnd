@@ -7,6 +7,9 @@ class ProjectProvider extends ChangeNotifier {
   late final ProjectApiService _projectApiService;
 
   List<ProjectModel> _projects = [];
+  List<ProjectModel> _featuredProjects = [];
+  List<ProjectModel> _trendingProjects = [];
+  List<ProjectModel> _recommendedProjects = [];
   List<CategoryModel> _categories = [];
   List<TagModel> _tags = [];
   ProjectModel? _currentProject;
@@ -16,6 +19,9 @@ class ProjectProvider extends ChangeNotifier {
   int _currentPage = 1;
 
   List<ProjectModel> get projects => _projects;
+  List<ProjectModel> get featuredProjects => _featuredProjects;
+  List<ProjectModel> get trendingProjects => _trendingProjects;
+  List<ProjectModel> get recommendedProjects => _recommendedProjects;
   List<CategoryModel> get categories => _categories;
   List<TagModel> get tags => _tags;
   ProjectModel? get currentProject => _currentProject;
@@ -428,4 +434,202 @@ class ProjectProvider extends ChangeNotifier {
     await loadProjects(refresh: true);
     // Note: Dans une vraie app, on filtrerait par l'ID de l'utilisateur connecté
   }
+
+  /// Charger les projets en vedette (featured)
+  Future<void> loadFeaturedProjects() async {
+    try {
+      debugPrint('[ProjectProvider] Chargement des projets featured');
+      final result = await _projectApiService.getFeaturedProjects();
+
+      if (result.isSuccess && result.projects != null) {
+        _featuredProjects = result.projects!;
+        debugPrint(
+            '[ProjectProvider] ${_featuredProjects.length} projets featured chargés');
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[ProjectProvider] Erreur chargement projets featured: $e');
+    }
+  }
+
+  /// Charger les projets tendance (trending)
+  Future<void> loadTrendingProjects() async {
+    try {
+      debugPrint('[ProjectProvider] Chargement des projets trending');
+      final result = await _projectApiService.getTrendingProjects();
+
+      if (result.isSuccess && result.projects != null) {
+        _trendingProjects = result.projects!;
+        debugPrint(
+            '[ProjectProvider] ${_trendingProjects.length} projets trending chargés');
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[ProjectProvider] Erreur chargement projets trending: $e');
+    }
+  }
+
+  /// Charger les projets recommandés (pour l'utilisateur connecté)
+  Future<void> loadRecommendedProjects() async {
+    try {
+      debugPrint('[ProjectProvider] Chargement des projets recommandés');
+      final result = await _projectApiService.getRecommendedProjects();
+
+      if (result.isSuccess && result.projects != null) {
+        _recommendedProjects = result.projects!;
+        debugPrint(
+            '[ProjectProvider] ${_recommendedProjects.length} projets recommandés chargés');
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[ProjectProvider] Erreur chargement projets recommandés: $e');
+    }
+  }
+
+  /// Exprimer un intérêt avec message et montant
+  Future<bool> expressInterest(
+    String projectId, {
+    String? message,
+    double? amount,
+    bool isAnonymous = false,
+  }) async {
+    try {
+      final success = await _projectApiService.expressInterest(
+        projectId,
+        message: message,
+        amount: amount,
+        isAnonymous: isAnonymous,
+      );
+
+      if (success) {
+        // Mettre à jour le compteur d'intérêts
+        final index = _projects.indexWhere((p) => p.id == projectId);
+        if (index != -1) {
+          // Incrémenter le compteur d'intérêts
+          notifyListeners();
+        }
+      }
+      return success;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  /// Sauvegarder un projet comme brouillon
+  Future<bool> saveDraft({
+    required String title,
+    required String shortDescription,
+    required String fullDescription,
+    required String categoryId,
+    required String stage,
+    required double fundingMin,
+    required double fundingMax,
+    String? fundingCurrency,
+    String? locationCountry,
+    String? locationCity,
+    String? businessPlan,
+    String? videoUrl,
+    List<String>? tagIds,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final project = await _projectApiService.saveDraft(
+        title: title,
+        shortDescription: shortDescription,
+        fullDescription: fullDescription,
+        categoryId: categoryId,
+        stage: stage,
+        fundingMin: fundingMin,
+        fundingMax: fundingMax,
+        fundingCurrency: fundingCurrency,
+        locationCountry: locationCountry,
+        locationCity: locationCity,
+        businessPlan: businessPlan,
+        videoUrl: videoUrl,
+        tagIds: tagIds,
+      );
+
+      if (project != null) {
+        _projects.insert(0, project);
+        _currentProject = project;
+        _setLoading(false);
+        return true;
+      } else {
+        _setError('Erreur lors de la sauvegarde du brouillon');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Mettre à jour un brouillon existant
+  Future<bool> updateDraft(
+    String projectId,
+    Map<String, dynamic> data,
+  ) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final updatedProject =
+          await _projectApiService.updateDraft(projectId, data);
+
+      if (updatedProject != null) {
+        // Mettre à jour dans la liste
+        final index = _projects.indexWhere((p) => p.id == projectId);
+        if (index != -1) {
+          _projects[index] = updatedProject;
+        }
+
+        // Mettre à jour le projet actuel si c'est le même
+        if (_currentProject?.id == projectId) {
+          _currentProject = updatedProject;
+        }
+
+        _setLoading(false);
+        return true;
+      } else {
+        _setError('Erreur lors de la mise à jour du brouillon');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Récupérer les brouillons de l'utilisateur
+  Future<void> loadUserDrafts() async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final result = await _projectApiService.getUserDrafts();
+
+      if (result.isSuccess && result.projects != null) {
+        _projects = result.projects!;
+        debugPrint('[ProjectProvider] ${_projects.length} brouillons chargés');
+        notifyListeners();
+      } else {
+        _setError(result.error ?? 'Erreur lors du chargement des brouillons');
+      }
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Getter pour les brouillons de l'utilisateur
+  List<ProjectModel> get userDrafts =>
+      _projects.where((p) => p.isDraft).toList();
 }

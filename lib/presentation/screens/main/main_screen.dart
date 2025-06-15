@@ -13,7 +13,7 @@ class MainScreen extends StatelessWidget {
     return AutoTabsScaffold(
       routes: const [
         HomeRoute(),
-        DiscoverRoute(),
+        ContentRoute(),
         InvestmentListRoute(),
         MessagingRoute(),
         NotificationsRoute(),
@@ -29,10 +29,10 @@ class MainScreen extends StatelessWidget {
               selectedIcon: const Icon(Icons.home),
               label: appLocalizations.home,
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.explore_outlined),
-              selectedIcon: const Icon(Icons.explore),
-              label: appLocalizations.discover,
+            const NavigationDestination(
+              icon: Icon(Icons.article_outlined),
+              selectedIcon: Icon(Icons.article),
+              label: 'Publications',
             ),
             const NavigationDestination(
               icon: Icon(Icons.account_balance_wallet_outlined),

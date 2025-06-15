@@ -199,6 +199,71 @@ class ProjectApiService {
     }
   }
 
+  /// Récupérer les projets en vedette
+  Future<ProjectListResult> getFeaturedProjects({int limit = 10}) async {
+    try {
+      final response = await _apiService
+          .get('/projects/featured/', queryParameters: {'limit': limit});
+      return ProjectListResult.safeParseApiResponse(response.data);
+    } catch (e) {
+      return ProjectListResult.failure(e.toString());
+    }
+  }
+
+  /// Récupérer les projets tendance
+  Future<ProjectListResult> getTrendingProjects({
+    int days = 7,
+    int limit = 10,
+  }) async {
+    try {
+      final response =
+          await _apiService.get('/projects/trending/', queryParameters: {
+        'days': days,
+        'limit': limit,
+      });
+      return ProjectListResult.safeParseApiResponse(response.data);
+    } catch (e) {
+      return ProjectListResult.failure(e.toString());
+    }
+  }
+
+  /// Récupérer les projets recommandés pour l'utilisateur connecté
+  Future<ProjectListResult> getRecommendedProjects({int limit = 10}) async {
+    try {
+      // Selon l'API, il n'y a pas d'endpoint spécifique pour les recommandations
+      // On peut utiliser les intérêts de l'utilisateur ou une autre logique
+      final response = await _apiService.get('/projects/', queryParameters: {
+        'limit': limit,
+        'ordering': 'interests_count', // Trier par intérêts pour simuler
+      });
+      return ProjectListResult.safeParseApiResponse(response.data);
+    } catch (e) {
+      return ProjectListResult.failure(e.toString());
+    }
+  }
+
+  /// Exprimer un intérêt détaillé pour un projet
+  Future<bool> expressInterest(
+    String projectId, {
+    String? message,
+    double? amount,
+    bool isAnonymous = false,
+  }) async {
+    try {
+      final data = <String, dynamic>{
+        if (message != null) 'message': message,
+        if (amount != null) 'investment_amount': amount,
+        'is_anonymous': isAnonymous,
+      };
+
+      await _apiService.post('/projects/$projectId/toggle-interest/',
+          data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Dupliquer un projet
   Future<ProjectModel?> duplicateProject(String projectId) async {
     try {
@@ -337,6 +402,78 @@ class ProjectApiService {
           .toList();
     } catch (e) {
       return [];
+    }
+  }
+
+  /// Sauvegarder un projet comme brouillon
+  Future<ProjectModel?> saveDraft({
+    required String title,
+    required String shortDescription,
+    required String fullDescription,
+    required String categoryId,
+    required String stage,
+    required double fundingMin,
+    required double fundingMax,
+    String? fundingCurrency,
+    String? locationCountry,
+    String? locationCity,
+    String? businessPlan,
+    String? videoUrl,
+    List<String>? tagIds,
+  }) async {
+    try {
+      final data = {
+        'title': title,
+        'short_description': shortDescription,
+        'full_description': fullDescription,
+        'category': categoryId,
+        'stage': stage,
+        'funding_min': fundingMin,
+        'funding_max': fundingMax,
+        'funding_currency': fundingCurrency ?? 'EUR',
+        'location_country': locationCountry,
+        'location_city': locationCity,
+        'business_plan': businessPlan,
+        'video_url': videoUrl,
+        'tags': tagIds,
+        'is_draft': true, // Marquer comme brouillon
+      };
+
+      final response = await _apiService.post('/projects/', data: data);
+      return ProjectModel.fromJson(response.data);
+    } catch (e) {
+      debugPrint('Erreur lors de la sauvegarde du brouillon: $e');
+      return null;
+    }
+  }
+
+  /// Mettre à jour un brouillon existant
+  Future<ProjectModel?> updateDraft(
+    String projectId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      // S'assurer que le projet reste un brouillon
+      data['is_draft'] = true;
+
+      final response =
+          await _apiService.patch('/projects/$projectId/', data: data);
+      return ProjectModel.fromJson(response.data);
+    } catch (e) {
+      debugPrint('Erreur lors de la mise à jour du brouillon: $e');
+      return null;
+    }
+  }
+
+  /// Récupérer les brouillons de l'utilisateur
+  Future<ProjectListResult> getUserDrafts() async {
+    try {
+      final response = await _apiService
+          .get('/projects/my-projects/', queryParameters: {'is_draft': true});
+      return ProjectListResult.safeParseApiResponse(response.data);
+    } catch (e) {
+      debugPrint('Erreur lors de la récupération des brouillons: $e');
+      return ProjectListResult.failure(e.toString());
     }
   }
 }
