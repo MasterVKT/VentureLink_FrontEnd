@@ -89,8 +89,8 @@ class ApiService implements IApiService {
   }
 
   InterceptorsWrapper _createAuthInterceptor() {
-    int _refreshRetries = 0;
-    const int _maxRefreshRetries = 2;
+    int refreshRetries = 0;
+    const int maxRefreshRetries = 2;
 
     return InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -110,14 +110,14 @@ class ApiService implements IApiService {
 
         // Si le token a expiré (401), essayer de le rafraîchir (max 2x)
         if (error.response?.statusCode == 401 &&
-            _refreshRetries < _maxRefreshRetries) {
-          _refreshRetries++;
+            refreshRetries < maxRefreshRetries) {
+          refreshRetries++;
           AppLogger.warning(
-              '[AUTH] Token 401, tentative refresh #$_refreshRetries/$_maxRefreshRetries');
+              '[AUTH] Token 401, tentative refresh #$refreshRetries/$maxRefreshRetries');
 
           final refreshed = await _refreshAccessToken();
           if (refreshed) {
-            _refreshRetries = 0; // Reset counter on success
+            refreshRetries = 0; // Reset counter on success
             try {
               // Retry la requête originale avec le nouveau token
               final clonedRequest = await _dio.fetch(error.requestOptions);
@@ -130,7 +130,7 @@ class ApiService implements IApiService {
         }
 
         // Reset retry counter si ce n'est pas un 401
-        _refreshRetries = 0;
+        refreshRetries = 0;
         handler.next(error);
       },
     );
