@@ -27,7 +27,6 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
   String _selectedStage = '';
   String _selectedFundingType = '';
   RangeValues _fundingRange = const RangeValues(0, 1000000);
-  List<String> _selectedSectors = [];
   DateTime? _createdAfter;
   DateTime? _createdBefore;
   bool _isVerifiedOnly = false;
@@ -551,6 +550,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
     await Future.delayed(const Duration(seconds: 1));
 
     // TODO: Remplacer par un vrai appel API
+    if (!mounted) return;
     final projectProvider = context.read<ProjectProvider>();
     final allProjects = projectProvider.projects;
 
@@ -610,7 +610,6 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
       _selectedStage = '';
       _selectedFundingType = '';
       _fundingRange = const RangeValues(0, 1000000);
-      _selectedSectors = [];
       _createdAfter = null;
       _createdBefore = null;
       _isVerifiedOnly = false;
@@ -652,9 +651,12 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
             ),
             ElevatedButton(
               onPressed: () {
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+
                 // TODO: Sauvegarder la recherche
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                navigator.pop();
+                scaffoldMessenger.showSnackBar(
                   const SnackBar(
                     content: Text('Recherche sauvegardée !'),
                   ),

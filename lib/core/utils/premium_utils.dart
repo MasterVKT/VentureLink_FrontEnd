@@ -97,7 +97,7 @@ class PremiumUtils {
     );
 
     // Si l'utilisateur a cliqué sur "Découvrir Premium", naviguer vers l'écran Premium
-    if (result == true) {
+    if (result == true && context.mounted) {
       context.router.push(const PremiumRoute());
       return false;
     }

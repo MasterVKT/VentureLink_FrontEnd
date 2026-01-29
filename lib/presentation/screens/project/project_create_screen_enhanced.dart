@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:venturelink/config/routes.dart';
+
 import 'package:venturelink/constants/design_constants.dart';
 import 'package:venturelink/presentation/common_widgets/vl_app_bar.dart';
 import 'package:venturelink/presentation/common_widgets/vl_button.dart';
@@ -126,7 +126,7 @@ class _ProjectCreateScreenEnhancedState
     );
 
     if (!hasAccess && mounted) {
-      context.router.pop();
+      context.router.maybePop();
     }
   }
 
@@ -155,8 +155,15 @@ class _ProjectCreateScreenEnhancedState
     } catch (e) {
       debugPrint('Erreur lors du chargement des données: $e');
       if (mounted) {
-        _showErrorSnackBar(
-            'Erreur lors du chargement des données du formulaire');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Erreur lors du chargement des données du formulaire'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
       }
     }
   }
@@ -197,8 +204,9 @@ class _ProjectCreateScreenEnhancedState
   }
 
   Future<void> _restoreSavedData() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final savedData = await getSavedData('project_create_enhanced');
-    if (savedData != null) {
+    if (savedData != null && mounted) {
       setState(() {
         _titleController.text = savedData['title'] ?? '';
         _shortDescriptionController.text = savedData['short_description'] ?? '';
@@ -220,7 +228,14 @@ class _ProjectCreateScreenEnhancedState
         _currentDraftId = savedData['draft_id'];
       });
 
-      _showSuccessSnackBar('Données restaurées avec succès');
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Données restaurées avec succès'),
+          backgroundColor: DesignConstants.successGreen,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -292,8 +307,17 @@ class _ProjectCreateScreenEnhancedState
   }
 
   Future<void> _saveDraft() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     if (!_formKey.currentState!.validate()) {
-      _showErrorSnackBar('Veuillez corriger les erreurs avant de sauvegarder');
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez corriger les erreurs avant de sauvegarder'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 4),
+        ),
+      );
       return;
     }
 
@@ -326,13 +350,36 @@ class _ProjectCreateScreenEnhancedState
         setState(() {
           _hasUnsavedChanges = false;
         });
-        _showSuccessSnackBar('Brouillon sauvegardé avec succès');
-      } else {
-        _showErrorSnackBar(projectProvider.error ??
-            'Erreur lors de la sauvegarde du brouillon');
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Brouillon sauvegardé avec succès'),
+            backgroundColor: DesignConstants.successGreen,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(projectProvider.error ??
+                'Erreur lors de la sauvegarde du brouillon'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
-      _showErrorSnackBar('Erreur lors de la sauvegarde du brouillon');
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de la sauvegarde du brouillon'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -343,8 +390,19 @@ class _ProjectCreateScreenEnhancedState
   }
 
   Future<void> _submitProject() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final router = context.router;
+    final projectProvider = context.read<ProjectProvider>();
+
     if (!_formKey.currentState!.validate()) {
-      _showErrorSnackBar('Veuillez corriger les erreurs avant de publier');
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez corriger les erreurs avant de publier'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 4),
+        ),
+      );
       return;
     }
 
@@ -363,9 +421,6 @@ class _ProjectCreateScreenEnhancedState
     });
 
     try {
-      final projectProvider =
-          Provider.of<ProjectProvider>(context, listen: false);
-
       final success = await projectProvider.createProject(
         title: _titleController.text,
         shortDescription: _shortDescriptionController.text,
@@ -383,19 +438,45 @@ class _ProjectCreateScreenEnhancedState
 
       if (success && mounted) {
         await clearSavedData('project_create_enhanced');
-        _showSuccessSnackBar('Projet créé avec succès !');
 
-        // Navigation vers la page d'accueil
-        context.router.pushAndPopUntil(
-          const HomeRoute(),
-          predicate: (route) => false,
+        if (mounted) {
+          scaffoldMessenger.showSnackBar(
+            const SnackBar(
+              content: Text('Projet créé avec succès !'),
+              backgroundColor: DesignConstants.successGreen,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+
+          // Navigation vers la page d'accueil
+          router.pushAndPopUntil(
+            const HomeRoute(),
+            predicate: (route) => false,
+          );
+        }
+      } else if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(projectProvider.error ??
+                'Erreur lors de la création du projet'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
         );
-      } else {
-        _showErrorSnackBar(
-            projectProvider.error ?? 'Erreur lors de la création du projet');
       }
     } catch (e) {
-      _showErrorSnackBar('Erreur lors de la création du projet');
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de la création du projet'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -432,22 +513,24 @@ class _ProjectCreateScreenEnhancedState
       _currentIndex = index;
     });
 
-    switch (index) {
-      case 0:
-        context.router.push(const HomeRoute());
-        break;
-      case 1:
-        context.router.push(const SearchRoute());
-        break;
-      case 2:
-        // Déjà sur l'écran de création
-        break;
-      case 3:
-        context.router.push(const NotificationsRoute());
-        break;
-      case 4:
-        context.router.push(const ProfileRoute());
-        break;
+    if (mounted) {
+      switch (index) {
+        case 0:
+          context.router.push(const HomeRoute());
+          break;
+        case 1:
+          context.router.push(const SearchRoute());
+          break;
+        case 2:
+          // Déjà sur l'écran de création
+          break;
+        case 3:
+          context.router.push(const NotificationsRoute());
+          break;
+        case 4:
+          context.router.push(const ProfileRoute());
+          break;
+      }
     }
   }
 
@@ -483,39 +566,6 @@ class _ProjectCreateScreenEnhancedState
     );
   }
 
-  void _showSuccessSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: DesignConstants.successGreen,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Réessayer',
-            textColor: Colors.white,
-            onPressed: () {
-              // Logique de retry si nécessaire
-            },
-          ),
-        ),
-      );
-    }
-  }
-
   TextInputAction _getNextTextInputAction(int index) {
     return index < _focusNodes.length - 1
         ? TextInputAction.next
@@ -538,7 +588,7 @@ class _ProjectCreateScreenEnhancedState
 
     return PopScope(
       canPop: !_hasUnsavedChanges,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _hasUnsavedChanges) {
           _showUnsavedChangesDialog(() => Navigator.of(context).pop());
         }

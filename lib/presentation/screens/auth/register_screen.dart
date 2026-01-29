@@ -312,7 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        context.router.pop();
+                        context.router.maybePop();
                       },
                       child: Text(appLocalizations.loginButtonText),
                     ),

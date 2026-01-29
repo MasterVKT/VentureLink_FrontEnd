@@ -1,7 +1,6 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/publication_model.dart';
 import 'api_service.dart';
+import '../../core/utils/logger.dart';
 
 class ContentApiService extends ApiService {
   static const String _baseEndpoint = '/content';
@@ -17,168 +16,322 @@ class ContentApiService extends ApiService {
     int page = 1,
     int pageSize = 20,
   }) async {
-    final queryParams = <String, String>{
+    final Map<String, dynamic> queryParams = {
       'page': page.toString(),
       'page_size': pageSize.toString(),
       'ordering': ordering,
       'status': 'PUBLISHED', // Seules les publications publiées
     };
 
-    if (publicationType != null)
+    if (publicationType != null) {
       queryParams['publication_type'] = publicationType;
-    if (domain != null) queryParams['domain'] = domain;
-    if (search != null && search.isNotEmpty) queryParams['search'] = search;
-    if (isFeatured != null) queryParams['is_featured'] = isFeatured.toString();
-    if (isSponsored != null)
+    }
+    if (domain != null) {
+      queryParams['domain'] = domain;
+    }
+    if (search != null) {
+      queryParams['search'] = search;
+    }
+    if (isFeatured != null) {
+      queryParams['is_featured'] = isFeatured.toString();
+    }
+    if (isSponsored != null) {
       queryParams['is_sponsored'] = isSponsored.toString();
+    }
 
-    final response = await get(
-      '$_baseEndpoint/publications/',
-      queryParams: queryParams,
-    );
+    try {
+      final response = await get(
+        '$_baseEndpoint/publications/',
+        queryParameters: queryParams,
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final results = data['results'] as List;
-      return results.map((json) => Publication.fromJson(json)).toList();
-    } else {
-      throw Exception(
-          'Erreur lors du chargement des publications: ${response.statusCode}');
+      final List<dynamic> data = response.data['results'];
+
+      // Parcourir chaque élément et parser individuellement pour isoler l'erreur
+      final List<Publication> publications = [];
+      for (int i = 0; i < data.length; i++) {
+        try {
+          final publication = Publication.fromJson(data[i]);
+
+          // Debug : Logger les informations sur les médias
+          AppLogger.info(
+              'Publication ${publication.id} - Titre: ${publication.title}');
+          AppLogger.info(
+              'Publication ${publication.id} - Featured media: ${publication.featuredMedia?.file ?? 'null'}');
+          AppLogger.info(
+              'Publication ${publication.id} - Nombre de médias: ${publication.media?.length ?? 0}');
+
+          // Debug supplémentaire : vérifier les données brutes reçues
+          if (data[i]['media'] != null) {
+            AppLogger.info(
+                'Publication ${publication.id} - Données media brutes: ${data[i]['media']}');
+          }
+          if (data[i]['featured_media'] != null) {
+            AppLogger.info(
+                'Publication ${publication.id} - Données featured_media brutes: ${data[i]['featured_media']}');
+          }
+
+          if (publication.media != null && publication.media!.isNotEmpty) {
+            for (int j = 0; j < publication.media!.length; j++) {
+              final media = publication.media![j];
+              AppLogger.info(
+                  '  Média $j - Type: ${media.mediaType}, File: ${media.file}, FullURL: ${media.fullUrl}');
+            }
+          }
+
+          publications.add(publication);
+        } catch (e) {
+          AppLogger.error(
+              'Erreur lors du parsing de la publication à l\'index $i: $e');
+          AppLogger.error(
+              'Données de la publication problématique: ${data[i]}');
+          // Continuer avec les autres publications au lieu de tout arrêter
+        }
+      }
+      return publications;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des publications: $e');
     }
   }
 
   // Récupérer une publication par ID
   Future<Publication> getPublicationById(String id) async {
-    final response = await get('$_baseEndpoint/publications/$id/');
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return Publication.fromJson(data);
-    } else if (response.statusCode == 404) {
-      throw Exception('Publication non trouvée');
-    } else {
-      throw Exception(
-          'Erreur lors du chargement de la publication: ${response.statusCode}');
+    try {
+      final response = await get('$_baseEndpoint/publications/$id/');
+      return Publication.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération de la publication: $e');
     }
   }
 
   // Récupérer les publications mises en avant
   Future<List<Publication>> getFeaturedPublications() async {
-    final response = await get('$_baseEndpoint/publications/featured/');
+    try {
+      final response = await get(
+        '$_baseEndpoint/publications/',
+        queryParameters: {
+          'is_featured': 'true',
+          'status': 'PUBLISHED',
+          'page_size': '10',
+          'ordering': '-published_at'
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final results = data['results'] as List;
-      return results.map((json) => Publication.fromJson(json)).toList();
-    } else {
-      throw Exception(
-          'Erreur lors du chargement des publications mises en avant: ${response.statusCode}');
+      // Vérifier si la réponse contient des résultats
+      if (response.data is Map<String, dynamic> &&
+          response.data.containsKey('results')) {
+        final List<dynamic> data = response.data['results'];
+
+        // Parcourir chaque élément et parser individuellement pour isoler l'erreur
+        final List<Publication> publications = [];
+        for (int i = 0; i < data.length; i++) {
+          try {
+            final publication = Publication.fromJson(data[i]);
+            publications.add(publication);
+          } catch (e) {
+            AppLogger.error(
+                'Erreur lors du parsing de la publication à l\'index $i: $e');
+            AppLogger.error(
+                'Données de la publication problématique: ${data[i]}');
+            // Continuer avec les autres publications au lieu de tout arrêter
+          }
+        }
+        return publications;
+      } else if (response.data is List) {
+        // Si la réponse est directement une liste
+        final List<dynamic> data = response.data;
+
+        // Parcourir chaque élément et parser individuellement pour isoler l'erreur
+        final List<Publication> publications = [];
+        for (int i = 0; i < data.length; i++) {
+          try {
+            final publication = Publication.fromJson(data[i]);
+            publications.add(publication);
+          } catch (e) {
+            AppLogger.error(
+                'Erreur lors du parsing de la publication à l\'index $i: $e');
+            AppLogger.error(
+                'Données de la publication problématique: ${data[i]}');
+            // Continuer avec les autres publications au lieu de tout arrêter
+          }
+        }
+        return publications;
+      } else {
+        AppLogger.warning(
+            'Format de réponse inattendu pour les publications mises en avant: ${response.data}');
+        return [];
+      }
+    } catch (e) {
+      AppLogger.error(
+          'Erreur lors de la récupération des publications mises en avant: $e');
+      // Retourner une liste vide plutôt que de lancer une exception
+      return [];
     }
   }
 
   // Récupérer les publications épinglées
   Future<List<Publication>> getPinnedPublications() async {
-    final response = await get('$_baseEndpoint/publications/pinned/');
+    try {
+      // Utiliser l'endpoint général avec paramètre is_pinned
+      final response = await get(
+        '$_baseEndpoint/publications/',
+        queryParameters: {
+          'is_pinned': 'true',
+          'status': 'PUBLISHED',
+          'page_size': '10',
+          'ordering': '-published_at'
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final results = data['results'] as List;
-      return results.map((json) => Publication.fromJson(json)).toList();
-    } else {
-      throw Exception(
-          'Erreur lors du chargement des publications épinglées: ${response.statusCode}');
+      AppLogger.info(
+          'Pinned publications response type: ${response.data.runtimeType}');
+      AppLogger.info('Pinned publications response: ${response.data}');
+
+      // Vérifier si c'est du HTML au lieu de JSON
+      if (response.data is String &&
+          response.data.toString().contains('<!DOCTYPE html>')) {
+        AppLogger.error(
+            'Réponse HTML reçue au lieu de JSON pour les publications épinglées');
+        return [];
+      }
+
+      // Vérifier si la réponse contient des résultats
+      if (response.data is Map<String, dynamic> &&
+          response.data.containsKey('results')) {
+        final List<dynamic> data = response.data['results'];
+
+        // Parcourir chaque élément et parser individuellement pour isoler l'erreur
+        final List<Publication> publications = [];
+        for (int i = 0; i < data.length; i++) {
+          try {
+            final publication = Publication.fromJson(data[i]);
+            publications.add(publication);
+          } catch (e) {
+            AppLogger.error(
+                'Erreur lors du parsing de la publication épinglée à l\'index $i: $e');
+            AppLogger.error(
+                'Données de la publication épinglée problématique: ${data[i]}');
+            // Continuer avec les autres publications au lieu de tout arrêter
+          }
+        }
+        return publications;
+      }
+
+      AppLogger.error(
+          'Structure de réponse inattendue pour les publications épinglées');
+      return [];
+    } catch (e) {
+      AppLogger.error(
+          'Erreur lors du chargement des publications épinglées: $e');
+      return [];
     }
   }
 
-  // Récupérer les publications par type
+  // Filtrer par type de publication
   Future<List<Publication>> getPublicationsByType(String type) async {
-    final response = await get(
-      '$_baseEndpoint/publications/by_type/',
-      queryParams: {'type': type},
-    );
+    try {
+      final response = await get(
+        '$_baseEndpoint/publications/',
+        queryParameters: {'publication_type': type, 'status': 'PUBLISHED'},
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final results = data['results'] as List;
-      return results.map((json) => Publication.fromJson(json)).toList();
-    } else {
+      final List<dynamic> data = response.data['results'];
+      return data.map((json) => Publication.fromJson(json)).toList();
+    } catch (e) {
       throw Exception(
-          'Erreur lors du chargement des publications par type: ${response.statusCode}');
+          'Erreur lors de la récupération des publications par type: $e');
     }
   }
 
-  // Récupérer les publications par domaine
+  // Filtrer par domaine
   Future<List<Publication>> getPublicationsByDomain(String domain) async {
-    final response = await get(
-      '$_baseEndpoint/publications/by_domain/',
-      queryParams: {'domain': domain},
-    );
+    try {
+      final response = await get(
+        '$_baseEndpoint/publications/',
+        queryParameters: {'domain': domain, 'status': 'PUBLISHED'},
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final results = data['results'] as List;
-      return results.map((json) => Publication.fromJson(json)).toList();
-    } else {
+      final List<dynamic> data = response.data['results'];
+      return data.map((json) => Publication.fromJson(json)).toList();
+    } catch (e) {
       throw Exception(
-          'Erreur lors du chargement des publications par domaine: ${response.statusCode}');
+          'Erreur lors de la récupération des publications par domaine: $e');
     }
   }
 
   // Liker/Unliker une publication
   Future<Map<String, dynamic>> togglePublicationLike(
       String publicationId) async {
-    final response =
-        await post('$_baseEndpoint/publications/$publicationId/like/');
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return json.decode(response.body);
-    } else {
-      throw Exception(
-          'Erreur lors du like de la publication: ${response.statusCode}');
+    try {
+      final response = await post(
+        '$_baseEndpoint/publications/$publicationId/like/',
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Erreur lors du like de la publication: $e');
     }
   }
 
-  // Partager une publication (incrémenter le compteur)
+  // Partager une publication
   Future<Map<String, dynamic>> sharePublication(String publicationId) async {
-    final response =
-        await post('$_baseEndpoint/publications/$publicationId/share/');
-
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception(
-          'Erreur lors du partage de la publication: ${response.statusCode}');
+    try {
+      final response = await post(
+        '$_baseEndpoint/publications/$publicationId/share/',
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Erreur lors du partage de la publication: $e');
     }
   }
 
   // Récupérer les commentaires d'une publication
   Future<List<Comment>> getPublicationComments(String publicationId) async {
-    final response = await get(
-      '$_baseEndpoint/comments/for_object/',
-      queryParams: {
-        'content_type': 'content.publication',
-        'object_id': publicationId,
-      },
-    );
+    try {
+      final response = await get(
+        '$_baseEndpoint/publications/$publicationId/comments/',
+        queryParameters: {
+          'ordering': '-created_at',
+          'parent__isnull':
+              'true', // Seulement les commentaires de premier niveau
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body) as List;
-      return data.map((json) => Comment.fromJson(json)).toList();
-    } else {
-      throw Exception(
-          'Erreur lors du chargement des commentaires: ${response.statusCode}');
+      final List<dynamic> data = response.data['results'];
+      final comments = data.map((json) => Comment.fromJson(json)).toList();
+
+      // Charger les réponses pour chaque commentaire
+      for (var i = 0; i < comments.length; i++) {
+        final replies = await _getCommentReplies(comments[i].id);
+        comments[i] = Comment(
+          id: comments[i].id,
+          content: comments[i].content,
+          author: comments[i].author,
+          parent: comments[i].parent,
+          likesCount: comments[i].likesCount,
+          repliesCount: comments[i].repliesCount,
+          isEdited: comments[i].isEdited,
+          editedAt: comments[i].editedAt,
+          userHasLiked: comments[i].userHasLiked,
+          depth: comments[i].depth,
+          canHaveReplies: comments[i].canHaveReplies,
+          createdAt: comments[i].createdAt,
+          replies: replies,
+        );
+      }
+
+      return comments;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des commentaires: $e');
     }
   }
 
-  // Créer un commentaire sur une publication
+  // Créer un commentaire
   Future<Comment> createComment({
     required String publicationId,
     required String content,
     String? parentId,
   }) async {
-    final body = {
-      'content_type': 'content.publication',
-      'object_id': publicationId,
+    final Map<String, dynamic> body = {
       'content': content,
     };
 
@@ -186,78 +339,77 @@ class ContentApiService extends ApiService {
       body['parent'] = parentId;
     }
 
-    final response = await post(
-      '$_baseEndpoint/comments/',
-      body: body,
-    );
-
-    if (response.statusCode == 201) {
-      final data = json.decode(response.body);
-      return Comment.fromJson(data);
-    } else {
-      throw Exception(
-          'Erreur lors de la création du commentaire: ${response.statusCode}');
-    }
-  }
-
-  // Modifier un commentaire
-  Future<Comment> updateComment(String commentId, String content) async {
-    final response = await put(
-      '$_baseEndpoint/comments/$commentId/',
-      body: {'content': content},
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return Comment.fromJson(data);
-    } else {
-      throw Exception(
-          'Erreur lors de la modification du commentaire: ${response.statusCode}');
-    }
-  }
-
-  // Supprimer un commentaire
-  Future<void> deleteComment(String commentId) async {
-    final response = await delete('$_baseEndpoint/comments/$commentId/');
-
-    if (response.statusCode != 204) {
-      throw Exception(
-          'Erreur lors de la suppression du commentaire: ${response.statusCode}');
+    try {
+      final response = await post(
+        '$_baseEndpoint/publications/$publicationId/comments/',
+        data: body,
+      );
+      return Comment.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la création du commentaire: $e');
     }
   }
 
   // Liker/Unliker un commentaire
   Future<Map<String, dynamic>> toggleCommentLike(String commentId) async {
-    final response = await post('$_baseEndpoint/comments/$commentId/like/');
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return json.decode(response.body);
-    } else {
-      throw Exception(
-          'Erreur lors du like du commentaire: ${response.statusCode}');
+    try {
+      final response = await post(
+        '$_baseEndpoint/comments/$commentId/like/',
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Erreur lors du like du commentaire: $e');
     }
   }
 
-  // Signaler un commentaire
-  Future<void> flagComment(String commentId) async {
-    final response = await post('$_baseEndpoint/comments/$commentId/flag/');
-
-    if (response.statusCode != 200) {
-      throw Exception(
-          'Erreur lors du signalement du commentaire: ${response.statusCode}');
+  // Supprimer un commentaire
+  Future<void> deleteComment(String commentId) async {
+    try {
+      await delete('$_baseEndpoint/comments/$commentId/');
+    } catch (e) {
+      throw Exception('Erreur lors de la suppression du commentaire: $e');
     }
   }
 
-  // Récupérer les réponses d'un commentaire
-  Future<List<Comment>> getCommentReplies(String commentId) async {
-    final response = await get('$_baseEndpoint/comments/$commentId/replies/');
+  // Récupérer les réponses à un commentaire
+  Future<List<Comment>> _getCommentReplies(String commentId) async {
+    try {
+      final response = await get(
+        '$_baseEndpoint/comments/',
+        queryParameters: {
+          'parent': commentId,
+          'ordering': 'created_at',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body) as List;
-      return data.map((json) => Comment.fromJson(json)).toList();
-    } else {
-      throw Exception(
-          'Erreur lors du chargement des réponses: ${response.statusCode}');
+      final List<dynamic> data = response.data['results'];
+      final replies = data.map((json) => Comment.fromJson(json)).toList();
+
+      // Charger récursivement les réponses des réponses (jusqu'à une certaine profondeur)
+      for (var i = 0; i < replies.length; i++) {
+        if (replies[i].repliesCount > 0 && replies[i].depth < 2) {
+          final subReplies = await _getCommentReplies(replies[i].id);
+          replies[i] = Comment(
+            id: replies[i].id,
+            content: replies[i].content,
+            author: replies[i].author,
+            parent: replies[i].parent,
+            likesCount: replies[i].likesCount,
+            repliesCount: replies[i].repliesCount,
+            isEdited: replies[i].isEdited,
+            editedAt: replies[i].editedAt,
+            userHasLiked: replies[i].userHasLiked,
+            depth: replies[i].depth,
+            canHaveReplies: replies[i].canHaveReplies,
+            createdAt: replies[i].createdAt,
+            replies: subReplies,
+          );
+        }
+      }
+
+      return replies;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des réponses: $e');
     }
   }
 

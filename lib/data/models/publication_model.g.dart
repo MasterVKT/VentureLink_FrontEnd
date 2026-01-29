@@ -29,32 +29,29 @@ Publication _$PublicationFromJson(Map<String, dynamic> json) => Publication(
       viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
       likesCount: (json['likes_count'] as num?)?.toInt() ?? 0,
       commentsCount: (json['comments_count'] as num?)?.toInt() ?? 0,
-      sharesCount: (json['shares_count'] as num?)?.toInt() ?? 0,
+      sharesCount: (json['shares_count'] as num?)?.toInt(),
       isFeatured: json['is_featured'] as bool? ?? false,
       isPinned: json['is_pinned'] as bool? ?? false,
-      allowComments: json['allow_comments'] as bool? ?? true,
+      allowComments: json['allow_comments'] as bool?,
       isSponsored: json['is_sponsored'] as bool? ?? false,
       sponsorName: json['sponsor_name'] as String?,
       sponsorUrl: json['sponsor_url'] as String?,
       metaDescription: json['meta_description'] as String?,
       slug: json['slug'] as String?,
-      media: (json['media'] as List<dynamic>?)
-              ?.map((e) => PublicationMedia.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
+      media: Publication._mediaFromJson(json['media']),
       likes: (json['likes'] as List<dynamic>?)
-              ?.map((e) => PublicationLike.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
+          ?.map((e) => PublicationLike.fromJson(e as Map<String, dynamic>))
+          .toList(),
       userHasLiked: json['user_has_liked'] as bool? ?? false,
-      canBeCommented: json['can_be_commented'] as bool? ?? true,
-      isPublished: json['is_published'] as bool? ?? false,
-      featuredMedia: json['featured_media'] == null
+      canBeCommented: json['can_be_commented'] as bool?,
+      isPublished: json['is_published'] as bool?,
+      featuredMedia: Publication._featuredMediaFromJson(json['featured_media']),
+      createdAt: json['created_at'] == null
           ? null
-          : PublicationMedia.fromJson(
-              json['featured_media'] as Map<String, dynamic>),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+          : DateTime.parse(json['created_at'] as String),
+      updatedAt: json['updated_at'] == null
+          ? null
+          : DateTime.parse(json['updated_at'] as String),
     );
 
 Map<String, dynamic> _$PublicationToJson(Publication instance) =>
@@ -89,8 +86,8 @@ Map<String, dynamic> _$PublicationToJson(Publication instance) =>
       'can_be_commented': instance.canBeCommented,
       'is_published': instance.isPublished,
       'featured_media': instance.featuredMedia,
-      'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt.toIso8601String(),
+      'created_at': instance.createdAt?.toIso8601String(),
+      'updated_at': instance.updatedAt?.toIso8601String(),
     };
 
 PublicationMedia _$PublicationMediaFromJson(Map<String, dynamic> json) =>
@@ -102,6 +99,9 @@ PublicationMedia _$PublicationMediaFromJson(Map<String, dynamic> json) =>
       mediaType: json['media_type'] as String,
       fileSize: (json['file_size'] as num?)?.toInt(),
       duration: (json['duration'] as num?)?.toInt(),
+      altText: json['alt_text'] as String?,
+      order: (json['order'] as num?)?.toInt(),
+      isFeatured: json['is_featured'] as bool?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
 
@@ -114,6 +114,9 @@ Map<String, dynamic> _$PublicationMediaToJson(PublicationMedia instance) =>
       'media_type': instance.mediaType,
       'file_size': instance.fileSize,
       'duration': instance.duration,
+      'alt_text': instance.altText,
+      'order': instance.order,
+      'is_featured': instance.isFeatured,
       'created_at': instance.createdAt.toIso8601String(),
     };
 

@@ -191,7 +191,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               onSelected: (selected) {
                 setState(() {
                   _selectedFilter =
-                      selected ? filter['value'] as String? : null;
+                      selected ? filter['value'] : null;
                 });
                 HapticFeedback.lightImpact();
               },
@@ -818,7 +818,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Fermer'),
+              child: const Text('Fermer'),
             ),
           ],
         ),

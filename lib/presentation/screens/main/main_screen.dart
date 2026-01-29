@@ -32,12 +32,12 @@ class MainScreen extends StatelessWidget {
             const NavigationDestination(
               icon: Icon(Icons.article_outlined),
               selectedIcon: Icon(Icons.article),
-              label: 'Publications',
+              label: 'Contenu',
             ),
             const NavigationDestination(
               icon: Icon(Icons.account_balance_wallet_outlined),
               selectedIcon: Icon(Icons.account_balance_wallet),
-              label: 'Investissements',
+              label: 'Investir',
             ),
             NavigationDestination(
               icon: const Icon(Icons.message_outlined),
@@ -47,7 +47,7 @@ class MainScreen extends StatelessWidget {
             const NavigationDestination(
               icon: Icon(Icons.notifications_outlined),
               selectedIcon: Icon(Icons.notifications),
-              label: 'Notifications',
+              label: 'Notifs',
             ),
             NavigationDestination(
               icon: const Icon(Icons.person_outline),

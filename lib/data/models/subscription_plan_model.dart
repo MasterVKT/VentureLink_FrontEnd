@@ -2,6 +2,90 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'subscription_plan_model.g.dart';
 
+/// Convertisseur pour les prix qui peuvent être des strings ou des numbers
+class PriceConverter implements JsonConverter<double, dynamic> {
+  const PriceConverter();
+
+  @override
+  double fromJson(dynamic json) {
+    if (json == null) return 0.0;
+    if (json is num) return json.toDouble();
+    if (json is String) return double.tryParse(json) ?? 0.0;
+    return 0.0;
+  }
+
+  @override
+  dynamic toJson(double object) => object;
+}
+
+/// Convertisseur pour les entiers qui peuvent être des strings ou des numbers
+class IntConverter implements JsonConverter<int, dynamic> {
+  const IntConverter();
+
+  @override
+  int fromJson(dynamic json) {
+    if (json == null) return 0;
+    if (json is num) return json.toInt();
+    if (json is String) return int.tryParse(json) ?? 0;
+    return 0;
+  }
+
+  @override
+  dynamic toJson(int object) => object;
+}
+
+/// Convertisseur pour les strings qui peuvent être null
+class SafeStringConverter implements JsonConverter<String, dynamic> {
+  const SafeStringConverter();
+
+  @override
+  String fromJson(dynamic json) {
+    if (json == null) return '';
+    return json.toString();
+  }
+
+  @override
+  dynamic toJson(String object) => object;
+}
+
+/// Convertisseur pour les listes de strings qui peuvent être null
+class SafeStringListConverter implements JsonConverter<List<String>, dynamic> {
+  const SafeStringListConverter();
+
+  @override
+  List<String> fromJson(dynamic json) {
+    if (json == null) return [];
+    if (json is List) {
+      return json.map((e) => e?.toString() ?? '').toList();
+    }
+    return [];
+  }
+
+  @override
+  dynamic toJson(List<String> object) => object;
+}
+
+/// Convertisseur pour les dates qui peuvent être null ou malformées
+class SafeDateTimeConverter implements JsonConverter<DateTime, dynamic> {
+  const SafeDateTimeConverter();
+
+  @override
+  DateTime fromJson(dynamic json) {
+    if (json == null) return DateTime.now();
+    if (json is String) {
+      try {
+        return DateTime.parse(json);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+    return DateTime.now();
+  }
+
+  @override
+  dynamic toJson(DateTime object) => object.toIso8601String();
+}
+
 /// Modèle pour les plans d'abonnement selon le guide d'harmonisation
 @JsonSerializable()
 class SubscriptionPlanModel {
@@ -10,25 +94,35 @@ class SubscriptionPlanModel {
   final String? description;
 
   @JsonKey(name: 'price_xaf')
+  @PriceConverter()
   final double priceXaf;
   @JsonKey(name: 'price_eur')
+  @PriceConverter()
   final double priceEur;
   @JsonKey(name: 'price_usd')
+  @PriceConverter()
   final double priceUsd;
 
-  final double price;
-  final String currency;
+  @PriceConverter()
+  final double? price;
+  final String? currency;
   @JsonKey(name: 'duration_months')
+  @IntConverter()
   final int durationMonths;
 
   @JsonKey(name: 'billing_cycle')
+  @SafeStringConverter()
   final String billingCycle;
   @JsonKey(name: 'trial_days')
+  @IntConverter()
   final int trialDays;
+  @SafeStringListConverter()
   final List<String> features;
   @JsonKey(name: 'max_projects')
+  @IntConverter()
   final int maxProjects;
   @JsonKey(name: 'max_investments')
+  @IntConverter()
   final int maxInvestments;
   @JsonKey(name: 'priority_support')
   final bool prioritySupport;
@@ -39,12 +133,15 @@ class SubscriptionPlanModel {
   @JsonKey(name: 'is_popular')
   final bool isPopular;
   @JsonKey(name: 'sort_order')
+  @IntConverter()
   final int sortOrder;
   @JsonKey(name: 'external_plan_id')
   final String? externalPlanId;
   @JsonKey(name: 'created_at')
+  @SafeDateTimeConverter()
   final DateTime createdAt;
   @JsonKey(name: 'updated_at')
+  @SafeDateTimeConverter()
   final DateTime updatedAt;
 
   SubscriptionPlanModel({
@@ -54,8 +151,8 @@ class SubscriptionPlanModel {
     required this.priceXaf,
     required this.priceEur,
     required this.priceUsd,
-    required this.price,
-    required this.currency,
+    this.price,
+    this.currency,
     required this.durationMonths,
     required this.billingCycle,
     this.trialDays = 0,

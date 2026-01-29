@@ -114,7 +114,7 @@ class FirebaseMessagingService {
         requestBadgePermission: false,
         requestSoundPermission: false);
 
-    final initializationSettings = const InitializationSettings(
+    const initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );

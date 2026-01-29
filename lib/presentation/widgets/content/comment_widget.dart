@@ -66,19 +66,21 @@ class _CommentWidgetState extends State<CommentWidget> {
                 // Avatar
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primaryContainer,
                   child: Text(
                     widget.comment.author.firstName.isNotEmpty
                         ? widget.comment.author.firstName[0].toUpperCase()
                         : '?',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
-                    ),
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                
+
                 // Nom et date
                 Expanded(
                   child: Column(
@@ -87,25 +89,33 @@ class _CommentWidgetState extends State<CommentWidget> {
                       Text(
                         '${widget.comment.author.firstName} ${widget.comment.author.lastName}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                       Row(
                         children: [
                           Text(
                             widget.comment.formattedDate,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                           ),
                           if (widget.comment.isEdited) ...[
                             const SizedBox(width: 8),
                             Text(
                               '(modifié)',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                             ),
                           ],
                         ],
@@ -113,7 +123,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                     ],
                   ),
                 ),
-                
+
                 // Menu d'actions
                 PopupMenuButton<String>(
                   icon: Icon(
@@ -141,7 +151,8 @@ class _CommentWidgetState extends State<CommentWidget> {
                           children: [
                             Icon(Icons.delete, size: 16, color: Colors.red),
                             SizedBox(width: 8),
-                            Text('Supprimer', style: TextStyle(color: Colors.red)),
+                            Text('Supprimer',
+                                style: TextStyle(color: Colors.red)),
                           ],
                         ),
                       ),
@@ -149,19 +160,19 @@ class _CommentWidgetState extends State<CommentWidget> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Contenu du commentaire
             Text(
               widget.comment.content,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.4,
-              ),
+                    height: 1.4,
+                  ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Actions du commentaire
             Row(
               children: [
@@ -170,13 +181,14 @@ class _CommentWidgetState extends State<CommentWidget> {
                   onTap: () => widget.onLike?.call(widget.comment.id),
                   borderRadius: BorderRadius.circular(16),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          widget.comment.userHasLiked 
-                              ? Icons.favorite 
+                          widget.comment.userHasLiked
+                              ? Icons.favorite
                               : Icons.favorite_border,
                           size: 16,
                           color: widget.comment.userHasLiked
@@ -187,71 +199,85 @@ class _CommentWidgetState extends State<CommentWidget> {
                           const SizedBox(width: 4),
                           Text(
                             widget.comment.likesCount.toString(),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: widget.comment.userHasLiked
-                                  ? Colors.red
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: widget.comment.userHasLiked
+                                          ? Colors.red
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                    ),
                           ),
                         ],
                       ],
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(width: 16),
-                
+
                 // Répondre
-                if (widget.comment.canHaveReplies && 
+                if (widget.comment.canHaveReplies &&
                     widget.comment.depth < widget.maxDepth)
                   InkWell(
                     onTap: _toggleReplyInput,
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.reply,
                             size: 16,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'Répondre',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                
+
                 const Spacer(),
-                
+
                 // Afficher/masquer les réponses
                 if (widget.comment.hasReplies)
                   InkWell(
                     onTap: _toggleReplies,
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            _showReplies ? Icons.expand_less : Icons.expand_more,
+                            _showReplies
+                                ? Icons.expand_less
+                                : Icons.expand_more,
                             size: 16,
                             color: Theme.of(context).colorScheme.primary,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '${widget.comment.repliesCount} réponse${widget.comment.repliesCount > 1 ? 's' : ''}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                           ),
                         ],
                       ),
@@ -270,7 +296,7 @@ class _CommentWidgetState extends State<CommentWidget> {
       margin: const EdgeInsets.only(top: 8, left: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -279,9 +305,9 @@ class _CommentWidgetState extends State<CommentWidget> {
           Text(
             'Répondre à ${widget.comment.author.firstName}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -417,4 +443,4 @@ class _CommentWidgetState extends State<CommentWidget> {
     // Cela nécessiterait d'avoir accès aux informations de l'utilisateur connecté
     return false;
   }
-} 
+}

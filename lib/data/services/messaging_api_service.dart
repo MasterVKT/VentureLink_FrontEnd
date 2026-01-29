@@ -280,7 +280,8 @@ class MessagingApiService {
   /// Obtenir le nombre de messages non lus
   Future<int> getUnreadCount() async {
     try {
-      final response = await _apiService.get('/conversations/unread_count/');
+      final response =
+          await _apiService.get('/messaging/conversations/unread_count/');
       return response.data['count'] ?? 0;
     } catch (e) {
       return 0;

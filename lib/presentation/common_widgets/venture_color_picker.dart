@@ -102,7 +102,7 @@ class VentureColorPicker extends StatelessWidget {
                   },
                   enableAlpha: true,
                   displayThumbColor: true,
-                  showLabel: true,
+                  labelTypes: const [],
                   pickerAreaHeightPercent: 0.8,
                 ),
               ),

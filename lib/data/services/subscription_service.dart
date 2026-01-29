@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../models/subscription_plan_model.dart';
 import '../models/user_subscription_model.dart';
 import 'api_service.dart';
+import 'package:flutter/foundation.dart';
 
 class SubscriptionService {
   final ApiService _apiService;
@@ -14,7 +15,10 @@ class SubscriptionService {
       final response = await _apiService.get('/payments/plans/');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
+        // Gérer la structure paginée de l'API
+        final Map<String, dynamic> responseData = response.data;
+        final List<dynamic> data = responseData['results'] ?? responseData;
+
         return data
             .map((json) => SubscriptionPlanModel.fromJson(json))
             .toList();
@@ -32,7 +36,18 @@ class SubscriptionService {
       final response = await _apiService.get('/payments/subscription/');
 
       if (response.statusCode == 200) {
-        return UserSubscriptionModel.fromJson(response.data);
+        // Vérifier si la réponse contient un abonnement ou juste un message
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          // Si la réponse contient has_subscription: false, retourner null
+          if (data.containsKey('has_subscription') &&
+              data['has_subscription'] == false) {
+            return null;
+          }
+          // Sinon essayer de parser l'abonnement
+          return UserSubscriptionModel.fromJson(data);
+        }
+        return null;
       } else if (response.statusCode == 404) {
         // Aucun abonnement actuel
         return null;
@@ -43,29 +58,23 @@ class SubscriptionService {
       if (e is DioException && e.response?.statusCode == 404) {
         return null;
       }
-      throw Exception('Erreur lors du chargement de l\'abonnement: $e');
+      // Pour les autres erreurs, retourner null plutôt que de lancer une exception
+      debugPrint('❌ Erreur getCurrentSubscription: $e');
+      return null;
     }
   }
 
-  /// Créer un nouvel abonnement
+  /// Créer un nouvel abonnement (simplifié pour My-CoolPay)
   Future<Map<String, dynamic>> createSubscription({
     required String planId,
-    required String billingCurrency,
-    required String paymentMethod,
-    String? phoneNumber,
-    String? returnUrl,
-    String? cancelUrl,
+    required String phoneNumber,
   }) async {
     try {
       final response = await _apiService.post(
         '/payments/subscription/create/',
         data: {
           'plan_id': planId,
-          'billing_currency': billingCurrency,
-          'payment_method': paymentMethod,
-          if (phoneNumber != null) 'phone_number': phoneNumber,
-          if (returnUrl != null) 'return_url': returnUrl,
-          if (cancelUrl != null) 'cancel_url': cancelUrl,
+          'phone_number': phoneNumber,
         },
       );
 
@@ -96,66 +105,6 @@ class SubscriptionService {
     }
   }
 
-  /// Créer un paiement direct avec My-CoolPay
-  Future<Map<String, dynamic>> createDirectPayment({
-    required String planId,
-    required String operator,
-    required String phoneNumber,
-    String currency = 'XAF',
-  }) async {
-    try {
-      // D'abord récupérer le plan pour obtenir le prix
-      final plans = await getSubscriptionPlans();
-      final plan = plans.firstWhere((p) => p.id == planId);
-      final amount = plan.getPriceInCurrency(currency);
-
-      final response = await _apiService.post(
-        '/payments/payin/',
-        data: {
-          'amount': amount.toString(),
-          'currency': currency,
-          'phone_number': phoneNumber,
-          'operator': operator,
-          'description': 'Abonnement ${plan.name}',
-          'customer_name': 'Utilisateur VentureLink',
-          'customer_email': 'user@venturelink.com',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return response.data;
-      } else {
-        throw Exception('Erreur lors de l\'initiation du paiement');
-      }
-    } catch (e) {
-      throw Exception('Erreur lors de l\'initiation du paiement: $e');
-    }
-  }
-
-  /// Autoriser un paiement avec code OTP
-  Future<Map<String, dynamic>> authorizePayment({
-    required String transactionRef,
-    required String otpCode,
-  }) async {
-    try {
-      final response = await _apiService.post(
-        '/payments/authorize/',
-        data: {
-          'transaction_ref': transactionRef,
-          'otp_code': otpCode,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return response.data;
-      } else {
-        throw Exception('Erreur lors de l\'autorisation du paiement');
-      }
-    } catch (e) {
-      throw Exception('Erreur lors de l\'autorisation du paiement: $e');
-    }
-  }
-
   /// Vérifier le statut d'un paiement
   Future<Map<String, dynamic>> checkPaymentStatus(String paymentId) async {
     try {
@@ -171,8 +120,8 @@ class SubscriptionService {
     }
   }
 
-  /// Récupérer les méthodes de paiement disponibles
-  Future<List<Map<String, dynamic>>> getPaymentMethods({
+  /// Récupérer les méthodes de paiement disponibles (My-CoolPay uniquement)
+  Future<Map<String, dynamic>> getPaymentMethods({
     String? currency,
     String? country,
   }) async {
@@ -187,7 +136,7 @@ class SubscriptionService {
       );
 
       if (response.statusCode == 200) {
-        return List<Map<String, dynamic>>.from(response.data);
+        return response.data;
       } else {
         throw Exception('Erreur lors du chargement des méthodes de paiement');
       }
@@ -208,8 +157,6 @@ class SubscriptionService {
         priceXaf: 0,
         priceEur: 0,
         priceUsd: 0,
-        price: 0,
-        currency: 'EUR',
         durationMonths: 0,
         billingCycle: 'NONE',
         trialDays: 0,
@@ -235,8 +182,6 @@ class SubscriptionService {
         priceXaf: 6500,
         priceEur: 9.99,
         priceUsd: 10.99,
-        price: 9.99,
-        currency: 'EUR',
         durationMonths: 1,
         billingCycle: 'MONTHLY',
         trialDays: 7,
@@ -263,8 +208,6 @@ class SubscriptionService {
         priceXaf: 19500,
         priceEur: 29.99,
         priceUsd: 32.99,
-        price: 29.99,
-        currency: 'EUR',
         durationMonths: 1,
         billingCycle: 'MONTHLY',
         trialDays: 14,
@@ -292,8 +235,6 @@ class SubscriptionService {
         priceXaf: 196800,
         priceEur: 299.99,
         priceUsd: 329.99,
-        price: 299.99,
-        currency: 'EUR',
         durationMonths: 12,
         billingCycle: 'YEARLY',
         trialDays: 30,

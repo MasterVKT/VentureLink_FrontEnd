@@ -6,7 +6,6 @@ class LogoGenerator {
   static Future<void> generateLogo() async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    const size = Size(200, 200);
 
     // Fond bleu
     final paint = Paint()

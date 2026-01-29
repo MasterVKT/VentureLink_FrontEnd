@@ -219,9 +219,9 @@ class ProjectCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
+                            const Text(
                               '0€', // TODO: Implémenter la propriété fundingRaised
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -242,9 +242,9 @@ class ProjectCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
+                            const Text(
                               '0%', // TODO: Calculer avec les vraies valeurs
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.accentColor,
@@ -302,7 +302,7 @@ class ProjectCard extends StatelessWidget {
                         ),
                         const Spacer(),
                         Text(
-                          _formatDate(project.createdAt),
+                          _formatDate(project.createdAt ?? DateTime.now()),
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],

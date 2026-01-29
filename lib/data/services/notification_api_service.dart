@@ -27,14 +27,35 @@ class NotificationApiService {
 
     try {
       final response = await _apiService.get(
-        '/notifications/',
+        '/notifications/notifications/',
         queryParameters: queryParams,
       );
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final List<dynamic> results = data['results'] ?? data;
-        return results.map((json) => NotificationModel.fromJson(json)).toList();
+
+        // Vérifier si la réponse est bien structurée avec des résultats
+        if (data is Map<String, dynamic>) {
+          // Si c'est un Map avec pagination
+          if (data.containsKey('results')) {
+            final results = data['results'] as List<dynamic>;
+            return results
+                .map((json) => NotificationModel.fromJson(json))
+                .toList();
+          }
+          // Si c'est juste un Map avec des URLs d'endpoints, retourner une liste vide
+          else if (data.containsKey('notifications') ||
+              data.containsKey('notification-templates')) {
+            return [];
+          }
+        }
+        // Si c'est directement une liste
+        else if (data is List) {
+          return data.map((json) => NotificationModel.fromJson(json)).toList();
+        }
+
+        // Format inattendu
+        return [];
       } else {
         throw Exception(
             'Erreur ${response.statusCode}: ${response.statusMessage}');
@@ -47,7 +68,8 @@ class NotificationApiService {
   /// Obtenir une notification spécifique par ID
   Future<NotificationModel> getNotification(String notificationId) async {
     try {
-      final response = await _apiService.get('/notifications/$notificationId/');
+      final response = await _apiService
+          .get('/notifications/notifications/$notificationId/');
 
       if (response.statusCode == 200) {
         return NotificationModel.fromJson(response.data);
@@ -66,7 +88,7 @@ class NotificationApiService {
   Future<bool> markAsRead(String notificationId) async {
     try {
       final response = await _apiService.post(
-        '/notifications/$notificationId/mark_as_read/',
+        '/notifications/notifications/$notificationId/mark_as_read/',
       );
 
       return response.statusCode == 200;
@@ -79,7 +101,7 @@ class NotificationApiService {
   Future<bool> archiveNotification(String notificationId) async {
     try {
       final response = await _apiService.post(
-        '/notifications/$notificationId/archive/',
+        '/notifications/notifications/$notificationId/archive/',
       );
 
       return response.statusCode == 200;
@@ -91,8 +113,8 @@ class NotificationApiService {
   /// Supprimer une notification (soft delete)
   Future<bool> deleteNotification(String notificationId) async {
     try {
-      final response =
-          await _apiService.delete('/notifications/$notificationId/');
+      final response = await _apiService
+          .delete('/notifications/notifications/$notificationId/');
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
       throw Exception('Erreur lors de la suppression: $e');
@@ -108,7 +130,7 @@ class NotificationApiService {
       }
 
       final response = await _apiService.post(
-        '/notifications/mark_all_read/',
+        '/notifications/notifications/mark_all_read/',
         data: data.isNotEmpty ? data : null,
       );
 
@@ -121,7 +143,8 @@ class NotificationApiService {
   /// Obtenir le nombre de notifications non lues
   Future<int> getUnreadCount() async {
     try {
-      final response = await _apiService.get('/notifications/unread_count/');
+      final response =
+          await _apiService.get('/notifications/notifications/unread_count/');
 
       if (response.statusCode == 200) {
         return response.data['unread_count'] as int? ?? 0;
@@ -156,7 +179,7 @@ class NotificationApiService {
 
     try {
       final response = await _apiService.get(
-        '/notifications/',
+        '/notifications/notifications/',
         queryParameters: queryParams,
       );
 

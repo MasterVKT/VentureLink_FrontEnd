@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/publication_model.dart';
 import '../services/content_api_service.dart';
+import '../../core/utils/logger.dart';
 
 class ContentProvider extends ChangeNotifier {
   final ContentApiService _contentApiService = ContentApiService();
@@ -95,7 +96,7 @@ class ContentProvider extends ChangeNotifier {
       _currentPage++;
     } catch (e) {
       _error = e.toString();
-      debugPrint('Erreur lors du chargement des publications: $e');
+      AppLogger.error('Erreur lors du chargement des publications: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -125,7 +126,7 @@ class ContentProvider extends ChangeNotifier {
       _currentPage++;
     } catch (e) {
       _error = e.toString();
-      debugPrint('Erreur lors du chargement de plus de publications: $e');
+      AppLogger.error('Erreur lors du chargement de plus de publications: $e');
     } finally {
       _isLoadingMore = false;
       notifyListeners();
@@ -137,10 +138,15 @@ class ContentProvider extends ChangeNotifier {
     try {
       _featuredPublications =
           await _contentApiService.getFeaturedPublications();
+      AppLogger.info(
+          'Publications mises en avant chargées: ${_featuredPublications.length}');
       notifyListeners();
     } catch (e) {
-      debugPrint(
+      AppLogger.error(
           'Erreur lors du chargement des publications mises en avant: $e');
+      // Initialiser avec une liste vide en cas d'erreur
+      _featuredPublications = [];
+      notifyListeners();
     }
   }
 
@@ -148,9 +154,15 @@ class ContentProvider extends ChangeNotifier {
   Future<void> loadPinnedPublications() async {
     try {
       _pinnedPublications = await _contentApiService.getPinnedPublications();
+      AppLogger.info(
+          'Publications épinglées chargées: ${_pinnedPublications.length}');
       notifyListeners();
     } catch (e) {
-      debugPrint('Erreur lors du chargement des publications épinglées: $e');
+      AppLogger.error(
+          'Erreur lors du chargement des publications épinglées: $e');
+      // Initialiser avec une liste vide en cas d'erreur
+      _pinnedPublications = [];
+      notifyListeners();
     }
   }
 
@@ -167,7 +179,7 @@ class ContentProvider extends ChangeNotifier {
       // Sinon, charger depuis l'API
       return await _contentApiService.getPublicationById(id);
     } catch (e) {
-      debugPrint('Erreur lors du chargement de la publication: $e');
+      AppLogger.error('Erreur lors du chargement de la publication: $e');
       return null;
     }
   }
@@ -225,7 +237,7 @@ class ContentProvider extends ChangeNotifier {
 
       return liked;
     } catch (e) {
-      debugPrint('Erreur lors du like de la publication: $e');
+      AppLogger.error('Erreur lors du like de la publication: $e');
       return false;
     }
   }
@@ -281,7 +293,7 @@ class ContentProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
-      debugPrint('Erreur lors du partage de la publication: $e');
+      AppLogger.error('Erreur lors du partage de la publication: $e');
       return false;
     }
   }
@@ -298,7 +310,7 @@ class ContentProvider extends ChangeNotifier {
           await _contentApiService.getPublicationComments(publicationId);
       _publicationComments[publicationId] = comments;
     } catch (e) {
-      debugPrint('Erreur lors du chargement des commentaires: $e');
+      AppLogger.error('Erreur lors du chargement des commentaires: $e');
     } finally {
       _commentsLoading[publicationId] = false;
       notifyListeners();
@@ -377,7 +389,7 @@ class ContentProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('Erreur lors de la création du commentaire: $e');
+      AppLogger.error('Erreur lors de la création du commentaire: $e');
       return false;
     }
   }
@@ -397,7 +409,7 @@ class ContentProvider extends ChangeNotifier {
 
       return liked;
     } catch (e) {
-      debugPrint('Erreur lors du like du commentaire: $e');
+      AppLogger.error('Erreur lors du like du commentaire: $e');
       return false;
     }
   }
@@ -458,7 +470,7 @@ class ContentProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
-      debugPrint('Erreur lors de la suppression du commentaire: $e');
+      AppLogger.error('Erreur lors de la suppression du commentaire: $e');
       return false;
     }
   }
@@ -538,7 +550,7 @@ class ContentProvider extends ChangeNotifier {
     });
   }
 
-  // Nettoyer les données
+  @override
   void dispose() {
     _publications.clear();
     _featuredPublications.clear();

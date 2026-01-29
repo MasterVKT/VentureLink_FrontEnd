@@ -10,8 +10,6 @@ enum VentureSnackBarType {
 
 class VentureSnackBar extends SnackBar {
   final VentureSnackBarType type;
-  @override
-  final bool showCloseIcon;
 
   VentureSnackBar({
     super.key,
@@ -20,8 +18,9 @@ class VentureSnackBar extends SnackBar {
     super.duration,
     VoidCallback? onActionPressed,
     String? actionLabel,
-    this.showCloseIcon = true,
+    bool showCloseIcon = true,
   }) : super(
+          showCloseIcon: showCloseIcon,
           content: Row(
             children: [
               Icon(

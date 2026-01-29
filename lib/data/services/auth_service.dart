@@ -46,7 +46,7 @@ class AuthService {
     String password,
   ) async {
     try {
-      print("Tentative de connexion avec: $email");
+      debugPrint("Tentative de connexion avec: $email");
 
       // S'assurer que Firebase est initialisé
       await _ensureFirebaseInitialized();
@@ -57,10 +57,10 @@ class AuthService {
         password: password,
       );
 
-      print("Connexion réussie pour: ${userCredential.user?.email}");
+      debugPrint("Connexion réussie pour: ${userCredential.user?.email}");
 
       if (userCredential.user == null) {
-        print("Erreur: Utilisateur null après connexion");
+        debugPrint("Erreur: Utilisateur null après connexion");
         throw Exception("Échec de récupération des données utilisateur");
       }
 
@@ -70,21 +70,21 @@ class AuthService {
       // Vérifier que l'utilisateur est bien connecté
       final currentUser = _auth.currentUser;
       if (currentUser == null) {
-        print(
+        debugPrint(
             "Erreur: L'utilisateur n'est pas connecté après authentification");
         throw Exception(
             "L'authentification a réussi mais l'utilisateur n'est pas connecté");
       }
 
-      print(
+      debugPrint(
           "Vérification finale de l'authentification réussie: ${currentUser.email}");
 
       return _createUserFromFirebaseUser(userCredential.user!);
     } catch (e) {
-      print("Erreur de connexion détaillée: $e");
+      debugPrint("Erreur de connexion détaillée: $e");
       if (e is firebase_auth.FirebaseAuthException) {
-        print("Code d'erreur Firebase: ${e.code}");
-        print("Message d'erreur Firebase: ${e.message}");
+        debugPrint("Code d'erreur Firebase: ${e.code}");
+        debugPrint("Message d'erreur Firebase: ${e.message}");
       }
       throw _handleAuthException(e);
     }
@@ -115,25 +115,6 @@ class AuthService {
     }
   }
 
-  // Vérifier la configuration Google Sign-In et la disponibilité des services Google Play
-  Future<bool> _isGoogleSignInConfigured() async {
-    try {
-      // Vérifier si Google Play Services est disponible
-      final isAvailable = await _checkGooglePlayServicesAvailability();
-      if (!isAvailable) {
-        debugPrint("Google Play Services n'est pas disponible ou à jour");
-        return false;
-      }
-
-      // Vérifier si l'authentification silencieuse fonctionne
-      await _googleSignIn.signInSilently();
-      return true;
-    } catch (e) {
-      debugPrint("Configuration Google Sign-In non disponible: $e");
-      return false;
-    }
-  }
-
   // Vérifier la disponibilité et la version de Google Play Services
   Future<bool> _checkGooglePlayServicesAvailability() async {
     try {
@@ -151,42 +132,6 @@ class AuthService {
     } catch (e) {
       debugPrint("Erreur lors de la vérification de Google Play Services: $e");
       return false;
-    }
-  }
-
-  // Méthode auxiliaire pour la connexion Google avec gestion robuste des erreurs
-  Future<GoogleSignInAccount?> _performGoogleSignIn(
-      {bool isRetry = false}) async {
-    try {
-      // Créer une nouvelle instance si c'est une tentative de récupération
-      final googleSignIn = isRetry
-          ? GoogleSignIn(
-              scopes: ['email', 'profile'],
-              // Désactiver la vérification de clientId en mode web
-              clientId: kIsWeb ? 'web-client-id' : null,
-            )
-          : _googleSignIn;
-
-      // Nettoyer l'état si nécessaire
-      if (isRetry) {
-        try {
-          await googleSignIn.signOut();
-        } catch (_) {}
-      }
-
-      return await googleSignIn.signIn();
-    } catch (e) {
-      if (e.toString().contains('PigeonUserDetails') ||
-          e.toString().contains('List<Object?>') ||
-          e.toString().contains('is not a subtype of type')) {
-        print("Erreur de cast Pigeon dans _performGoogleSignIn: $e");
-        if (!isRetry) {
-          print("Tentative de récupération...");
-          await Future.delayed(const Duration(milliseconds: 500));
-          return await _performGoogleSignIn(isRetry: true);
-        }
-      }
-      rethrow;
     }
   }
 
@@ -357,13 +302,13 @@ class AuthService {
       throw Exception(
           'Erreur technique Google Sign-In: ${e.code} - ${e.message}');
     } catch (e) {
-      print("Erreur lors de la connexion Google: $e");
+      debugPrint("Erreur lors de la connexion Google: $e");
 
       // Gestion spécifique des erreurs de cast Pigeon
       if (e.toString().contains('PigeonUserDetails') ||
           e.toString().contains('List<Object?>') ||
           e.toString().contains('is not a subtype of type')) {
-        print("Erreur de cast Pigeon détectée au niveau principal");
+        debugPrint("Erreur de cast Pigeon détectée au niveau principal");
 
         // Nettoyer l'état
         try {
@@ -461,7 +406,7 @@ class AuthService {
       final token = await currentUser.getIdToken();
       return token;
     } catch (e) {
-      print('Erreur lors de la récupération du token: $e');
+      debugPrint('Erreur lors de la récupération du token: $e');
       return null;
     }
   }
@@ -478,7 +423,7 @@ class AuthService {
       final token = await currentUser.getIdToken(true);
       return token;
     } catch (e) {
-      print('Erreur lors du rafraîchissement du token: $e');
+      debugPrint('Erreur lors du rafraîchissement du token: $e');
       return null;
     }
   }
@@ -511,7 +456,7 @@ class AuthService {
   }
 
   String _handleAuthException(dynamic e) {
-    print("Traitement de l'exception d'authentification: $e");
+    debugPrint("Traitement de l'exception d'authentification: $e");
 
     if (e is firebase_auth.FirebaseAuthException) {
       switch (e.code) {

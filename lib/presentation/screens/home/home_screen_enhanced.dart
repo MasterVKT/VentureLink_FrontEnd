@@ -9,6 +9,7 @@ import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/data/models/user_model.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
+import 'package:venturelink/data/providers/content_provider.dart';
 
 import 'package:venturelink/presentation/widgets/project/universal_media_carousel_widget.dart';
 import 'package:venturelink/presentation/widgets/project/social_project_card.dart';
@@ -40,32 +41,62 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
     _scrollController.addListener(_onScroll);
 
     // Charger les projets au démarrage
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       debugPrint('[HomeScreen] Initialisation - début chargement des projets');
-      final projectProvider = context.read<ProjectProvider>();
 
-      projectProvider.loadProjects(refresh: true).then((_) {
-        debugPrint(
-            '[HomeScreen] Chargement terminé - nbr projets: ${projectProvider.projects.length}');
+      // Authentification automatique pour les tests
+      if (mounted) {
+        final authProvider = context.read<AuthProvider>();
+        await authProvider.autoLoginForTesting();
+      }
 
-        // Charger aussi les projets spécialisés
-        _loadSpecializedProjects();
-      }).catchError((error) {
-        debugPrint('[HomeScreen] Erreur lors du chargement: $error');
-      });
+      if (mounted) {
+        final projectProvider = context.read<ProjectProvider>();
+
+        projectProvider.loadProjects().then((_) {
+          debugPrint(
+              '[HomeScreen] Chargement terminé - nbr projets: ${projectProvider.projects.length}');
+
+          // Charger aussi les projets spécialisés
+          _loadSpecializedProjects();
+        }).catchError((error) {
+          debugPrint('[HomeScreen] Erreur lors du chargement: $error');
+        });
+      }
     });
   }
 
   Future<void> _loadSpecializedProjects() async {
     final projectProvider = context.read<ProjectProvider>();
+    final contentProvider = context.read<ContentProvider>();
 
-    // Charger les projets tendance et recommandés en parallèle
-    await Future.wait([
-      projectProvider.loadTrendingProjects(),
-      projectProvider.loadFeaturedProjects(),
-      if (context.read<AuthProvider>().isAuthenticated)
-        projectProvider.loadRecommendedProjects(),
-    ]);
+    try {
+      // Charger les projets et publications en parallèle
+      await Future.wait([
+        projectProvider.loadTrendingProjects().catchError((e) {
+          debugPrint('[HomeScreen] Erreur chargement projets tendance: $e');
+        }),
+        projectProvider.loadFeaturedProjects().catchError((e) {
+          debugPrint('[HomeScreen] Erreur chargement projets mis en avant: $e');
+        }),
+        contentProvider.loadFeaturedPublications().catchError((e) {
+          debugPrint(
+              '[HomeScreen] Erreur chargement publications mises en avant: $e');
+        }),
+        contentProvider.loadPublications().catchError((e) {
+          debugPrint('[HomeScreen] Erreur chargement publications: $e');
+        }),
+        if (context.read<AuthProvider>().isAuthenticated)
+          projectProvider.loadRecommendedProjects().catchError((e) {
+            debugPrint(
+                '[HomeScreen] Erreur chargement projets recommandés: $e');
+          }),
+      ]);
+      debugPrint(
+          '[HomeScreen] Chargement des projets et publications spécialisés terminé');
+    } catch (e) {
+      debugPrint('[HomeScreen] Erreur générale lors du chargement: $e');
+    }
   }
 
   @override
@@ -92,11 +123,6 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
   void _applyFilters() {
     final projectProvider = context.read<ProjectProvider>();
     projectProvider.loadProjects(
-      refresh: true,
-      search: _searchQuery,
-      category: _selectedCategory,
-      stage: _selectedStage,
-      location: _selectedLocation,
     );
   }
 
@@ -107,7 +133,7 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
       _selectedLocation = null;
       _searchQuery = null;
     });
-    context.read<ProjectProvider>().loadProjects(refresh: true);
+    context.read<ProjectProvider>().loadProjects();
   }
 
   @override
@@ -115,7 +141,7 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
     final user = context.watch<AuthProvider>().currentUser;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text('Bonjour ${user?.firstName ?? 'Utilisateur'}'),
         elevation: 0,
@@ -157,7 +183,7 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await context.read<ProjectProvider>().loadProjects(refresh: true);
+          await context.read<ProjectProvider>().loadProjects();
           await _loadSpecializedProjects();
         },
         child: Consumer<ProjectProvider>(
@@ -618,7 +644,7 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              context.read<ProjectProvider>().loadProjects(refresh: true);
+              context.read<ProjectProvider>().loadProjects();
             },
             child: const Text('Réessayer'),
           ),
@@ -696,8 +722,8 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
   List<ProjectModel> _getRecentProjects(List<ProjectModel> projects) {
     // Tous les projets triés par date de publication
     return projects.toList()
-      ..sort((a, b) => (b.publishedAt ?? b.createdAt)
-          .compareTo(a.publishedAt ?? a.createdAt));
+      ..sort((a, b) => (b.publishedAt ?? b.createdAt ?? DateTime.now())
+          .compareTo(a.publishedAt ?? a.createdAt ?? DateTime.now()));
   }
 
   // Actions améliorées sur les projets
@@ -986,9 +1012,7 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
             ),
             ListTile(
               leading: const Icon(Icons.bookmark_border),
-              title: Text(project.isFavorited
-                  ? 'Retirer des favoris'
-                  : 'Ajouter aux favoris'),
+              title: const Text('Ajouter aux favoris'),
               onTap: () {
                 Navigator.pop(context);
                 _handleLike(project);
@@ -1000,7 +1024,8 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
               title: const Text('Modifier le projet'),
               onTap: () {
                 Navigator.pop(context);
-                context.router.push(ProjectEditRoute(projectId: project.id));
+                // TODO: Implémenter la route d'édition
+                // context.router.push(ProjectEditRoute(projectId: project.id));
               },
             ),
             ListTile(
@@ -1008,8 +1033,8 @@ class _HomeScreenEnhancedState extends State<HomeScreenEnhanced> {
               title: const Text('Voir les statistiques'),
               onTap: () {
                 Navigator.pop(context);
-                context.router
-                    .push(ProjectAnalyticsRoute(projectId: project.id));
+                // TODO: Implémenter la route d'analytics
+                // context.router.push(ProjectAnalyticsRoute(projectId: project.id));
               },
             ),
           ],

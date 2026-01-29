@@ -7,7 +7,7 @@ class AppConfig {
   static String get _devApiBaseUrl {
     // Vérifier si nous sommes sur le web
     if (kIsWeb) {
-      return 'http://localhost:8000';
+      return 'http://127.0.0.1:8000';
     }
 
     // Pour l'émulateur Android, utiliser 10.0.2.2 au lieu de localhost
@@ -18,7 +18,7 @@ class AppConfig {
     } catch (e) {
       // Ignorer les erreurs de plateforme non supportée
     }
-    return 'http://localhost:8000';
+    return 'http://127.0.0.1:8000';
   }
 
   static const String _prodApiBaseUrl = 'https://api.venturelink.com';
@@ -32,7 +32,7 @@ class AppConfig {
   static String get _devWebsocketBaseUrl {
     // Vérifier si nous sommes sur le web
     if (kIsWeb) {
-      return 'ws://localhost:8000';
+      return 'ws://127.0.0.1:8000';
     }
 
     try {
@@ -42,7 +42,7 @@ class AppConfig {
     } catch (e) {
       // Ignorer les erreurs de plateforme non supportée
     }
-    return 'ws://localhost:8000';
+    return 'ws://127.0.0.1:8000';
   }
 
   static const String _prodWebsocketBaseUrl = 'wss://api.venturelink.com';

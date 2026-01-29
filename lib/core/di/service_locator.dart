@@ -11,10 +11,12 @@ import '../../data/services/api_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/services/base_api_service.dart';
 import '../../data/services/subscription_api_service.dart';
+import '../../data/services/subscription_service.dart';
 import '../../data/services/user_api_service.dart';
 import '../../data/services/payment_api_service.dart';
 import '../../data/repositories/subscription_repository.dart';
 import '../../data/providers/subscription_provider.dart';
+import '../../data/providers/simple_subscription_provider.dart';
 import '../../data/providers/profile_provider.dart';
 import '../../data/providers/payment_provider.dart';
 import '../../data/providers/matching_provider.dart';
@@ -24,6 +26,8 @@ import '../../domain/services/i_storage_service.dart';
 import '../../data/services/user_preferences_service.dart';
 import 'package:venturelink/data/providers/analytics_provider.dart';
 import 'package:venturelink/data/services/analytics_api_service.dart';
+import 'package:venturelink/data/services/user_analytics_service.dart';
+import 'package:venturelink/data/providers/user_stats_provider.dart';
 
 final GetIt serviceLocator = GetIt.instance;
 
@@ -41,6 +45,11 @@ Future<void> setupServiceLocator() async {
 
   serviceLocator.registerLazySingleton<IApiService>(
     () => ApiService(),
+  );
+
+  // Enregistrer aussi ApiService en tant que type concret
+  serviceLocator.registerLazySingleton<ApiService>(
+    () => serviceLocator<IApiService>() as ApiService,
   );
 
   // Enregistrer l'instance Dio
@@ -67,6 +76,15 @@ Future<void> setupServiceLocator() async {
 
   serviceLocator.registerLazySingleton(
       () => AnalyticsApiService(serviceLocator<ApiService>()));
+
+  serviceLocator.registerLazySingleton<UserAnalyticsService>(
+    () => UserAnalyticsService(serviceLocator<ApiService>()),
+  );
+
+  // Services pour les abonnements simples
+  serviceLocator.registerLazySingleton<SubscriptionService>(
+    () => SubscriptionService(serviceLocator<ApiService>()),
+  );
 
   // Repositories
   serviceLocator.registerLazySingleton<IAuthRepository>(
@@ -114,6 +132,14 @@ Future<void> setupServiceLocator() async {
 
   serviceLocator.registerLazySingleton(
       () => AnalyticsProvider(serviceLocator<AnalyticsApiService>()));
+
+  serviceLocator.registerFactory<UserStatsProvider>(
+    () => UserStatsProvider(serviceLocator<UserAnalyticsService>()),
+  );
+
+  serviceLocator.registerFactory<SimpleSubscriptionProvider>(
+    () => SimpleSubscriptionProvider(serviceLocator<SubscriptionService>()),
+  );
 
   // Router
   serviceLocator.registerSingleton<AppRouter>(

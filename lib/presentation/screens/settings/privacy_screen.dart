@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 @RoutePage()
 class PrivacyScreen extends StatelessWidget {
@@ -9,7 +8,6 @@ class PrivacyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final appLocalizations = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(

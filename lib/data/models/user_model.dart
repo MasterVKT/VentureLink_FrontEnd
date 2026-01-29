@@ -68,10 +68,30 @@ class UserModel {
   // Ajout d'une méthode fromJson personnalisée pour gérer les cas où le profil est null
   static UserModel fromJson(Map<String, dynamic> json) {
     try {
-      return _$UserModelFromJson(json);
-    } catch (e) {
-      // Créer une version corrigée du JSON si certains champs causent des problèmes
+      // Gérer le cas où l'API renvoie full_name au lieu de first_name et last_name
       final correctedJson = Map<String, dynamic>.from(json);
+
+      if (json.containsKey('full_name') && !json.containsKey('first_name')) {
+        final fullName = json['full_name'] as String? ?? '';
+        final nameParts = fullName.split(' ');
+
+        correctedJson['first_name'] =
+            nameParts.isNotEmpty ? nameParts.first : '';
+        correctedJson['last_name'] =
+            nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
+      }
+
+      // Fournir des valeurs par défaut pour les champs obligatoires manquants
+      correctedJson['first_name'] ??= '';
+      correctedJson['last_name'] ??= '';
+      correctedJson['email'] ??= '';
+      correctedJson['user_type'] ??= 'ENTREPRENEUR';
+
+      // S'assurer que date_joined existe
+      if (!correctedJson.containsKey('date_joined') ||
+          correctedJson['date_joined'] == null) {
+        correctedJson['date_joined'] = DateTime.now().toIso8601String();
+      }
 
       // Gérer le cas où profile est null ou non valide
       if (json['profile'] != null && json['profile'] is! Map<String, dynamic>) {
@@ -79,6 +99,18 @@ class UserModel {
       }
 
       return _$UserModelFromJson(correctedJson);
+    } catch (e) {
+      // En cas d'erreur, créer un UserModel avec des valeurs par défaut
+      return UserModel(
+        id: json['id']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        firstName: json['first_name']?.toString() ??
+            (json['full_name']?.toString().split(' ').first ?? ''),
+        lastName: json['last_name']?.toString() ??
+            (json['full_name']?.toString().split(' ').skip(1).join(' ') ?? ''),
+        userType: json['user_type']?.toString() ?? 'ENTREPRENEUR',
+        dateJoined: DateTime.now(),
+      );
     }
   }
 

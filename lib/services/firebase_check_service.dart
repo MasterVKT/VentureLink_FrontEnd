@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:venturelink/core/config/config_service.dart';
+import 'package:venturelink/firebase_options.dart';
 
 class FirebaseCheckService {
   static bool _isFirebaseInitialized = false;
@@ -40,13 +40,7 @@ class FirebaseCheckService {
       debugPrint(
           'FirebaseCheckService: Tentative d\'initialisation de Firebase...');
       await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: ConfigService.firebaseApiKey,
-          appId: ConfigService.firebaseAppId,
-          messagingSenderId: ConfigService.firebaseMessagingSenderId,
-          projectId: ConfigService.firebaseProjectId,
-          storageBucket: ConfigService.firebaseStorageBucket,
-        ),
+        options: DefaultFirebaseOptions.currentPlatform,
       );
 
       debugPrint('FirebaseCheckService: Firebase initialisé avec succès.');

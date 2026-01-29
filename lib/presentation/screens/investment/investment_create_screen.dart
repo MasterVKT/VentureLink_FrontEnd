@@ -510,7 +510,7 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        context.router.pop();
+        context.router.maybePop();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

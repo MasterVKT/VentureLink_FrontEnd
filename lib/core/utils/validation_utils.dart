@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class ValidationUtils {
   /// Valide une fourchette de financement
   /// Formats acceptés: "50K-100K €", "50000-100000 €", "50K - 100K €", etc.
@@ -59,7 +57,7 @@ class ValidationUtils {
         .trim();
 
     final parts = normalized.split('|');
-    if (parts.length != 2) throw FormatException('Format invalide');
+    if (parts.length != 2) throw const FormatException('Format invalide');
 
     final amounts = <double>[];
     for (final part in parts) {
@@ -292,17 +290,17 @@ class ValidationUtils {
       {int? minItems, int? maxItems}) {
     if (selectedItems == null || selectedItems.isEmpty) {
       if (minItems != null && minItems > 0) {
-        return 'Veuillez sélectionner au moins ${minItems} élément${minItems > 1 ? 's' : ''}';
+        return 'Veuillez sélectionner au moins $minItems élément${minItems > 1 ? 's' : ''}';
       }
       return null;
     }
 
     if (minItems != null && selectedItems.length < minItems) {
-      return 'Veuillez sélectionner au moins ${minItems} élément${minItems > 1 ? 's' : ''}';
+      return 'Veuillez sélectionner au moins $minItems élément${minItems > 1 ? 's' : ''}';
     }
 
     if (maxItems != null && selectedItems.length > maxItems) {
-      return 'Vous ne pouvez sélectionner que ${maxItems} élément${maxItems > 1 ? 's' : ''} maximum';
+      return 'Vous ne pouvez sélectionner que $maxItems élément${maxItems > 1 ? 's' : ''} maximum';
     }
 
     return null;

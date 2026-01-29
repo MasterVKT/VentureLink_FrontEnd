@@ -869,22 +869,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              final navigator = Navigator.of(context);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+              navigator.pop();
 
               if (provider.currentSubscription != null) {
                 final success = await provider.cancelSubscription(
                   subscriptionId: provider.currentSubscription!.id,
                 );
 
-                if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (success && mounted) {
+                  scaffoldMessenger.showSnackBar(
                     const SnackBar(
                       content: Text('Abonnement annulé avec succès'),
                       backgroundColor: Colors.green,
                     ),
                   );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                } else if (mounted) {
+                  scaffoldMessenger.showSnackBar(
                     const SnackBar(
                       content: Text('Erreur lors de l\'annulation'),
                       backgroundColor: Colors.red,

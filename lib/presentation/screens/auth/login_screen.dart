@@ -45,13 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // Vérifier si l'utilisateur est connecté après la tentative
         if (success && mounted && authProvider.isAuthenticated) {
-          print("Login réussi, redirection vers l'écran principal");
+          debugPrint("Login réussi, redirection vers l'écran principal");
           router.replace(const MainRoute());
         } else if (mounted) {
           // Si l'authentification a échoué mais qu'elle a réussi dans Firebase
           // (cas où success est false mais authProvider.isAuthenticated est true après rafraîchissement)
           if (authProvider.isAuthenticated) {
-            print("Login réussi après vérification supplémentaire");
+            debugPrint("Login réussi après vérification supplémentaire");
             router.replace(const MainRoute());
           } else {
             // Afficher un snackbar avec le message d'erreur
@@ -275,6 +275,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextButton(
                       onPressed: () async {
                         final authProvider = context.read<AuthProvider>();
+                        final navigator = Navigator.of(context);
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        final router = context.router;
 
                         // Afficher un indicateur de chargement
                         showDialog(
@@ -290,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Fermer l'indicateur de chargement
                         if (mounted) {
-                          Navigator.of(context).pop();
+                          navigator.pop();
                         }
 
                         // Afficher le résultat
@@ -299,15 +302,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? "Connecté (${authProvider.currentUser?.email})"
                               : "Non connecté";
 
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          scaffoldMessenger.showSnackBar(
                             SnackBar(
                               content: Text('État d\'authentification: $state'),
                             ),
                           );
 
                           // Si l'utilisateur est authentifié, rediriger vers l'écran principal
-                          if (authProvider.isAuthenticated) {
-                            context.router.replace(const MainRoute());
+                          if (authProvider.isAuthenticated && mounted) {
+                            router.replace(const MainRoute());
                           }
                         }
                       },

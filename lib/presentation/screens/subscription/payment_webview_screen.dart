@@ -97,7 +97,10 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     // Vérifier si l'URL correspond à une redirection de succès ou d'annulation
     if (url.startsWith(widget.successUrl) ||
         url.contains('payment_status=success')) {
-      _handlePaymentSuccess();
+      final subscriptionProvider = context.read<SubscriptionProvider>();
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      final router = context.router;
+      _handlePaymentSuccess(subscriptionProvider, scaffoldMessenger, router);
       return true;
     } else if (url.startsWith(widget.cancelUrl) ||
         url.contains('payment_status=cancel')) {
@@ -123,24 +126,30 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       _isCheckingStatus = true;
     });
 
+    final paymentProvider = context.read<PaymentProvider>();
+    final subscriptionProvider = context.read<SubscriptionProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final router = context.router;
+
     try {
-      final paymentProvider =
-          Provider.of<PaymentProvider>(context, listen: false);
       final result = await paymentProvider.checkPaymentStatus(widget.sessionId);
 
       if (result['success'] == true) {
         final status = result['status'];
 
         if (status == 'COMPLETED') {
-          _handlePaymentSuccess();
+          _handlePaymentSuccess(
+              subscriptionProvider, scaffoldMessenger, router);
         } else if (['FAILED', 'CANCELLED', 'EXPIRED'].contains(status)) {
-          _handlePaymentFailure(result['description'] ?? 'Paiement échoué');
+          _handlePaymentFailure(result['description'] ?? 'Paiement échoué',
+              scaffoldMessenger, router);
         }
       } else {
         _retryCount++;
         if (_retryCount > 5) {
           // Après 5 tentatives, considérer comme un échec
-          _handlePaymentFailure('Impossible de vérifier le statut du paiement');
+          _handlePaymentFailure('Impossible de vérifier le statut du paiement',
+              scaffoldMessenger, router);
         }
       }
     } catch (e) {
@@ -153,19 +162,18 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     }
   }
 
-  void _handlePaymentSuccess() {
+  void _handlePaymentSuccess(SubscriptionProvider subscriptionProvider,
+      ScaffoldMessengerState scaffoldMessenger, StackRouter router) {
     if (_isPaymentComplete) return;
 
     _isPaymentComplete = true;
     _statusCheckTimer?.cancel();
 
     // Mettre à jour le statut d'abonnement
-    final subscriptionProvider =
-        Provider.of<SubscriptionProvider>(context, listen: false);
     subscriptionProvider.loadCurrentSubscription(forceRefresh: true);
 
     // Afficher un message de succès et revenir à l'écran précédent
-    ScaffoldMessenger.of(context).showSnackBar(
+    scaffoldMessenger.showSnackBar(
       const SnackBar(
         content:
             Text('Paiement réussi ! Votre abonnement est maintenant actif.'),
@@ -176,54 +184,71 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
 
     // Attendre un peu pour que l'utilisateur voie le message puis revenir
     Future.delayed(const Duration(seconds: 1), () {
-      if (context.mounted) {
-        context.router.pop(true); // Retourner true pour indiquer un succès
+      if (mounted) {
+        router.maybePop(true); // Retourner true pour indiquer un succès
       }
     });
   }
 
-  void _handlePaymentCancellation() {
+  void _handlePaymentCancellation(
+      [ScaffoldMessengerState? scaffoldMessenger, StackRouter? router]) {
     if (_isPaymentComplete) return;
 
     _isPaymentComplete = true;
     _statusCheckTimer?.cancel();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Paiement annulé.'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+    if (scaffoldMessenger != null && router != null) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Paiement annulé.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      router.maybePop(false);
+    } else {
+      // Fallback pour les appels synchrones
+      final messenger = ScaffoldMessenger.of(context);
+      final appRouter = context.router;
 
-    context.router.pop(false); // Retourner false pour indiquer une annulation
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Paiement annulé.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      appRouter.maybePop(false);
+    }
   }
 
-  void _handlePaymentFailure(String message) {
+  void _handlePaymentFailure(String message,
+      ScaffoldMessengerState scaffoldMessenger, StackRouter router) {
     if (_isPaymentComplete) return;
 
     _isPaymentComplete = true;
     _statusCheckTimer?.cancel();
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Text('Échec du paiement: $message'),
         backgroundColor: Colors.red,
       ),
     );
 
-    context.router.pop(false); // Retourner false pour indiquer un échec
+    router.maybePop(false); // Retourner false pour indiquer un échec
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Demander confirmation avant de quitter
-        if (!_isPaymentComplete) {
+    return PopScope(
+      canPop: _isPaymentComplete,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop && !_isPaymentComplete) {
+          final navigator = Navigator.of(context);
           final shouldPop = await _showExitConfirmationDialog();
-          return shouldPop;
+          if (shouldPop && mounted) {
+            navigator.pop();
+          }
         }
-        return true;
       },
       child: Scaffold(
         appBar: const VLAppBar(

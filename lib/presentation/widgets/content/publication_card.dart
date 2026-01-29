@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/publication_model.dart';
+import '../../../core/utils/logger.dart';
 
 class PublicationCard extends StatelessWidget {
   final Publication publication;
@@ -58,10 +59,21 @@ class PublicationCard extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Icons.trending_up,
-              color: Theme.of(context).colorScheme.onPrimary,
-              size: 24,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.trending_up,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    size: 24,
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -220,7 +232,8 @@ class PublicationCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -280,18 +293,50 @@ class PublicationCard extends StatelessWidget {
   }
 
   Widget _buildMediaContent(BuildContext context) {
-    final images = publication.media.where((m) => m.isImage).toList();
-    final videos = publication.media.where((m) => m.isVideo).toList();
-    final documents = publication.media.where((m) => m.isDocument).toList();
+    // Priorité : featured_media d'abord, sinon les médias de la liste
+    PublicationMedia? mediaToShow;
 
-    if (images.isNotEmpty) {
-      return _buildImageGallery(context, images);
-    } else if (videos.isNotEmpty) {
-      return _buildVideoPreview(context, videos.first);
-    } else if (documents.isNotEmpty) {
-      return _buildDocumentPreview(context, documents);
+    AppLogger.info(
+        '[CARD] 🖼️ Début _buildMediaContent pour publication ${publication.id}');
+    AppLogger.info(
+        '[CARD] 💡 featuredMedia: ${publication.featuredMedia?.file ?? 'null'}');
+    AppLogger.info('[CARD] 💡 media count: ${publication.media?.length ?? 0}');
+
+    if (publication.featuredMedia != null) {
+      mediaToShow = publication.featuredMedia;
+      AppLogger.info(
+          '[CARD] ✅ Utilisation de featuredMedia: ${mediaToShow!.file}');
+      AppLogger.info('[CARD] 🔗 URL complète: ${mediaToShow.fullUrl}');
+      AppLogger.info(
+          '[CARD] 📷 Type: ${mediaToShow.mediaType}, isImage: ${mediaToShow.isImage}');
+    } else if (publication.media != null && publication.media!.isNotEmpty) {
+      // Trier les médias par ordre (si disponible)
+      final sortedMedia = [...publication.media!]
+        ..sort((a, b) => (a.order ?? 0).compareTo(b.order ?? 0));
+      mediaToShow = sortedMedia.first;
+      AppLogger.info(
+          '[CARD] ✅ Utilisation du premier média de la liste: ${mediaToShow.file}');
     }
 
+    if (mediaToShow == null) {
+      AppLogger.info('[CARD] ❌ Aucun média à afficher');
+      return const SizedBox.shrink();
+    }
+
+    // Afficher le média
+    if (mediaToShow.isImage) {
+      AppLogger.info('[CARD] 🖼️ Affichage image: ${mediaToShow.fullUrl}');
+      return _buildSingleImage(context, mediaToShow);
+    } else if (mediaToShow.isVideo) {
+      AppLogger.info('[CARD] 🎥 Affichage vidéo: ${mediaToShow.fullUrl}');
+      return _buildVideoPreview(context, mediaToShow);
+    } else if (mediaToShow.isDocument) {
+      AppLogger.info('[CARD] 📄 Affichage document: ${mediaToShow.fullUrl}');
+      return _buildDocumentPreview(context, [mediaToShow]);
+    }
+
+    AppLogger.info(
+        '[CARD] ❓ Type de média non reconnu: ${mediaToShow.mediaType}');
     return const SizedBox.shrink();
   }
 
@@ -310,14 +355,14 @@ class PublicationCard extends StatelessWidget {
     return AspectRatio(
       aspectRatio: 16 / 9,
       child: CachedNetworkImage(
-        imageUrl: image.file,
+        imageUrl: image.fullUrl,
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Center(child: CircularProgressIndicator()),
         ),
         errorWidget: (context, url, error) => Container(
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Icon(Icons.image_not_supported),
         ),
       ),
@@ -331,7 +376,7 @@ class PublicationCard extends StatelessWidget {
         children: [
           Expanded(
             child: CachedNetworkImage(
-              imageUrl: images[0].file,
+              imageUrl: images[0].fullUrl,
               fit: BoxFit.cover,
               height: 200,
             ),
@@ -339,7 +384,7 @@ class PublicationCard extends StatelessWidget {
           const SizedBox(width: 2),
           Expanded(
             child: CachedNetworkImage(
-              imageUrl: images[1].file,
+              imageUrl: images[1].fullUrl,
               fit: BoxFit.cover,
               height: 200,
             ),
@@ -358,7 +403,7 @@ class PublicationCard extends StatelessWidget {
           Expanded(
             flex: 2,
             child: CachedNetworkImage(
-              imageUrl: images[0].file,
+              imageUrl: images[0].fullUrl,
               fit: BoxFit.cover,
               height: 200,
             ),
@@ -369,7 +414,7 @@ class PublicationCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: CachedNetworkImage(
-                    imageUrl: images[1].file,
+                    imageUrl: images[1].fullUrl,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -379,7 +424,7 @@ class PublicationCard extends StatelessWidget {
                     child: Stack(
                       children: [
                         CachedNetworkImage(
-                          imageUrl: images[2].file,
+                          imageUrl: images[2].fullUrl,
                           fit: BoxFit.cover,
                           width: double.infinity,
                         ),
@@ -415,24 +460,24 @@ class PublicationCard extends StatelessWidget {
     return AspectRatio(
       aspectRatio: 16 / 9,
       child: Container(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Stack(
           children: [
             if (video.file.isNotEmpty)
               CachedNetworkImage(
-                imageUrl: video.file, // Thumbnail de la vidéo
+                imageUrl: video.fullUrl, // Thumbnail de la vidéo
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: double.infinity,
                 errorWidget: (context, url, error) => Container(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 ),
               ),
             Center(
               child: Container(
                 width: 60,
                 height: 60,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.black54,
                   shape: BoxShape.circle,
                 ),
@@ -483,7 +528,7 @@ class PublicationCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

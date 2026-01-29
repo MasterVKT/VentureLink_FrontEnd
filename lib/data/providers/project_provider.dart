@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/data/services/project_api_service.dart';
 import 'package:venturelink/data/services/api_service.dart';
@@ -15,8 +15,10 @@ class ProjectProvider extends ChangeNotifier {
   ProjectModel? _currentProject;
   bool _isLoading = false;
   String? _error;
-  bool _hasMore = true;
-  int _currentPage = 1;
+  final bool _hasMore = true;
+  final int _currentPage = 1;
+  bool _isLoadingProjects = false;
+  DateTime _lastLoadTime = DateTime.now();
 
   List<ProjectModel> get projects => _projects;
   List<ProjectModel> get featuredProjects => _featuredProjects;
@@ -39,6 +41,11 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    // Diagnostiquer les problèmes d'API en mode debug
+    if (kDebugMode) {
+      await _projectApiService.diagnoseApiIssues();
+    }
+
     await loadCategories();
     await loadTags();
     await loadProjects();
@@ -54,135 +61,75 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Charger les projets avec filtres
-  Future<void> loadProjects({
-    bool refresh = false,
-    String? search,
-    String? category,
-    String? stage,
-    String? location,
-    double? fundingMin,
-    double? fundingMax,
-    List<String>? tags,
-    String? sortBy,
-    String? sortOrder,
-  }) async {
-    debugPrint('[ProjectProvider] loadProjects appelé - refresh: $refresh');
-    debugPrint(
-        '[ProjectProvider] Paramètres: search=$search, category=$category, stage=$stage');
+  /// Charger les projets depuis l'API
+  Future<void> loadProjects({bool forceRefresh = false}) async {
+    if (_isLoadingProjects && !forceRefresh) return;
 
-    if (refresh) {
-      _currentPage = 1;
-      _projects.clear();
-      _hasMore = true;
-      debugPrint('[ProjectProvider] Mode refresh - reset des données');
-    }
-
-    if (!_hasMore && !refresh) {
-      debugPrint('[ProjectProvider] Pas plus de données à charger');
-      return;
-    }
-
-    _setLoading(true);
-    _setError(null);
-    debugPrint(
-        '[ProjectProvider] État mis à jour - isLoading: true, error: null');
+    _isLoadingProjects = true;
+    notifyListeners();
 
     try {
-      debugPrint('[ProjectProvider] Appel API - page: $_currentPage');
-      final result = await _projectApiService.getProjects(
-        page: _currentPage,
-        search: search,
-        category: category,
-        stage: stage,
-        location: location,
-        fundingMin: fundingMin,
-        fundingMax: fundingMax,
-        tags: tags,
-        sortBy: sortBy,
-        sortOrder: sortOrder,
-      );
-
-      debugPrint(
-          '[ProjectProvider] Résultat API reçu - isSuccess: ${result.isSuccess}');
-
-      if (result.isSuccess && result.projects != null) {
+      // Charger les projets recommandés
+      final recommendedResult =
+          await _projectApiService.getRecommendedProjects();
+      if (recommendedResult.isSuccess && recommendedResult.projects != null) {
+        _recommendedProjects = recommendedResult.projects!;
         debugPrint(
-            '[ProjectProvider] ${result.projects!.length} projets reçus');
-
-        if (refresh) {
-          _projects = result.projects!;
-          debugPrint('[ProjectProvider] Projets remplacés (refresh)');
-        } else {
-          _projects.addAll(result.projects!);
-          debugPrint('[ProjectProvider] Projets ajoutés (pagination)');
-        }
-
-        // Trier les projets pour mettre les premium en premier
-        _sortProjectsWithPremiumFirst();
-
-        _hasMore = result.hasNext ?? false;
-        _currentPage++;
-        debugPrint(
-            '[ProjectProvider] hasMore: $_hasMore, prochaine page: $_currentPage');
-        debugPrint(
-            '[ProjectProvider] Total projets dans la liste: ${_projects.length}');
+            '[ProjectProvider] ${_recommendedProjects.length} projets recommandés chargés');
       } else {
         debugPrint(
-            '[ProjectProvider] Erreur dans le résultat: ${result.error}');
-        // Si l'erreur est liée à une pagination (page introuvable), nous marquons simplement
-        // qu'il n'y a plus de données à charger, sans afficher d'erreur à l'utilisateur
-        if (result.error?.contains("Page non valide") == true ||
-            result.error?.contains("404") == true) {
-          _hasMore = false;
-          debugPrint('[ProjectProvider] Erreur 404 - fin de pagination');
-        } else {
-          _setError(result.error ?? 'Erreur lors du chargement des projets');
-          debugPrint('[ProjectProvider] Erreur définie: $_error');
-        }
+            '[ProjectProvider] Erreur lors du chargement des projets recommandés: ${recommendedResult.error}');
+        _recommendedProjects = [];
       }
+
+      // Charger les projets en vedette
+      final featuredResult = await _projectApiService.getFeaturedProjects();
+      if (featuredResult.isSuccess && featuredResult.projects != null) {
+        _featuredProjects = featuredResult.projects!;
+        debugPrint(
+            '[ProjectProvider] ${_featuredProjects.length} projets en vedette chargés');
+      } else {
+        debugPrint(
+            '[ProjectProvider] Erreur lors du chargement des projets en vedette: ${featuredResult.error}');
+        _featuredProjects = [];
+      }
+
+      // Charger les projets tendance
+      final trendingResult = await _projectApiService.getTrendingProjects();
+      if (trendingResult.isSuccess && trendingResult.projects != null) {
+        _trendingProjects = trendingResult.projects!;
+        debugPrint(
+            '[ProjectProvider] ${_trendingProjects.length} projets tendance chargés');
+      } else {
+        debugPrint(
+            '[ProjectProvider] Erreur lors du chargement des projets tendance: ${trendingResult.error}');
+        _trendingProjects = [];
+      }
+
+      // Charger tous les projets
+      final allProjectsResult = await _projectApiService.getProjects();
+      if (allProjectsResult.isSuccess && allProjectsResult.projects != null) {
+        _projects = allProjectsResult.projects!;
+        debugPrint(
+            '[ProjectProvider] ${_projects.length} projets au total chargés');
+      } else {
+        debugPrint(
+            '[ProjectProvider] Erreur lors du chargement de tous les projets: ${allProjectsResult.error}');
+        _projects = [];
+      }
+
+      _lastLoadTime = DateTime.now();
     } catch (e) {
-      debugPrint('[ProjectProvider] Exception attrapée: $e');
-      // Ignorer les erreurs 404 pour la pagination
-      if (e.toString().contains("404") && _currentPage > 1) {
-        _hasMore = false;
-        debugPrint(
-            '[ProjectProvider] Exception 404 en pagination - hasMore = false');
-      } else {
-        _setError(e.toString());
-        debugPrint('[ProjectProvider] Exception définie comme erreur: $_error');
-      }
+      debugPrint('Erreur lors du chargement des projets: $e');
+      // En cas d'erreur, initialiser avec des listes vides pour éviter les erreurs null
+      _recommendedProjects = [];
+      _featuredProjects = [];
+      _trendingProjects = [];
+      _projects = [];
     } finally {
-      _setLoading(false);
-      debugPrint('[ProjectProvider] Chargement terminé - isLoading: false');
-      debugPrint(
-          '[ProjectProvider] État final: ${_projects.length} projets, hasMore: $_hasMore, error: $_error');
+      _isLoadingProjects = false;
+      notifyListeners();
     }
-  }
-
-  /// Tri des projets pour mettre les premium en premier
-  void _sortProjectsWithPremiumFirst() {
-    _projects.sort((a, b) {
-      // D'abord trier par premium (true vient avant false)
-      if (a.isPremium && !b.isPremium) return -1;
-      if (!a.isPremium && b.isPremium) return 1;
-
-      // Si même statut premium, trier par featured
-      if (a.isFeatured && !b.isFeatured) return -1;
-      if (!a.isFeatured && b.isFeatured) return 1;
-
-      // Si même statut premium et featured, trier par date de publication (plus récent d'abord)
-      if (a.publishedAt != null && b.publishedAt != null) {
-        return b.publishedAt!.compareTo(a.publishedAt!);
-      } else if (a.publishedAt != null) {
-        return -1;
-      } else if (b.publishedAt != null) {
-        return 1;
-      }
-
-      // Sinon trier par date de création
-      return b.createdAt.compareTo(a.createdAt);
-    });
   }
 
   /// Charger un projet spécifique
@@ -343,6 +290,24 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// Signaler un projet (return succès)
+  Future<bool> reportProject(String projectId, {String? reason}) async {
+    final success =
+        await _projectApiService.reportProject(projectId, reason: reason);
+    return success;
+  }
+
+  /// Masquer un projet pour l'utilisateur courant
+  Future<bool> hideProject(String projectId) async {
+    final success = await _projectApiService.hideProject(projectId);
+    if (success) {
+      // Retirer le projet de la liste locale pour ne plus l'afficher
+      _projects.removeWhere((p) => p.id == projectId);
+      notifyListeners();
+    }
+    return success;
+  }
+
   /// Exprimer un intérêt
   Future<bool> toggleInterest(String projectId) async {
     try {
@@ -394,22 +359,22 @@ class ProjectProvider extends ChangeNotifier {
 
   /// Rechercher des projets
   Future<void> searchProjects(String query) async {
-    await loadProjects(refresh: true, search: query);
+    await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par catégorie
   Future<void> filterByCategory(String categoryId) async {
-    await loadProjects(refresh: true, category: categoryId);
+    await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par stage
   Future<void> filterByStage(String stage) async {
-    await loadProjects(refresh: true, stage: stage);
+    await loadProjects(forceRefresh: true);
   }
 
   /// Réinitialiser les filtres
   Future<void> clearFilters() async {
-    await loadProjects(refresh: true);
+    await loadProjects(forceRefresh: true);
   }
 
   /// Charger plus de projets (pagination)
@@ -431,7 +396,7 @@ class ProjectProvider extends ChangeNotifier {
 
   /// Charger les projets de l'utilisateur connecté
   Future<void> loadUserProjects() async {
-    await loadProjects(refresh: true);
+    await loadProjects(forceRefresh: true);
     // Note: Dans une vraie app, on filtrerait par l'ID de l'utilisateur connecté
   }
 
@@ -632,4 +597,30 @@ class ProjectProvider extends ChangeNotifier {
   /// Getter pour les brouillons de l'utilisateur
   List<ProjectModel> get userDrafts =>
       _projects.where((p) => p.isDraft).toList();
+
+  /// Tri des projets pour mettre les premium en premier
+  void _sortProjectsWithPremiumFirst() {
+    _projects.sort((a, b) {
+      // D'abord trier par premium (true vient avant false)
+      if (a.isPremium && !b.isPremium) return -1;
+      if (!a.isPremium && b.isPremium) return 1;
+
+      // Si même statut premium, trier par featured
+      if (a.isFeatured && !b.isFeatured) return -1;
+      if (!a.isFeatured && b.isFeatured) return 1;
+
+      // Si même statut premium et featured, trier par date de publication (plus récent d'abord)
+      if (a.publishedAt != null && b.publishedAt != null) {
+        return b.publishedAt!.compareTo(a.publishedAt!);
+      } else if (a.publishedAt != null) {
+        return -1;
+      } else if (b.publishedAt != null) {
+        return 1;
+      }
+
+      // Sinon trier par date de création
+      return (b.createdAt ?? DateTime.now())
+          .compareTo(a.createdAt ?? DateTime.now());
+    });
+  }
 }

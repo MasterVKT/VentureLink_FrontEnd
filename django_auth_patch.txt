@@ -1,0 +1,34 @@
+
+# PATCH TEMPORAIRE POUR VENTURELINK - À APPLIQUER DANS LE BACKEND DJANGO
+# =====================================================================
+
+# 1. Dans settings.py, modifiez REST_FRAMEWORK:
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Temporaire pour développement
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
+
+# 2. Dans apps/projects/views.py, ajoutez:
+from rest_framework.permissions import AllowAny
+
+class ProjectViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]  # Temporaire
+    
+    def get_queryset(self):
+        return Project.objects.filter(is_draft=False)
+
+# 3. Dans apps/content/views.py, ajoutez:
+class PublicationViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]  # Temporaire
+    
+    def get_queryset(self):
+        return Publication.objects.filter(status='PUBLISHED')
+
+# 4. Redémarrez le serveur Django:
+# python manage.py runserver
+
+# ⚠️  N'oubliez pas de réactiver l'authentification en production!

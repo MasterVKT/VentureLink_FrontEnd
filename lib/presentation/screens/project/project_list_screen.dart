@@ -25,8 +25,7 @@ class ProjectListScreen extends StatelessWidget {
                   Text('Erreur : \\n${projectProvider.error!}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () =>
-                        projectProvider.loadProjects(refresh: true),
+                    onPressed: () => projectProvider.loadProjects(),
                     child: const Text('Réessayer'),
                   ),
                 ],
@@ -42,7 +41,7 @@ class ProjectListScreen extends StatelessWidget {
         return Scaffold(
           appBar: AppBar(title: const Text('Liste des Projets')),
           body: RefreshIndicator(
-            onRefresh: () => projectProvider.loadProjects(refresh: true),
+            onRefresh: () => projectProvider.loadProjects(),
             child: ListView.builder(
               itemCount: projectProvider.projects.length,
               itemBuilder: (context, index) {

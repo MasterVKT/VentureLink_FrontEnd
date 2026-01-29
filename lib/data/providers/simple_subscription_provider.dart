@@ -88,14 +88,12 @@ class SimpleSubscriptionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Souscrire à un plan
-  Future<bool> subscribeToPlan({
+  /// Souscrire à un plan (simplifié pour My-CoolPay)
+  Future<Map<String, dynamic>?> subscribeToPlan({
     required String planId,
-    required String currency,
-    String paymentMethod = 'PAYLINK',
-    String? phoneNumber,
+    required String phoneNumber,
   }) async {
-    if (_isProcessingPayment) return false;
+    if (_isProcessingPayment) return null;
 
     _isProcessingPayment = true;
     _paymentError = null;
@@ -104,11 +102,7 @@ class SimpleSubscriptionProvider with ChangeNotifier {
     try {
       final result = await _subscriptionService.createSubscription(
         planId: planId,
-        billingCurrency: currency,
-        paymentMethod: paymentMethod,
         phoneNumber: phoneNumber,
-        returnUrl: 'https://app.venturelink.com/subscription/success',
-        cancelUrl: 'https://app.venturelink.com/subscription/cancel',
       );
 
       debugPrint('✅ Abonnement créé: $result');
@@ -118,74 +112,13 @@ class SimpleSubscriptionProvider with ChangeNotifier {
 
       _isProcessingPayment = false;
       notifyListeners();
-      return true;
+      return result;
     } catch (e) {
       debugPrint('❌ Erreur souscription: $e');
       _paymentError = e.toString();
       _isProcessingPayment = false;
       notifyListeners();
-      return false;
-    }
-  }
-
-  /// Paiement direct avec Mobile Money
-  Future<Map<String, dynamic>?> payWithMobileMoney({
-    required String planId,
-    required String operator,
-    required String phoneNumber,
-    String currency = 'XAF',
-  }) async {
-    if (_isProcessingPayment) return null;
-
-    _isProcessingPayment = true;
-    _paymentError = null;
-    notifyListeners();
-
-    try {
-      final result = await _subscriptionService.createDirectPayment(
-        planId: planId,
-        operator: operator,
-        phoneNumber: phoneNumber,
-        currency: currency,
-      );
-
-      debugPrint('✅ Paiement Mobile Money initié: $result');
-      return result;
-    } catch (e) {
-      debugPrint('❌ Erreur paiement Mobile Money: $e');
-      _paymentError = e.toString();
       return null;
-    } finally {
-      _isProcessingPayment = false;
-      notifyListeners();
-    }
-  }
-
-  /// Autoriser un paiement avec OTP
-  Future<bool> authorizePayment({
-    required String transactionRef,
-    required String otpCode,
-  }) async {
-    try {
-      final result = await _subscriptionService.authorizePayment(
-        transactionRef: transactionRef,
-        otpCode: otpCode,
-      );
-
-      debugPrint('✅ Paiement autorisé: $result');
-
-      // Recharger l'abonnement actuel
-      await loadCurrentSubscription(forceRefresh: true);
-
-      _isProcessingPayment = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('❌ Erreur autorisation paiement: $e');
-      _paymentError = e.toString();
-      _isProcessingPayment = false;
-      notifyListeners();
-      return false;
     }
   }
 

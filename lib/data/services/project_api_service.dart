@@ -2,9 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/domain/services/i_api_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:venturelink/core/utils/logger.dart';
 
 class ProjectApiService {
   final IApiService _apiService;
+
+  /// Endpoint racine des projets (le préfixe /api/v1 est déjà inclus dans ApiService.baseUrl)
+  static const String _baseEndpoint = '/projects';
 
   ProjectApiService(this._apiService);
 
@@ -39,8 +43,8 @@ class ProjectApiService {
         queryParams['ordering'] = sortOrder == 'desc' ? '-$sortBy' : sortBy;
       }
 
-      final response =
-          await _apiService.get('/projects/', queryParameters: queryParams);
+      final response = await _apiService.get('$_baseEndpoint/',
+          queryParameters: queryParams);
 
       return ProjectListResult.safeParseApiResponse(response.data);
     } catch (e) {
@@ -90,7 +94,7 @@ class ProjectApiService {
   /// Récupérer un projet par son ID
   Future<ProjectModel?> getProject(String projectId) async {
     try {
-      final response = await _apiService.get('/projects/$projectId/');
+      final response = await _apiService.get('$_baseEndpoint/$projectId/');
       return ProjectModel.fromJson(response.data);
     } catch (e) {
       return null;
@@ -130,7 +134,7 @@ class ProjectApiService {
         'tags': tagIds,
       };
 
-      final response = await _apiService.post('/projects/', data: data);
+      final response = await _apiService.post('$_baseEndpoint/', data: data);
       return ProjectModel.fromJson(response.data);
     } catch (e) {
       return null;
@@ -142,7 +146,7 @@ class ProjectApiService {
       String projectId, Map<String, dynamic> data) async {
     try {
       final response =
-          await _apiService.patch('/projects/$projectId/', data: data);
+          await _apiService.patch('$_baseEndpoint/$projectId/', data: data);
       return ProjectModel.fromJson(response.data);
     } catch (e) {
       return null;
@@ -152,7 +156,7 @@ class ProjectApiService {
   /// Supprimer un projet
   Future<bool> deleteProject(String projectId) async {
     try {
-      await _apiService.delete('/projects/$projectId/');
+      await _apiService.delete('$_baseEndpoint/$projectId/');
       return true;
     } catch (e) {
       return false;
@@ -162,7 +166,7 @@ class ProjectApiService {
   /// Publier un projet
   Future<bool> publishProject(String projectId) async {
     try {
-      await _apiService.post('/projects/$projectId/publish/');
+      await _apiService.post('$_baseEndpoint/$projectId/publish/');
       return true;
     } catch (e) {
       return false;
@@ -172,7 +176,7 @@ class ProjectApiService {
   /// Archiver un projet
   Future<bool> archiveProject(String projectId) async {
     try {
-      await _apiService.post('/projects/$projectId/archive/');
+      await _apiService.post('$_baseEndpoint/$projectId/archive/');
       return true;
     } catch (e) {
       return false;
@@ -182,7 +186,33 @@ class ProjectApiService {
   /// Basculer le statut favori d'un projet
   Future<bool> toggleFavorite(String projectId) async {
     try {
-      await _apiService.post('/projects/$projectId/toggle_favorite/');
+      await _apiService.post('$_baseEndpoint/$projectId/toggle_favorite/');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Signaler un projet pour contenu inapproprié ou fraude
+  Future<bool> reportProject(
+    String projectId, {
+    String? reason,
+  }) async {
+    try {
+      await _apiService.post(
+        '$_baseEndpoint/$projectId/report/',
+        data: reason != null ? {'reason': reason} : null,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Masquer (ou désactiver l'affichage) d'un projet pour l'utilisateur courant
+  Future<bool> hideProject(String projectId) async {
+    try {
+      await _apiService.post('$_baseEndpoint/$projectId/hide/');
       return true;
     } catch (e) {
       return false;
@@ -192,7 +222,7 @@ class ProjectApiService {
   /// Exprimer un intérêt pour un projet
   Future<bool> toggleInterest(String projectId) async {
     try {
-      await _apiService.post('/projects/$projectId/toggle_interest/');
+      await _apiService.post('$_baseEndpoint/$projectId/toggle_interest/');
       return true;
     } catch (e) {
       return false;
@@ -202,10 +232,65 @@ class ProjectApiService {
   /// Récupérer les projets en vedette
   Future<ProjectListResult> getFeaturedProjects({int limit = 10}) async {
     try {
-      final response = await _apiService
-          .get('/projects/featured/', queryParameters: {'limit': limit});
+      // Utiliser l'endpoint correct avec filtrage is_featured=true
+      final response =
+          await _apiService.get('$_baseEndpoint/', queryParameters: {
+        'limit': limit,
+        'is_featured': true,
+        'ordering': '-published_at',
+      });
+
+      debugPrint(
+          '[API] Featured projects response type: ${response.data.runtimeType}');
+      debugPrint('[API] Featured projects response: ${response.data}');
+
+      // Détecter si c'est une réponse API root au lieu des données de projets
+      if (response.data is Map<String, dynamic>) {
+        final responseMap = response.data as Map<String, dynamic>;
+        if (responseMap.containsKey('projects') &&
+            responseMap['projects'] is String &&
+            responseMap['projects']
+                .toString()
+                .contains('/projects/projects/')) {
+          debugPrint('[API] Réponse API root détectée, retour liste vide');
+          return ProjectListResult.success(
+            projects: [],
+            totalCount: 0,
+            hasNext: false,
+            hasPrevious: false,
+          );
+        }
+      }
+
+      // Gérer le cas où l'API retourne directement une liste
+      if (response.data is List) {
+        debugPrint('[API] Featured projects: réponse directe en liste');
+        final projects = <ProjectModel>[];
+        final list = response.data as List;
+
+        for (var item in list) {
+          if (item != null && item is Map<String, dynamic>) {
+            try {
+              final project = ProjectModel.fromJson(item);
+              projects.add(project);
+            } catch (e) {
+              debugPrint('[API] Erreur parsing projet featured: $e');
+            }
+          }
+        }
+
+        return ProjectListResult.success(
+          projects: projects,
+          totalCount: projects.length,
+          hasNext: false,
+          hasPrevious: false,
+        );
+      }
+
+      // Sinon, utiliser le parsing standard
       return ProjectListResult.safeParseApiResponse(response.data);
     } catch (e) {
+      debugPrint('[API] Erreur featured projects: $e');
       return ProjectListResult.failure(e.toString());
     }
   }
@@ -216,13 +301,65 @@ class ProjectApiService {
     int limit = 10,
   }) async {
     try {
+      // Utiliser l'endpoint principal avec tri par vues récentes
       final response =
-          await _apiService.get('/projects/trending/', queryParameters: {
-        'days': days,
+          await _apiService.get('$_baseEndpoint/', queryParameters: {
         'limit': limit,
+        'ordering': '-views_count',
+        'status': 'ACTIVE',
       });
+
+      debugPrint(
+          '[API] Trending projects response type: ${response.data.runtimeType}');
+      debugPrint('[API] Trending projects response: ${response.data}');
+
+      // Détecter si c'est une réponse API root au lieu des données de projets
+      if (response.data is Map<String, dynamic>) {
+        final responseMap = response.data as Map<String, dynamic>;
+        if (responseMap.containsKey('projects') &&
+            responseMap['projects'] is String &&
+            responseMap['projects']
+                .toString()
+                .contains('/projects/projects/')) {
+          debugPrint('[API] Réponse API root détectée, retour liste vide');
+          return ProjectListResult.success(
+            projects: [],
+            totalCount: 0,
+            hasNext: false,
+            hasPrevious: false,
+          );
+        }
+      }
+
+      // Gérer le cas où l'API retourne directement une liste
+      if (response.data is List) {
+        debugPrint('[API] Trending projects: réponse directe en liste');
+        final projects = <ProjectModel>[];
+        final list = response.data as List;
+
+        for (var item in list) {
+          if (item != null && item is Map<String, dynamic>) {
+            try {
+              final project = ProjectModel.fromJson(item);
+              projects.add(project);
+            } catch (e) {
+              debugPrint('[API] Erreur parsing projet trending: $e');
+            }
+          }
+        }
+
+        return ProjectListResult.success(
+          projects: projects,
+          totalCount: projects.length,
+          hasNext: false,
+          hasPrevious: false,
+        );
+      }
+
+      // Sinon, utiliser le parsing standard
       return ProjectListResult.safeParseApiResponse(response.data);
     } catch (e) {
+      debugPrint('[API] Erreur trending projects: $e');
       return ProjectListResult.failure(e.toString());
     }
   }
@@ -230,14 +367,65 @@ class ProjectApiService {
   /// Récupérer les projets recommandés pour l'utilisateur connecté
   Future<ProjectListResult> getRecommendedProjects({int limit = 10}) async {
     try {
-      // Selon l'API, il n'y a pas d'endpoint spécifique pour les recommandations
-      // On peut utiliser les intérêts de l'utilisateur ou une autre logique
-      final response = await _apiService.get('/projects/', queryParameters: {
+      // Utiliser l'endpoint principal avec tri par intérêts
+      final response =
+          await _apiService.get('$_baseEndpoint/', queryParameters: {
         'limit': limit,
-        'ordering': 'interests_count', // Trier par intérêts pour simuler
+        'ordering': '-interests_count',
+        'status': 'ACTIVE',
       });
+
+      debugPrint(
+          '[API] Recommended projects response type: ${response.data.runtimeType}');
+      debugPrint('[API] Recommended projects response: ${response.data}');
+
+      // Détecter si c'est une réponse API root au lieu des données de projets
+      if (response.data is Map<String, dynamic>) {
+        final responseMap = response.data as Map<String, dynamic>;
+        if (responseMap.containsKey('projects') &&
+            responseMap['projects'] is String &&
+            responseMap['projects']
+                .toString()
+                .contains('/projects/projects/')) {
+          debugPrint('[API] Réponse API root détectée, retour liste vide');
+          return ProjectListResult.success(
+            projects: [],
+            totalCount: 0,
+            hasNext: false,
+            hasPrevious: false,
+          );
+        }
+      }
+
+      // Gérer le cas où l'API retourne directement une liste
+      if (response.data is List) {
+        debugPrint('[API] Recommended projects: réponse directe en liste');
+        final projects = <ProjectModel>[];
+        final list = response.data as List;
+
+        for (var item in list) {
+          if (item != null && item is Map<String, dynamic>) {
+            try {
+              final project = ProjectModel.fromJson(item);
+              projects.add(project);
+            } catch (e) {
+              debugPrint('[API] Erreur parsing projet recommended: $e');
+            }
+          }
+        }
+
+        return ProjectListResult.success(
+          projects: projects,
+          totalCount: projects.length,
+          hasNext: false,
+          hasPrevious: false,
+        );
+      }
+
+      // Sinon, utiliser le parsing standard
       return ProjectListResult.safeParseApiResponse(response.data);
     } catch (e) {
+      debugPrint('[API] Erreur recommended projects: $e');
       return ProjectListResult.failure(e.toString());
     }
   }
@@ -317,7 +505,29 @@ class ProjectApiService {
   /// Récupérer les catégories
   Future<List<CategoryModel>> getCategories() async {
     try {
-      final response = await _apiService.get('/categories/');
+      final response = await _apiService.get('/projects/categories/');
+
+      // Gérer le cas où l'API retourne directement une liste
+      if (response.data is List) {
+        debugPrint('[API] Categories: réponse directe en liste');
+        final categories = <CategoryModel>[];
+        final list = response.data as List;
+
+        for (var item in list) {
+          if (item != null && item is Map<String, dynamic>) {
+            try {
+              final category = CategoryModel.fromJson(item);
+              categories.add(category);
+            } catch (e) {
+              debugPrint('[API] Erreur parsing catégorie: $e');
+            }
+          }
+        }
+
+        return categories;
+      }
+
+      // Format standard avec results
       if (response.data == null ||
           response.data is! Map ||
           response.data['results'] is! List) {
@@ -325,7 +535,7 @@ class ProjectApiService {
         return [];
       }
 
-      final categories = [];
+      final categories = <CategoryModel>[];
       final categoriesList = response.data['results'] as List;
 
       for (var item in categoriesList) {
@@ -341,7 +551,7 @@ class ProjectApiService {
         }
       }
 
-      return categories.cast<CategoryModel>();
+      return categories;
     } catch (e) {
       debugPrint("Erreur lors de la récupération des catégories: $e");
       return [];
@@ -351,7 +561,29 @@ class ProjectApiService {
   /// Récupérer les tags
   Future<List<TagModel>> getTags() async {
     try {
-      final response = await _apiService.get('/tags/');
+      final response = await _apiService.get('/projects/tags/');
+
+      // Gérer le cas où l'API retourne directement une liste
+      if (response.data is List) {
+        debugPrint('[API] Tags: réponse directe en liste');
+        final tags = <TagModel>[];
+        final list = response.data as List;
+
+        for (var item in list) {
+          if (item != null && item is Map<String, dynamic>) {
+            try {
+              final tag = TagModel.fromJson(item);
+              tags.add(tag);
+            } catch (e) {
+              debugPrint('[API] Erreur parsing tag: $e');
+            }
+          }
+        }
+
+        return tags;
+      }
+
+      // Format standard avec results
       if (response.data == null ||
           response.data is! Map ||
           response.data['results'] is! List) {
@@ -359,7 +591,7 @@ class ProjectApiService {
         return [];
       }
 
-      final tags = [];
+      final tags = <TagModel>[];
       final tagsList = response.data['results'] as List;
 
       for (var item in tagsList) {
@@ -374,7 +606,7 @@ class ProjectApiService {
         }
       }
 
-      return tags.cast<TagModel>();
+      return tags;
     } catch (e) {
       debugPrint("Erreur lors de la récupération des tags: $e");
       return [];
@@ -476,6 +708,55 @@ class ProjectApiService {
       return ProjectListResult.failure(e.toString());
     }
   }
+
+  /// Diagnostiquer les problèmes d'API et suggérer des solutions
+  Future<void> diagnoseApiIssues() async {
+    debugPrint('🔍 [API DIAGNOSTIC] Début du diagnostic des endpoints...');
+
+    try {
+      // Test de l'endpoint principal
+      final response = await _apiService.get('/projects/', queryParameters: {
+        'limit': 1,
+      });
+
+      debugPrint('📊 [API DIAGNOSTIC] Réponse de /projects/:');
+      debugPrint('   Type: ${response.data.runtimeType}');
+      debugPrint('   Contenu: ${response.data}');
+
+      if (response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+
+        // Vérifier si c'est une réponse de navigation API
+        if (data.containsKey('projects') && data['projects'] is String) {
+          debugPrint(
+              '❌ [API DIAGNOSTIC] PROBLÈME DÉTECTÉ: Réponse de navigation API au lieu des données');
+          debugPrint('💡 [API DIAGNOSTIC] SOLUTION BACKEND REQUISE:');
+          debugPrint(
+              '   1. Vérifier que l\'endpoint /api/v1/projects/ retourne bien les projets');
+          debugPrint('   2. Vérifier la configuration des URLs Django');
+          debugPrint(
+              '   3. S\'assurer que les projets existent dans la base de données');
+          debugPrint('   4. Vérifier les permissions d\'accès aux projets');
+        } else if (data.containsKey('results')) {
+          debugPrint(
+              '✅ [API DIAGNOSTIC] Structure de réponse correcte détectée');
+          final results = data['results'] as List?;
+          if (results?.isEmpty == true) {
+            debugPrint(
+                '⚠️ [API DIAGNOSTIC] Aucun projet trouvé dans la base de données');
+            debugPrint(
+                '💡 [API DIAGNOSTIC] SOLUTION: Créer des projets de test dans le backend');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ [API DIAGNOSTIC] Erreur lors du test de l\'endpoint: $e');
+      debugPrint('💡 [API DIAGNOSTIC] SOLUTIONS POSSIBLES:');
+      debugPrint('   1. Vérifier que le serveur Django est démarré');
+      debugPrint('   2. Vérifier l\'URL de base de l\'API');
+      debugPrint('   3. Vérifier les CORS si nécessaire');
+    }
+  }
 }
 
 class ProjectListResult {
@@ -532,133 +813,140 @@ class ProjectListResult {
   static ProjectListResult safeParseApiResponse(dynamic response) {
     try {
       if (response == null) {
-        debugPrint('[API] Réponse API nulle');
+        AppLogger.error('[API] Réponse API nulle');
         return ProjectListResult.failure('Réponse API nulle');
       }
 
-      // Vérifier la structure attendue
+      // Cas 1: Réponse directe en liste (pour trending, featured, etc.)
+      if (response is List) {
+        AppLogger.info(
+            '[API] Format de réponse: Liste directe (${response.length} éléments)');
+        final projects = <ProjectModel>[];
+
+        for (var item in response) {
+          if (item != null && item is Map<String, dynamic>) {
+            try {
+              final project = ProjectModel.fromJson(item);
+              projects.add(project);
+            } catch (e) {
+              AppLogger.warning('[API] Erreur parsing projet dans liste: $e');
+            }
+          }
+        }
+
+        return ProjectListResult.success(
+          projects: projects,
+          totalCount: projects.length,
+          hasNext: false,
+          hasPrevious: false,
+        );
+      }
+
+      // Cas 2: Réponse avec structure d'API (pagination)
       if (response is! Map<String, dynamic>) {
-        debugPrint(
+        AppLogger.error(
             '[API] Format de réponse API invalide: ${response.runtimeType}');
         return ProjectListResult.failure('Format de réponse API invalide');
       }
 
-      // Vérifier si la réponse contient les résultats
-      final results = response['results'];
+      final responseMap = response;
+
+      // Cas 3: Réponse contenant des liens vers d'autres endpoints (API root)
+      if (responseMap.containsKey('projects') &&
+          responseMap['projects'] is String &&
+          !responseMap.containsKey('results')) {
+        AppLogger.info('[API] Réponse API root détectée, retour liste vide');
+        return ProjectListResult.empty();
+      }
+
+      // Cas 4: Structure normale avec results
+      final results = responseMap['results'];
       if (results == null) {
-        debugPrint('[API] Aucun résultat trouvé dans la réponse');
+        AppLogger.info('[API] Aucun résultat trouvé dans la réponse');
         return ProjectListResult.empty();
       }
 
       if (results is! List) {
-        debugPrint(
+        AppLogger.error(
             '[API] Format de résultats invalide: ${results.runtimeType}');
         return ProjectListResult.failure('Format de résultats invalide');
       }
 
       // Filtrer et parser les résultats
-      final projects = [];
+      final projects = <ProjectModel>[];
       int skippedCount = 0;
+      int missingFieldsCount = 0;
 
       for (var item in results) {
         if (item != null && item is Map<String, dynamic>) {
           try {
-            // Examinons les champs problématiques pour le débogage
-            if (item['full_description'] == null) {
-              debugPrint(
-                  '[API] Champ full_description manquant dans un projet: ${item['id']}');
+            // Compter les champs manquants sans les logger individuellement
+            bool hasMissingFields = false;
+
+            if (item['updated_at'] == null ||
+                item['created_at'] == null ||
+                item['category'] == null ||
+                (item['category'] is Map && item['category']['icon'] == null)) {
+              hasMissingFields = true;
+              missingFieldsCount++;
             }
 
-            if (item['created_at'] == null) {
-              debugPrint(
-                  '[API] Champ created_at manquant dans un projet: ${item['id']}');
-            }
-
-            if (item['updated_at'] == null) {
-              debugPrint(
-                  '[API] Champ updated_at manquant dans un projet: ${item['id']}');
-            }
-
-            if (item['category'] == null) {
-              debugPrint(
-                  '[API] Champ category manquant dans un projet: ${item['id']}');
-            } else if (item['category'] is Map &&
-                item['category']['icon'] == null) {
-              debugPrint(
-                  '[API] Champ category.icon manquant dans un projet: ${item['id']}');
-            }
-
-            // Essayons de parser le projet
+            // Parser le projet (le modèle gère les champs manquants)
             final project = ProjectModel.fromJson(item);
             projects.add(project);
           } catch (e) {
             skippedCount++;
-            debugPrint('[API] Erreur lors du parsing d\'un projet, ignoré: $e');
+            AppLogger.warning('[API] Projet ignoré (ID: ${item['id']}): $e');
             // Continuer avec le prochain projet au lieu d'échouer
           }
         }
       }
 
-      // Journaliser des informations sur le traitement des résultats
-      debugPrint('[API] Projets traités avec succès: ${projects.length}');
-      if (skippedCount > 0) {
-        debugPrint('[API] Projets ignorés en raison d\'erreurs: $skippedCount');
+      // Journaliser un résumé uniquement
+      AppLogger.info(
+          '[API] Projets traités: ${projects.length} succès, $skippedCount ignorés');
+      if (missingFieldsCount > 0) {
+        AppLogger.info(
+            '[API] $missingFieldsCount projets avec champs optionnels manquants (normal)');
       }
 
-      // Debug des images de projets
-      _debugProjectImages(projects.cast<ProjectModel>());
-
       // Extraire les autres informations
-      final count = response['count'] is int ? response['count'] as int : 0;
-      final hasNext = response['next'] != null;
-      final hasPrevious = response['previous'] != null;
+      final count = responseMap['count'] is int
+          ? responseMap['count'] as int
+          : projects.length;
+      final hasNext = responseMap['next'] != null;
+      final hasPrevious = responseMap['previous'] != null;
 
       return ProjectListResult.success(
-        projects: projects.cast<ProjectModel>(),
+        projects: projects,
         totalCount: count,
         hasNext: hasNext,
         hasPrevious: hasPrevious,
       );
     } catch (e) {
-      debugPrint(
+      AppLogger.error(
           '[API] Erreur critique lors du traitement de la réponse API: $e');
       return ProjectListResult.failure(
           'Erreur lors du traitement de la réponse API: $e');
     }
   }
 
-  // Méthode de debug pour les images des projets
+  // Méthode de debug pour les images des projets (seulement en mode debug)
   static void _debugProjectImages(List<ProjectModel> projects) {
-    debugPrint('🖼️ Debug des images de projets:');
-    debugPrint('   Nombre de projets: ${projects.length}');
-    debugPrint('');
+    if (!kDebugMode) return; // Seulement en mode debug
+
+    AppLogger.info(
+        '🖼️ Debug des images de projets: ${projects.length} projets');
+
+    int projectsWithImages = 0;
+    int projectsWithMultipleMedia = 0;
 
     for (var project in projects) {
-      debugPrint('📁 Projet: ${project.title}');
-      debugPrint('   primaryImageUrl brut: ${project.primaryImageUrl}');
-      debugPrint('   fullImageUrl construit: ${project.fullImageUrl}');
-      debugPrint('   hasImage: ${project.hasImage}');
-
-      // Debug détaillé des médias
-      if (project.media != null && project.media!.isNotEmpty) {
-        debugPrint('   🎬 MÉDIAS ADDITIONNELS:');
-        debugPrint('   Nombre de médias: ${project.media!.length}');
-        for (int i = 0; i < project.media!.length; i++) {
-          final media = project.media![i];
-          debugPrint('   Media $i:');
-          debugPrint('     - Type: ${media.mediaType}');
-          debugPrint('     - URL: ${media.fileUrl}');
-          debugPrint('     - Caption: ${media.caption}');
-          debugPrint('     - Display order: ${media.displayOrder}');
-        }
-        debugPrint(
-            '   🎯 TOTAL MÉDIAS (avec primary): ${project.allMedia.length}');
-        debugPrint('   hasMultipleMedia: ${project.hasMultipleMedia}');
-        debugPrint('   Types présents: ${project.mediaTypesDescription}');
-      } else {
-        debugPrint('   ❌ Aucun média additionnel');
-      }
-      debugPrint('---');
+      if (project.hasImage) projectsWithImages++;
+      if (project.hasMultipleMedia) projectsWithMultipleMedia++;
     }
+
+    AppLogger.info(
+        '📊 Résumé médias: $projectsWithImages avec image, $projectsWithMultipleMedia avec médias multiples');
   }
 }

@@ -11,7 +11,6 @@ class ProfileShareService {
     Rect? sharePositionOrigin,
   }) async {
     try {
-      final profileUrl = _generateProfileUrl(user.id);
       final shareText = _generateShareText(user);
 
       await Share.share(
@@ -20,7 +19,9 @@ class ProfileShareService {
         sharePositionOrigin: sharePositionOrigin,
       );
     } catch (e) {
-      _showErrorSnackBar(context, 'Erreur lors du partage: ${e.toString()}');
+      if (context.mounted) {
+        _showErrorSnackBar(context, 'Erreur lors du partage: ${e.toString()}');
+      }
     }
   }
 
@@ -33,7 +34,6 @@ class ProfileShareService {
     Rect? sharePositionOrigin,
   }) async {
     try {
-      final profileUrl = _generateProfileUrl(user.id);
       final shareText = _generateDetailedShareText(
         user,
         customMessage: customMessage,
@@ -46,7 +46,9 @@ class ProfileShareService {
         sharePositionOrigin: sharePositionOrigin,
       );
     } catch (e) {
-      _showErrorSnackBar(context, 'Erreur lors du partage: ${e.toString()}');
+      if (context.mounted) {
+        _showErrorSnackBar(context, 'Erreur lors du partage: ${e.toString()}');
+      }
     }
   }
 
@@ -60,9 +62,13 @@ class ProfileShareService {
 
       await Share.share(profileUrl);
 
-      _showSuccessSnackBar(context, 'Lien du profil copié !');
+      if (context.mounted) {
+        _showSuccessSnackBar(context, 'Lien du profil copié !');
+      }
     } catch (e) {
-      _showErrorSnackBar(context, 'Erreur lors de la copie: ${e.toString()}');
+      if (context.mounted) {
+        _showErrorSnackBar(context, 'Erreur lors de la copie: ${e.toString()}');
+      }
     }
   }
 
@@ -96,8 +102,10 @@ class ProfileShareService {
           await Share.share('$shareText\n\n$profileUrl');
       }
     } catch (e) {
-      _showErrorSnackBar(
-          context, 'Erreur lors du partage via $app: ${e.toString()}');
+      if (context.mounted) {
+        _showErrorSnackBar(
+            context, 'Erreur lors du partage via $app: ${e.toString()}');
+      }
     }
   }
 

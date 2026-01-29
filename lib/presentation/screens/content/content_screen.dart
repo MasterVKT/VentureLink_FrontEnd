@@ -5,11 +5,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../data/providers/content_provider.dart';
 import '../../../data/models/publication_model.dart';
-import '../../../data/services/content_api_service.dart';
-import '../../../core/router/app_router.dart';
 import '../../widgets/content/publication_card.dart';
 import '../../widgets/content/publication_filter_sheet.dart';
 import '../../widgets/content/publication_search_delegate.dart';
+import '../debug/media_test_screen.dart';
+import '../debug/api_test_screen.dart';
+import '../../../core/utils/logger.dart';
 
 @RoutePage()
 class ContentScreen extends StatefulWidget {
@@ -147,10 +148,21 @@ class _ContentScreenState extends State<ContentScreen>
                         color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(
-                        Icons.trending_up,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        size: 20,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.trending_up,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              size: 20,
+                            );
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -177,6 +189,31 @@ class _ContentScreenState extends State<ContentScreen>
                           : Icons.filter_list,
                     ),
                     tooltip: 'Filtrer',
+                  ),
+                  // Boutons temporaires pour le débogage
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MediaTestScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.bug_report),
+                    tooltip: 'Test Médias',
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ApiTestScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.api),
+                    tooltip: 'Test API',
                   ),
                 ],
               ),
@@ -338,6 +375,16 @@ class _ContentScreenState extends State<ContentScreen>
   }
 
   Widget _buildFeaturedCard(Publication publication) {
+    // 🔍 Debug pour le carrousel
+    AppLogger.info('[CARROUSEL] 🎯 Publication: ${publication.title}');
+    AppLogger.info(
+        '[CARROUSEL] 💡 featuredMedia: ${publication.featuredMedia?.file}');
+    AppLogger.info(
+        '[CARROUSEL] 💡 media count: ${publication.media?.length ?? 0}');
+    AppLogger.info(
+        '[CARROUSEL] 💡 primaryImageFullUrl: ${publication.primaryImageFullUrl}');
+    AppLogger.info('[CARROUSEL] 💡 hasMedia: ${publication.hasMedia}');
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -345,18 +392,59 @@ class _ContentScreenState extends State<ContentScreen>
         child: Stack(
           children: [
             // Image de fond
-            if (publication.primaryImageUrl != null)
+            if (publication.primaryImageFullUrl != null)
               Positioned.fill(
                 child: CachedNetworkImage(
-                  imageUrl: publication.primaryImageUrl!,
+                  imageUrl: publication.primaryImageFullUrl!,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
-                    color: Theme.of(context).colorScheme.surfaceVariant,
-                    child: const Center(child: CircularProgressIndicator()),
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
                   ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Theme.of(context).colorScheme.surfaceVariant,
-                    child: const Icon(Icons.image_not_supported),
+                  errorWidget: (context, url, error) {
+                    AppLogger.error('[CARROUSEL] ❌ Erreur image: $url');
+                    AppLogger.error('[CARROUSEL] ❌ Erreur: $error');
+
+                    // 🔄 Fallback vers image placeholder
+                    return CachedNetworkImage(
+                      imageUrl:
+                          'https://picsum.photos/400/200?random=${DateTime.now().millisecondsSinceEpoch}',
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.image_not_supported,
+                                  size: 48, color: Colors.grey),
+                              SizedBox(height: 8),
+                              Text('Image non disponible',
+                                  style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            else
+              Positioned.fill(
+                child: Container(
+                  color: Colors.grey[300],
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.image, size: 48, color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text('Aucune image',
+                            style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -450,7 +538,7 @@ class _ContentScreenState extends State<ContentScreen>
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.visibility,
                         size: 16,
                         color: Colors.white70,
@@ -463,7 +551,7 @@ class _ContentScreenState extends State<ContentScreen>
                             ),
                       ),
                       const SizedBox(width: 16),
-                      Icon(
+                      const Icon(
                         Icons.favorite,
                         size: 16,
                         color: Colors.white70,
@@ -565,10 +653,8 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Aucune publication',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              'Aucune publication disponible',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(

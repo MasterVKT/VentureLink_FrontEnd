@@ -10,10 +10,10 @@ class InterestExpressionWidget extends StatefulWidget {
   final VoidCallback? onSuccess;
 
   const InterestExpressionWidget({
-    Key? key,
+    super.key,
     required this.project,
     this.onSuccess,
-  }) : super(key: key);
+  });
 
   @override
   State<InterestExpressionWidget> createState() =>
@@ -95,11 +95,11 @@ class _InterestExpressionWidgetState extends State<InterestExpressionWidget> {
               // Message
               TextFormField(
                 controller: _messageController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Message au créateur',
                   helperText: 'Expliquez votre intérêt pour ce projet',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.message_outlined),
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.message_outlined),
                 ),
                 maxLines: 4,
                 textInputAction: TextInputAction.next,
@@ -118,12 +118,12 @@ class _InterestExpressionWidgetState extends State<InterestExpressionWidget> {
               // Montant d'investissement potentiel
               TextFormField(
                 controller: _amountController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Montant d\'investissement potentiel',
                   helperText:
                       'Montant que vous seriez prêt à investir (optionnel)',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.euro),
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.euro),
                   suffixText: 'EUR',
                 ),
                 keyboardType: TextInputType.number,

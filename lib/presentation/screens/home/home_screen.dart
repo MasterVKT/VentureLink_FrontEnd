@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -7,12 +8,14 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
+import 'package:venturelink/data/providers/content_provider.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
+import 'package:venturelink/core/utils/logger.dart';
+import 'package:venturelink/presentation/screens/debug/api_test_screen.dart';
 
 import 'package:venturelink/presentation/widgets/project/universal_media_carousel_widget.dart';
 import 'package:venturelink/presentation/widgets/project/social_project_card.dart';
 import 'package:venturelink/presentation/widgets/home/home_filters_widget.dart';
-import 'package:venturelink/presentation/screens/debug/media_debug_screen.dart';
 import 'package:venturelink/core/router/app_router.dart';
 
 @RoutePage()
@@ -25,7 +28,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _showFilters = false;
+  final bool _showFilters = false;
 
   // Filtres
   String? _selectedCategory;
@@ -38,19 +41,34 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
 
-    // Charger les projets au démarrage
+    // Charger les projets et publications au démarrage
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('[HomeScreen] Initialisation - début chargement des projets');
+      AppLogger.info(
+          '[HomeScreen] Initialisation - début chargement des données');
       final projectProvider = context.read<ProjectProvider>();
+      final contentProvider = context.read<ContentProvider>();
 
-      projectProvider.loadProjects(refresh: true).then((_) {
-        debugPrint(
-            '[HomeScreen] Chargement terminé - nbr projets: ${projectProvider.projects.length}');
-
+      // Charger les projets
+      projectProvider.loadProjects(forceRefresh: true).then((_) {
+        AppLogger.info(
+            '[HomeScreen] Projets chargés - nbr projets: ${projectProvider.projects.length}');
         // Charger aussi les projets spécialisés
         _loadSpecializedProjects();
       }).catchError((error) {
-        debugPrint('[HomeScreen] Erreur lors du chargement: $error');
+        AppLogger.error(
+            '[HomeScreen] Erreur lors du chargement des projets: $error');
+      });
+
+      // Charger les publications
+      Future.wait([
+        contentProvider.loadFeaturedPublications(),
+        contentProvider.loadPinnedPublications(),
+        contentProvider.loadPublications(),
+      ]).then((_) {
+        AppLogger.info('[HomeScreen] Publications chargées avec succès');
+      }).catchError((error) {
+        AppLogger.error(
+            '[HomeScreen] Erreur lors du chargement des publications: $error');
       });
     });
   }
@@ -90,13 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _applyFilters() {
     final projectProvider = context.read<ProjectProvider>();
-    projectProvider.loadProjects(
-      refresh: true,
-      search: _searchQuery,
-      category: _selectedCategory,
-      stage: _selectedStage,
-      location: _selectedLocation,
-    );
+    projectProvider.loadProjects(forceRefresh: true);
   }
 
   void _clearFilters() {
@@ -106,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedLocation = null;
       _searchQuery = null;
     });
-    context.read<ProjectProvider>().loadProjects(refresh: true);
+    context.read<ProjectProvider>().loadProjects(forceRefresh: true);
   }
 
   @override
@@ -114,49 +126,37 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = context.watch<AuthProvider>().currentUser;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Bonjour ${user?.firstName ?? 'Utilisateur'}'),
+        title: const Text('Accueil'),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
-          // Bouton de recherche/filtres
-          IconButton(
-            icon:
-                Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list),
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              _showSearchDialog();
-            },
-          ),
+          // Bouton temporaire de test API en mode debug
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.bug_report, color: Colors.red),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (context) => const ApiTestScreen()),
+                );
+              },
+              tooltip: 'Test API',
+            ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
               context.router.push(const NotificationsRoute());
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.bug_report, color: Colors.orange),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const MediaDebugScreen(),
-                ),
-              );
-            },
-          ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await context.read<ProjectProvider>().loadProjects(refresh: true);
+          await context
+              .read<ProjectProvider>()
+              .loadProjects(forceRefresh: true);
           await _loadSpecializedProjects();
         },
         child: Consumer<ProjectProvider>(
@@ -613,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              context.read<ProjectProvider>().loadProjects(refresh: true);
+              context.read<ProjectProvider>().loadProjects();
             },
             child: const Text('Réessayer'),
           ),
@@ -690,8 +690,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ProjectModel> _getRecentProjects(List<ProjectModel> projects) {
     // Tous les projets triés par date de publication
     return projects.toList()
-      ..sort((a, b) => (b.publishedAt ?? b.createdAt)
-          .compareTo(a.publishedAt ?? a.createdAt));
+      ..sort((a, b) => (b.publishedAt ?? b.createdAt ?? DateTime.now())
+          .compareTo(a.publishedAt ?? a.createdAt ?? DateTime.now()));
   }
 
   // Actions améliorées sur les projets
@@ -732,12 +732,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleProfileTap(ProjectModel project) {
-    // Navigation vers le profil du créateur
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Profil de ${project.creator.fullName}'),
-        duration: const Duration(seconds: 1),
-      ),
+    context.router.push(
+      PublicProfileRoute(user: project.creator),
     );
   }
 
@@ -745,11 +741,80 @@ class _HomeScreenState extends State<HomeScreen> {
     _showProjectMenu(project);
   }
 
+  // ------------------------------------------
+  //  Nouveau : Masquage et Signalement
+  // ------------------------------------------
+
+  Future<void> _handleHide(ProjectModel project) async {
+    final success =
+        await context.read<ProjectProvider>().hideProject(project.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Projet masqué' : 'Erreur lors du masquage'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleReport(ProjectModel project) async {
+    final success =
+        await context.read<ProjectProvider>().reportProject(project.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Signalement envoyé. Merci pour votre vigilance.'
+              : 'Erreur lors du signalement'),
+        ),
+      );
+    }
+  }
+
   void _showAdvancedFilters() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _buildAdvancedFiltersSheet(),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Filtres avancés',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Fonctionnalité en cours de développement...'),
+            const Spacer(),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Fermer'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context
+                          .read<ProjectProvider>()
+                          .loadProjects(forceRefresh: true);
+                    },
+                    child: const Text('Actualiser'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -765,88 +830,6 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       builder: (context) => _buildProjectMenuSheet(project),
-    );
-  }
-
-  Widget _buildAdvancedFiltersSheet() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Filtres avancés',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 16),
-
-          // Filtres de financement
-          Text(
-            'Financement recherché',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Montant minimum',
-                    prefixText: '€ ',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Montant maximum',
-                    prefixText: '€ ',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Filtres par tags
-          Text(
-            'Tags',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          // TODO: Implémenter sélection de tags
-
-          const Spacer(),
-
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Annuler'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Appliquer les filtres avancés
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Appliquer'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -971,7 +954,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('Masquer ce projet'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implémenter masquage
+                _handleHide(project);
               },
             ),
             ListTile(
@@ -1027,13 +1010,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Implémenter signalement
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content:
-                      Text('Signalement envoyé. Merci pour votre vigilance.'),
-                ),
-              );
+              _handleReport(project);
             },
             child: const Text('Signaler'),
           ),

@@ -7,7 +7,6 @@ import 'package:venturelink/data/providers/profile_provider.dart';
 import 'package:venturelink/core/config/app_config.dart';
 import 'package:venturelink/core/utils/image_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 @RoutePage()
 class ProfileEditScreen extends StatefulWidget {
@@ -102,8 +101,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appLocalizations = AppLocalizations.of(context)!;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Modifier le profil'),
@@ -685,7 +682,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        context.router.pop();
+        context.router.maybePop();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

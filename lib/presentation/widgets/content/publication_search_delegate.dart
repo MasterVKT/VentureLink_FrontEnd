@@ -200,7 +200,7 @@ class PublicationSearchDelegate extends SearchDelegate<Publication?> {
         query = term;
         showResults(context);
       },
-      backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

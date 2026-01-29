@@ -3,13 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/providers/payment_provider.dart';
+import '../../../data/providers/simple_subscription_provider.dart';
 import '../../../data/models/subscription_plan_model.dart';
-import '../../../data/models/payment_method_model.dart';
 import '../../../data/services/user_preferences_service.dart';
 import '../../../core/di/service_locator.dart';
+import '../../../core/utils/phone_validator.dart';
 import '../../common_widgets/vl_app_bar.dart';
-import '../../common_widgets/vl_loading_indicator.dart';
 import '../../common_widgets/vl_button.dart';
 
 @RoutePage()
@@ -28,21 +27,25 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  PaymentMethodModel? _selectedPaymentMethod;
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _otpController = TextEditingController();
   bool _isProcessing = false;
-  bool _otpRequired = false;
-  String? _paymentId;
   String _selectedCurrency = 'XAF';
   late UserPreferencesService _userPrefsService;
+
+  // Contrôleurs pour les champs
+  final _phoneController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
     _userPrefsService = serviceLocator<UserPreferencesService>();
     _initializeCurrency();
-    _loadPaymentMethods();
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
   }
 
   void _initializeCurrency() {
@@ -57,33 +60,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   @override
-  void dispose() {
-    _phoneController.dispose();
-    _otpController.dispose();
-    super.dispose();
-  }
-
-  void _loadPaymentMethods() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PaymentProvider>(context, listen: false).loadPaymentMethods();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final appTheme = context.appTheme;
 
     return Scaffold(
       backgroundColor: appTheme.backgroundColor,
       appBar: const VLAppBar(
-        title: 'Paiement',
+        title: 'Paiement sécurisé',
       ),
-      body: Consumer<PaymentProvider>(
-        builder: (context, paymentProvider, child) {
-          if (paymentProvider.isLoading) {
-            return const Center(child: VLLoadingIndicator());
-          }
-
+      body: Consumer<SimpleSubscriptionProvider>(
+        builder: (context, subscriptionProvider, child) {
           return Column(
             children: [
               Expanded(
@@ -97,31 +83,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Méthodes de paiement
-                      _buildPaymentMethodsSection(paymentProvider),
-
-                      const SizedBox(height: 24),
-
-                      // Champ téléphone pour Mobile Money
-                      if (_selectedPaymentMethod?.isMobileMoney == true)
-                        _buildPhoneNumberSection(),
-
-                      const SizedBox(height: 16),
-
-                      // Section OTP si nécessaire
-                      if (_otpRequired) _buildOTPSection(),
+                      // Information My-CoolPay
+                      _buildMyCoolPayInfo(),
 
                       const SizedBox(height: 24),
 
                       // Sécurité et confidentialité
                       _buildSecurityInfo(),
+
+                      const SizedBox(height: 24),
+
+                      // Formulaire de paiement
+                      _buildPaymentForm(),
                     ],
                   ),
                 ),
               ),
 
               // Bouton de paiement
-              _buildPaymentButton(paymentProvider),
+              _buildPaymentButton(subscriptionProvider),
             ],
           );
         },
@@ -130,7 +110,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildPlanSummary() {
-    final price = widget.plan.getPriceInCurrency(_selectedCurrency);
     final appTheme = context.appTheme;
 
     return Container(
@@ -235,199 +214,140 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildPaymentMethodsSection(PaymentProvider paymentProvider) {
+  Widget _buildMyCoolPayInfo() {
     final appTheme = context.appTheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Méthode de paiement',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: appTheme.textPrimaryColor,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Choisissez votre méthode de paiement préférée',
-          style: TextStyle(
-            fontSize: 14,
-            color: appTheme.textSecondaryColor,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: paymentProvider.paymentMethods.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final method = paymentProvider.paymentMethods[index];
-            final isSelected = _selectedPaymentMethod?.id == method.id;
-
-            return InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedPaymentMethod = method;
-                });
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppTheme.primaryColor.withOpacity(0.1)
-                      : Colors.white,
+                  color: Colors.blue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        isSelected ? AppTheme.primaryColor : Colors.grey[300]!,
-                    width: isSelected ? 2 : 1,
-                  ),
                 ),
-                child: Row(
+                child: const Icon(
+                  Icons.payment,
+                  color: Colors.blue,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Image.asset(
-                        method.iconPath,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.payment,
-                            color: Colors.grey[400],
-                          );
-                        },
+                    Text(
+                      'Paiement My-CoolPay',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: appTheme.textPrimaryColor,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            method.displayName,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: appTheme.textPrimaryColor,
-                            ),
-                          ),
-                          if (method.supportedCurrencies.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Devises: ${method.supportedCurrencies.join(", ")}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: appTheme.textSecondaryColor,
-                              ),
-                            ),
-                          ],
-                        ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Passerelle de paiement sécurisée',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: appTheme.textSecondaryColor,
                       ),
-                    ),
-                    Radio<String>(
-                      value: method.id,
-                      groupValue: _selectedPaymentMethod?.id,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMethod = method;
-                        });
-                      },
-                      activeColor: AppTheme.primaryColor,
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          Text(
+            'Méthodes de paiement supportées :',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: appTheme.textPrimaryColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildPaymentMethodItem(
+            icon: Icons.phone_android,
+            title: 'Orange Money',
+            description: 'Paiement mobile sécurisé',
+          ),
+          const SizedBox(height: 8),
+          _buildPaymentMethodItem(
+            icon: Icons.phone_android,
+            title: 'MTN Mobile Money',
+            description: 'Paiement mobile sécurisé',
+          ),
+          const SizedBox(height: 8),
+          _buildPaymentMethodItem(
+            icon: Icons.credit_card,
+            title: 'Cartes bancaires',
+            description: 'Visa, Mastercard',
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPhoneNumberSection() {
+  Widget _buildPaymentMethodItem({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
     final appTheme = context.appTheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          'Numéro de téléphone',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: appTheme.textPrimaryColor,
+        Icon(
+          icon,
+          color: Colors.green,
+          size: 20,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: appTheme.textPrimaryColor,
+                ),
+              ),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: appTheme.textSecondaryColor,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Entrez le numéro associé à votre compte ${_selectedPaymentMethod?.operator}',
-          style: TextStyle(
-            fontSize: 14,
-            color: appTheme.textSecondaryColor,
-          ),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          decoration: InputDecoration(
-            hintText: 'Ex: 699123456',
-            prefixText: '+237 ',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            filled: true,
-            fillColor: Colors.grey[50],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOTPSection() {
-    final appTheme = context.appTheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Code OTP',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: appTheme.textPrimaryColor,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Entrez le code OTP reçu par SMS',
-          style: TextStyle(
-            fontSize: 14,
-            color: appTheme.textSecondaryColor,
-          ),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _otpController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          decoration: InputDecoration(
-            hintText: 'Ex: 123456',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            filled: true,
-            fillColor: Colors.grey[50],
-          ),
+        const Icon(
+          Icons.check_circle,
+          color: Colors.green,
+          size: 16,
         ),
       ],
     );
@@ -463,7 +383,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Toutes les transactions sont sécurisées et traitées par My-CoolPay, notre partenaire de paiement certifié.',
+            'Toutes les transactions sont sécurisées et traitées par My-CoolPay, notre partenaire de paiement certifié. Vous choisirez votre méthode de paiement sur la page sécurisée My-CoolPay.',
             style: TextStyle(
               fontSize: 14,
               color: appTheme.textSecondaryColor,
@@ -474,7 +394,70 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildPaymentButton(PaymentProvider paymentProvider) {
+  Widget _buildPaymentForm() {
+    final appTheme = context.appTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Informations de facturation',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: appTheme.textPrimaryColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: 'Numéro de téléphone',
+                hintText: 'Ex: +237 6XX XXX XXX',
+                prefixIcon: const Icon(Icons.phone),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+              validator: (value) {
+                final validation =
+                    PhoneValidator.validatePhoneNumber(value ?? '');
+                return validation.isValid ? null : validation.message;
+              },
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Ce numéro sera utilisé pour la facturation et les notifications de paiement.',
+              style: TextStyle(
+                fontSize: 12,
+                color: appTheme.textSecondaryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentButton(SimpleSubscriptionProvider subscriptionProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -493,10 +476,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
       child: SafeArea(
         child: VLButton(
-          text: _otpRequired ? 'Confirmer le paiement' : 'Procéder au paiement',
-          onPressed: _selectedPaymentMethod == null || _isProcessing
+          text: 'Payer via My-CoolPay',
+          onPressed: _isProcessing
               ? null
-              : () => _processPayment(paymentProvider),
+              : () => _processPayment(subscriptionProvider),
           type: VLButtonType.premium,
           isLoading: _isProcessing,
         ),
@@ -504,12 +487,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Future<void> _processPayment(PaymentProvider paymentProvider) async {
-    if (_selectedPaymentMethod == null) return;
-
-    if (_otpRequired && _otpController.text.isEmpty) {
+  Future<void> _processPayment(
+      SimpleSubscriptionProvider subscriptionProvider) async {
+    // Valider le formulaire
+    if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez entrer le code OTP')),
+        const SnackBar(
+          content: Text('Veuillez corriger les erreurs du formulaire'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -519,99 +505,41 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
 
     try {
-      if (_otpRequired && _paymentId != null) {
-        // Confirmation OTP
-        final result = await paymentProvider.authorizePaymentOTP(
-          paymentId: _paymentId!,
-          otpCode: _otpController.text,
-        );
+      final result = await subscriptionProvider.subscribeToPlan(
+        planId: widget.plan.id,
+        phoneNumber: _phoneController.text.trim(),
+      );
 
-        setState(() {
-          _isProcessing = false;
-        });
+      setState(() {
+        _isProcessing = false;
+      });
 
-        if (result['success']) {
-          _showSuccessDialog();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ??
-                  'Échec de la confirmation. Veuillez réessayer.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (!mounted) return;
+
+      if (result != null && result['payment_url'] != null) {
+        // Rediriger vers My-CoolPay
+        await _launchPaymentUrl(result['payment_url']);
+      } else if (result != null && result['message'] != null) {
+        _showSuccessDialog();
       } else {
-        // Initialisation du paiement
-        final method = _selectedPaymentMethod!;
-
-        if (method.isMobileMoney) {
-          // Paiement mobile money
-          final result = await paymentProvider.initiateDirectPayment(
-            planId: widget.plan.id,
-            operator: method.operatorCode,
-            phoneNumber: _phoneController.text,
-          );
-
-          setState(() {
-            _isProcessing = false;
-          });
-
-          if (result['success']) {
-            setState(() {
-              _otpRequired = true;
-              _paymentId = result['payment_id'];
-            });
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Veuillez entrer le code OTP reçu par SMS'),
-                backgroundColor: Colors.blue,
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result['error'] ??
-                    'Échec du paiement. Veuillez réessayer.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        } else {
-          // Autres méthodes de paiement (PayLink, cartes, etc.)
-          final result = await paymentProvider.createSubscriptionPayment(
-            planId: widget.plan.id,
-            paymentMethod: method.id,
-            currency: _selectedCurrency,
-          );
-
-          setState(() {
-            _isProcessing = false;
-          });
-
-          if (result['success'] && result['payment_url'] != null) {
-            await _launchPaymentUrl(result['payment_url']);
-          } else if (result['success']) {
-            _showSuccessDialog();
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result['error'] ??
-                    'Échec du paiement. Veuillez réessayer.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(subscriptionProvider.paymentError ??
+                'Erreur lors de la création du paiement. Veuillez réessayer.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       setState(() {
         _isProcessing = false;
       });
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: ${e.toString()}'),
+          content: Text('Erreur: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -622,22 +550,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+
+        // Retourner à l'écran précédent après redirection
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
       } else {
+        throw 'Impossible d\'ouvrir le lien de paiement';
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Impossible d\'ouvrir l\'URL de paiement'),
+          SnackBar(
+            content: Text('Erreur lors de l\'ouverture du lien: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -645,42 +578,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => WillPopScope(
-        onWillPop: () async => false,
-        child: AlertDialog(
-          title: const Text('Paiement réussi'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
             children: [
-              const Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 64,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Votre abonnement a été activé avec succès!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: context.appTheme.textSecondaryColor,
-                  fontSize: 16,
-                ),
-              ),
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 12),
+              Text('Paiement initié'),
             ],
+          ),
+          content: const Text(
+            'Votre demande d\'abonnement a été créée. Vous allez être redirigé vers My-CoolPay pour finaliser le paiement.',
           ),
           actions: [
             TextButton(
               onPressed: () {
-                // Retourner à l'écran d'abonnement avec refresh
-                Navigator.of(context).pop(); // Fermer la dialog
-                Navigator.of(context).pop(
-                    true); // Retourner à l'écran précédent avec result=true
+                Navigator.of(context).pop(); // Fermer le dialog
+                Navigator.of(context).pop(); // Retourner à l'écran précédent
               },
-              child: const Text('Continuer'),
+              child: const Text('OK'),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

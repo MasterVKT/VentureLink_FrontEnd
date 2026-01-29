@@ -20,17 +20,6 @@ class NetworkException extends ApiException {
         );
 
   factory NetworkException.fromDioError(DioException error) {
-    String message =
-        AppConfig.errorMessages['network'] ?? 'Erreur de connexion réseau';
-
-    if (error.type == DioExceptionType.connectionTimeout) {
-      message = 'Délai de connexion dépassé';
-    } else if (error.type == DioExceptionType.receiveTimeout) {
-      message = 'Délai de réception dépassé';
-    } else if (error.type == DioExceptionType.connectionError) {
-      message = 'Erreur de connexion au serveur';
-    }
-
     return NetworkException();
   }
 }

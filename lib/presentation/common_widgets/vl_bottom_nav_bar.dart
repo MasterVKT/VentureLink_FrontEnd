@@ -33,15 +33,21 @@ class VLBottomNavBar extends StatelessWidget {
       backgroundColor: DesignConstants.white,
       selectedItemColor: DesignConstants.primaryBlue,
       unselectedItemColor: DesignConstants.darkGrey,
+      elevation: 8,
+      iconSize: 24,
+      selectedFontSize: 12,
+      unselectedFontSize: 12,
       selectedLabelStyle: TextStyle(
         fontSize: DesignConstants.bodySmall,
         fontWeight: DesignConstants.medium,
         fontFamily: textTheme.bodyMedium?.fontFamily,
+        height: 1.2,
       ),
       unselectedLabelStyle: TextStyle(
         fontSize: DesignConstants.bodySmall,
         fontWeight: DesignConstants.regular,
         fontFamily: textTheme.bodyMedium?.fontFamily,
+        height: 1.2,
       ),
       items: [
         BottomNavigationBarItem(

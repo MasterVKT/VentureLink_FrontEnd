@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:venturelink/core/errors/api_exceptions.dart';
 import 'package:venturelink/data/services/api_service.dart';
+import 'package:venturelink/core/utils/logger.dart';
 
 /// Service pour récupérer les statistiques réelles de l'utilisateur
 class UserAnalyticsService {
@@ -11,52 +12,48 @@ class UserAnalyticsService {
   /// Récupère les statistiques d'un utilisateur
   Future<Map<String, dynamic>> getUserStats({String? currency = 'EUR'}) async {
     try {
+      AppLogger.info(
+          'UserAnalyticsService: Récupération des stats utilisateur avec devise: $currency');
+
       final response = await _apiService
-          .get('/api/analytics/user/', queryParameters: {'currency': currency});
+          .get('/analytics/user/', queryParameters: {'currency': currency});
 
-      if (response.data != null) {
-        return Map<String, dynamic>.from(response.data);
+      // Vérifier si la réponse est du HTML (Django Debug Toolbar)
+      if (_isHtmlResponse(response.data)) {
+        AppLogger.error(
+            'UserAnalyticsService: Réponse HTML détectée (Django Debug Toolbar)');
+        return _getDefaultStats();
       }
 
-      // Retourner des données par défaut si l'API ne répond pas
-      return _getDefaultUserStats();
+      if (response.data is Map<String, dynamic>) {
+        AppLogger.info(
+            'UserAnalyticsService: Stats utilisateur récupérées avec succès');
+        return response.data as Map<String, dynamic>;
+      } else {
+        AppLogger.error(
+            'UserAnalyticsService: Format de réponse inattendu: ${response.data.runtimeType}');
+        return _getDefaultStats();
+      }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404 || e.response?.statusCode == 401) {
-        // L'utilisateur n'a pas encore de données analytics ou n'est pas connecté
-        return _getDefaultUserStats();
+      AppLogger.error('UserAnalyticsService: Erreur Dio: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        AppLogger.info(
+            'UserAnalyticsService: Endpoint analytics non disponible (404), utilisation de données par défaut');
       }
-      throw ApiExceptionHandler.handleDioError(e);
+      return _getDefaultStats();
     } catch (e) {
-      // En cas d'erreur, retourner des données par défaut
-      return _getDefaultUserStats();
+      AppLogger.error('UserAnalyticsService: Erreur générique: $e');
+      return _getDefaultStats();
     }
   }
 
-  /// Récupère les statistiques d'un projet spécifique
-  Future<Map<String, dynamic>> getProjectStats(String projectId,
-      {String? currency = 'EUR'}) async {
-    try {
-      final response = await _apiService.get(
-          '/api/analytics/project/$projectId/',
-          queryParameters: {'currency': currency});
-
-      if (response.data != null) {
-        return Map<String, dynamic>.from(response.data);
-      }
-
-      return _getDefaultProjectStats();
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404 || e.response?.statusCode == 403) {
-        return _getDefaultProjectStats();
-      }
-      throw ApiExceptionHandler.handleDioError(e);
-    } catch (e) {
-      return _getDefaultProjectStats();
-    }
+  /// Vérifie si la réponse est du HTML
+  bool _isHtmlResponse(dynamic data) {
+    return data is String && data.contains('<html');
   }
 
-  /// Données par défaut pour un utilisateur sans analytics
-  Map<String, dynamic> _getDefaultUserStats() {
+  /// Retourne des statistiques par défaut
+  Map<String, dynamic> _getDefaultStats() {
     return {
       'projects_created_count': 0,
       'projects_published_count': 0,
@@ -71,6 +68,53 @@ class UserAnalyticsService {
       'login_count': 1,
       'last_login': DateTime.now().toIso8601String(),
     };
+  }
+
+  /// Récupère les statistiques d'un projet spécifique
+  Future<Map<String, dynamic>> getProjectStats(String projectId,
+      {String? currency = 'EUR'}) async {
+    try {
+      AppLogger.info(
+          'UserAnalyticsService: Récupération des stats projet: $projectId');
+
+      final response = await _apiService.get(
+          '/api/v1/analytics/project/$projectId/',
+          queryParameters: {'currency': currency});
+
+      // Vérifier si la réponse est du HTML
+      if (response.data is String &&
+          (response.data as String).contains('<html')) {
+        AppLogger.error(
+            'UserAnalyticsService: L\'API projet retourne du HTML au lieu de JSON');
+        return _getDefaultProjectStats();
+      }
+
+      if (response.data != null && response.data is Map) {
+        return Map<String, dynamic>.from(response.data);
+      }
+
+      return _getDefaultProjectStats();
+    } on DioException catch (e) {
+      AppLogger.error(
+          'UserAnalyticsService: Erreur projet - StatusCode: ${e.response?.statusCode}');
+
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 403) {
+        return _getDefaultProjectStats();
+      }
+
+      // Vérifier si l'erreur contient du HTML
+      if (e.response?.data is String &&
+          (e.response!.data as String).contains('<html')) {
+        AppLogger.error('UserAnalyticsService: Erreur projet contient du HTML');
+        return _getDefaultProjectStats();
+      }
+
+      throw ApiExceptionHandler.handleDioError(e);
+    } catch (e) {
+      AppLogger.error(
+          'UserAnalyticsService: Erreur générique projet: ${e.toString()}');
+      return _getDefaultProjectStats();
+    }
   }
 
   /// Données par défaut pour un projet sans analytics

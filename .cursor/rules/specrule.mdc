@@ -45,8 +45,17 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 
 - Les documents [API_CONTRACT.md](mdc:doc_frontEnd/API_CONTRACT.md), [DATA_MODELS.md](mdc:doc_frontEnd/DATA_MODELS.md), [ENDPOINTS_REFERENCE.md](mdc:doc_frontEnd/ENDPOINTS_REFERENCE.md), [FLUTTER_INTEGRATION_GUIDE.md](mdc:doc_frontEnd/FLUTTER_INTEGRATION_GUIDE.md) et [Implementation_Paiement_MyCoolPay.md](mdc:doc_frontEnd/Implementation_Paiement_MyCoolPay.md) contiennent les éléments du backend dont tu auras besoin pour que cette application (celle qu'on est entrain de concevoir actuellement, donc frontend) puisse communiquer harmonieusement avec le backend et apporter les réponses attendues;
 
+- si toi même tu veux lancer l'environnement virtuel du serveur django, commence par exécuter la commande Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process avant d'essayer d'activer l'environnement virtuel. Cependant n'essaie pas de modifier le backend sans ma permission.
 
 
+- Pour chacune de tes réponses, Vérifie que cela n'impacte pas négativement (ou entraîne des régressions) d'autres fonctionnalités déjà fonctionnelles;
 
 
-- si toi même tu veux lancer l'environnement virtuel du serveur django, commence par exécuter la commande Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process avant d'essayer d'activer l'environnement virtuel
+- Tu ne dois implémenter que des solutions qui vont fonctionner en conditions réelles avec des données réelles (comme si on était dans l'environnement de production, mais bien entendu que les adresses utilisées doivent être celle de l'environnement de développement pour l'instant), et non des solutions temporaires et l'utilisation de données statiques de test;
+
+
+- A chaque fois que tu dois corriger une erreur, assure toi de prendre en compte les spécifications du projet, le contexte d'implémentation du code relativement à l'ensemble du projet (car en corrigeant une erreur de façon isolée, sans tenir compte de l'ensemble du projet et de ses spécifications, tu risques effectuer une correction impertinente) que tu corrigeras et aussi assure toi que tes corrections n'engendrent pas d'autres problmes ou regressions d'autres fonctionnalités;
+
+- Si la résolution d'une erreur ou alors la correction ou modification d'une fonctionnalité exige des ajustements ou actions à réaliser côté backend, signale le moi en me disant très précisement et en détails ce qu'il faut faire côté backend pour que tout fonctionne bien, tout cela en tenant compte des spécifications de l'application et du contexte d'implémentation du code ou de la fonctionnalité dont il s'agit.
+
+- Si tu as besoin d'une moindre information que je dois te donner pour que tu effectues correctement et pertinemment une tâche ou des tâches, demande la moi

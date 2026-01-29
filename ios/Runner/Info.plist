@@ -2,6 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Accès à la caméra -->
+	<key>NSCameraUsageDescription</key>
+	<string>L'application a besoin d'accéder à la caméra pour permettre la prise de photos et vidéos.</string>
+
+	<!-- Accès à la photothèque -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application utilise vos photos pour sélectionner et uploader des images et vidéos.</string>
+
+	<!-- (Optionnel) Accès au microphone : nécessaire si vous enregistrez de l'audio pour vos vidéos -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>L'application requiert l'accès au microphone pour enregistrer de l'audio lors de la capture vidéo.</string>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

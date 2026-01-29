@@ -44,7 +44,6 @@ class VLProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context)!;
-    final locale = Localizations.localeOf(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: DesignConstants.paddingMedium),

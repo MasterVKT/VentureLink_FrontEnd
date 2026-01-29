@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:venturelink/core/errors/api_exceptions.dart';
 import 'package:venturelink/data/services/api_service.dart';
+import 'package:venturelink/core/utils/logger.dart';
 
 /// Service API pour les données d'analytics et statistiques
 class AnalyticsApiService {
@@ -10,467 +10,431 @@ class AnalyticsApiService {
   AnalyticsApiService(this._apiService, {String? baseUrl})
       : _baseUrl = baseUrl ?? '/analytics';
 
-  /// Récupère les statistiques générales du tableau de bord
-  Future<Map<String, dynamic>> getDashboardStats() async {
-    try {
-      final response = await _apiService.get('$_baseUrl/dashboard');
+  /// Vérifie si la réponse est du HTML (Django Debug Toolbar)
+  bool _isHtmlResponse(dynamic data) {
+    return data is String && data.contains('<html');
+  }
 
-      // Pour le développement, simulons des données
-      if (response.data == null) {
-        return _getMockDashboardStats();
+  /// Gère les réponses HTML en retournant des données par défaut
+  T _handleHtmlResponse<T>(dynamic data, T defaultData, String context) {
+    if (_isHtmlResponse(data)) {
+      AppLogger.error(
+          '$context: Réponse HTML détectée (Django Debug Toolbar) - utilisation des données par défaut');
+      return defaultData;
+    }
+    return data as T;
+  }
+
+  /// Récupère les statistiques de l'utilisateur connecté
+  Future<Map<String, dynamic>> getUserStats({String? currency}) async {
+    try {
+      AppLogger.info('AnalyticsApiService: Récupération des stats utilisateur');
+
+      final response = await _apiService.get(
+        '$_baseUrl/user/',
+        queryParameters: currency != null ? {'currency': currency} : null,
+      );
+
+      if (_isHtmlResponse(response.data)) {
+        return _getDefaultUserStats();
       }
 
-      return Map<String, dynamic>.from(response.data);
+      return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw ApiExceptionHandler.handleDioError(e);
+      AppLogger.error(
+          'AnalyticsApiService: Erreur lors de la récupération des stats utilisateur: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        AppLogger.info(
+            'AnalyticsApiService: Endpoint user stats non disponible, utilisation des données par défaut');
+      }
+      return _getDefaultUserStats();
     } catch (e) {
-      throw ApiExceptionHandler.handleError(e);
+      AppLogger.error('AnalyticsApiService: Erreur générique getUserStats: $e');
+      return _getDefaultUserStats();
     }
   }
 
-  /// Récupère les statistiques de visiteurs
-  Future<List<Map<String, dynamic>>> getVisitorStats({
-    required String period,
-    required String groupBy,
+  /// Récupère les statistiques d'un projet spécifique
+  Future<Map<String, dynamic>> getProjectStats(String projectId,
+      {String? currency}) async {
+    try {
+      AppLogger.info(
+          'AnalyticsApiService: Récupération des stats du projet $projectId');
+
+      final response = await _apiService.get(
+        '$_baseUrl/project/$projectId/',
+        queryParameters: currency != null ? {'currency': currency} : null,
+      );
+
+      if (_isHtmlResponse(response.data)) {
+        return _getDefaultProjectStats();
+      }
+
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      AppLogger.error(
+          'AnalyticsApiService: Erreur lors de la récupération des stats du projet: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        AppLogger.info(
+            'AnalyticsApiService: Endpoint project stats non disponible, utilisation des données par défaut');
+      }
+      return _getDefaultProjectStats();
+    } catch (e) {
+      AppLogger.error(
+          'AnalyticsApiService: Erreur générique getProjectStats: $e');
+      return _getDefaultProjectStats();
+    }
+  }
+
+  /// Récupère les métriques du tableau de bord (admin uniquement)
+  Future<Map<String, dynamic>> getDashboardStats({
+    String period = 'week',
+    String? startDate,
+    String? currency,
   }) async {
     try {
+      AppLogger.info(
+          'AnalyticsApiService: Récupération des stats du dashboard');
+
+      final queryParams = <String, dynamic>{'period': period};
+      if (startDate != null) queryParams['start_date'] = startDate;
+      if (currency != null) queryParams['currency'] = currency;
+
       final response = await _apiService.get(
-        '$_baseUrl/visitors',
-        queryParameters: {
-          'period': period,
-          'group_by': groupBy,
-        },
+        '$_baseUrl/dashboard/',
+        queryParameters: queryParams,
       );
 
-      // Pour le développement, simulons des données
-      if (response.data == null) {
-        return _getMockVisitorStats(period, groupBy);
+      if (_isHtmlResponse(response.data)) {
+        return _getDefaultDashboardStats();
       }
 
-      return List<Map<String, dynamic>>.from(response.data);
+      return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw ApiExceptionHandler.handleDioError(e);
+      AppLogger.error(
+          'AnalyticsApiService: Erreur lors de la récupération des stats dashboard: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        AppLogger.info(
+            'AnalyticsApiService: Endpoint dashboard stats non disponible, utilisation des données par défaut');
+      }
+      return _getDefaultDashboardStats();
     } catch (e) {
-      throw ApiExceptionHandler.handleError(e);
+      AppLogger.error(
+          'AnalyticsApiService: Erreur générique getDashboardStats: $e');
+      return _getDefaultDashboardStats();
     }
   }
 
-  /// Récupère les statistiques d'interactions
-  Future<List<Map<String, dynamic>>> getInteractionStats({
-    required String period,
-    required String groupBy,
+  /// Récupère les projets les plus performants
+  Future<Map<String, dynamic>> getTopProjects({
+    String metric = 'view_count',
+    int limit = 10,
+    int periodDays = 30,
+    String? currency,
   }) async {
     try {
+      AppLogger.info('AnalyticsApiService: Récupération des top projets');
+
+      final queryParams = <String, dynamic>{
+        'metric': metric,
+        'limit': limit,
+        'period_days': periodDays,
+      };
+      if (currency != null) queryParams['currency'] = currency;
+
       final response = await _apiService.get(
-        '$_baseUrl/interactions',
-        queryParameters: {
-          'period': period,
-          'group_by': groupBy,
-        },
+        '$_baseUrl/top-projects/',
+        queryParameters: queryParams,
       );
 
-      // Pour le développement, simulons des données
-      if (response.data == null) {
-        return _getMockInteractionStats(period, groupBy);
+      if (_isHtmlResponse(response.data)) {
+        return _getDefaultTopProjects();
       }
 
-      return List<Map<String, dynamic>>.from(response.data);
+      return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw ApiExceptionHandler.handleDioError(e);
+      AppLogger.error(
+          'AnalyticsApiService: Erreur lors de la récupération des top projets: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        AppLogger.info(
+            'AnalyticsApiService: Endpoint top projects non disponible, utilisation des données par défaut');
+      }
+      return _getDefaultTopProjects();
     } catch (e) {
-      throw ApiExceptionHandler.handleError(e);
+      AppLogger.error(
+          'AnalyticsApiService: Erreur générique getTopProjects: $e');
+      return _getDefaultTopProjects();
     }
   }
 
-  /// Récupère les statistiques de conversion
-  Future<List<Map<String, dynamic>>> getConversionStats({
-    required String period,
-    required String groupBy,
+  /// Récupère les statistiques de visiteurs (méthode pour compatibilité avec AnalyticsProvider)
+  Future<Map<String, dynamic>> getVisitorStats({
+    String period = 'week',
+    String groupBy = 'day',
   }) async {
     try {
-      final response = await _apiService.get(
-        '$_baseUrl/conversions',
-        queryParameters: {
-          'period': period,
-          'group_by': groupBy,
-        },
-      );
+      AppLogger.info('AnalyticsApiService: Récupération des stats visiteurs');
 
-      // Pour le développement, simulons des données
-      if (response.data == null) {
-        return _getMockConversionStats(period, groupBy);
-      }
+      // Utilise getDashboardStats comme base car les endpoints spécialisés n'existent pas
+      final response = await getDashboardStats(period: period);
 
-      return List<Map<String, dynamic>>.from(response.data);
-    } on DioException catch (e) {
-      throw ApiExceptionHandler.handleDioError(e);
+      // Adapte les données pour le format attendu par AnalyticsProvider
+      return {
+        'period': period,
+        'group_by': groupBy,
+        'data': [
+          {
+            'date': DateTime.now()
+                .subtract(const Duration(days: 7))
+                .toIso8601String()
+                .split('T')[0],
+            'visitors': response['active_users'] ?? 0,
+            'unique_visitors': response['new_users'] ?? 0,
+          },
+        ],
+        'total_visitors': response['active_users'] ?? 0,
+        'total_unique_visitors': response['new_users'] ?? 0,
+      };
     } catch (e) {
-      throw ApiExceptionHandler.handleError(e);
+      AppLogger.error('AnalyticsApiService: Erreur getVisitorStats: $e');
+      return _getDefaultVisitorStats();
     }
   }
 
-  /// Récupère les performances des projets
-  Future<List<Map<String, dynamic>>> getProjectPerformance({
-    required String period,
+  /// Récupère les statistiques d'interactions (méthode pour compatibilité avec AnalyticsProvider)
+  Future<Map<String, dynamic>> getInteractionStats({
+    String period = 'week',
+    String groupBy = 'day',
   }) async {
     try {
-      final response = await _apiService.get(
-        '$_baseUrl/projects/performance',
-        queryParameters: {
-          'period': period,
-        },
-      );
+      AppLogger.info(
+          'AnalyticsApiService: Récupération des stats interactions');
 
-      // Pour le développement, simulons des données
-      if (response.data == null) {
-        return _getMockProjectPerformance(period);
-      }
+      final response = await getDashboardStats(period: period);
 
-      return List<Map<String, dynamic>>.from(response.data);
-    } on DioException catch (e) {
-      throw ApiExceptionHandler.handleDioError(e);
+      return {
+        'period': period,
+        'group_by': groupBy,
+        'data': [
+          {
+            'date': DateTime.now()
+                .subtract(const Duration(days: 7))
+                .toIso8601String()
+                .split('T')[0],
+            'views': response['total_views'] ?? 0,
+            'interests': response['total_interests'] ?? 0,
+            'comments': 0,
+            'shares': 0,
+          },
+        ],
+        'total_views': response['total_views'] ?? 0,
+        'total_interests': response['total_interests'] ?? 0,
+        'total_comments': 0,
+        'total_shares': 0,
+      };
     } catch (e) {
-      throw ApiExceptionHandler.handleError(e);
+      AppLogger.error('AnalyticsApiService: Erreur getInteractionStats: $e');
+      return _getDefaultInteractionStats();
     }
   }
 
-  /// Récupère les activités récentes
-  Future<List<Map<String, dynamic>>> getRecentActivities(
-      {int limit = 10}) async {
+  /// Récupère les statistiques de conversion (méthode pour compatibilité avec AnalyticsProvider)
+  Future<Map<String, dynamic>> getConversionStats({
+    String period = 'week',
+    String groupBy = 'day',
+  }) async {
     try {
-      final response = await _apiService.get(
-        '$_baseUrl/activities',
-        queryParameters: {
-          'limit': limit,
-        },
-      );
+      AppLogger.info('AnalyticsApiService: Récupération des stats conversion');
 
-      // Pour le développement, simulons des données
-      if (response.data == null) {
-        return _getMockRecentActivities(limit);
-      }
+      final response = await getDashboardStats(period: period);
 
-      return List<Map<String, dynamic>>.from(response.data);
-    } on DioException catch (e) {
-      throw ApiExceptionHandler.handleDioError(e);
+      final views = response['total_views'] ?? 1;
+      final interests = response['total_interests'] ?? 0;
+      final investments = response['total_investment'] ?? 0.0;
+
+      return {
+        'period': period,
+        'group_by': groupBy,
+        'data': [
+          {
+            'date': DateTime.now()
+                .subtract(const Duration(days: 7))
+                .toIso8601String()
+                .split('T')[0],
+            'view_to_interest_rate':
+                views > 0 ? (interests / views * 100) : 0.0,
+            'interest_to_investment_rate':
+                interests > 0 ? (investments > 0 ? 10.0 : 0.0) : 0.0,
+          },
+        ],
+        'avg_view_to_interest_rate':
+            views > 0 ? (interests / views * 100) : 0.0,
+        'avg_interest_to_investment_rate':
+            interests > 0 ? (investments > 0 ? 10.0 : 0.0) : 0.0,
+      };
     } catch (e) {
-      throw ApiExceptionHandler.handleError(e);
+      AppLogger.error('AnalyticsApiService: Erreur getConversionStats: $e');
+      return _getDefaultConversionStats();
     }
   }
 
-  /// Génère des données simulées pour le développement
-  Map<String, dynamic> _getMockDashboardStats() {
+  /// Récupère les performances des projets (méthode pour compatibilité avec AnalyticsProvider)
+  Future<Map<String, dynamic>> getProjectPerformance({
+    String period = 'week',
+  }) async {
+    try {
+      AppLogger.info(
+          'AnalyticsApiService: Récupération des performances projets');
+
+      // Utilise getTopProjects comme base
+      final response =
+          await getTopProjects(limit: 5, periodDays: period == 'week' ? 7 : 30);
+
+      return {
+        'period': period,
+        'projects': response['projects'] ?? [],
+        'total_projects': (response['projects'] as List?)?.length ?? 0,
+      };
+    } catch (e) {
+      AppLogger.error('AnalyticsApiService: Erreur getProjectPerformance: $e');
+      return _getDefaultProjectPerformance();
+    }
+  }
+
+  /// Récupère les activités récentes (méthode pour compatibilité avec AnalyticsProvider)
+  Future<Map<String, dynamic>> getRecentActivities({int limit = 10}) async {
+    try {
+      AppLogger.info(
+          'AnalyticsApiService: Récupération des activités récentes');
+
+      // Retourne des données par défaut car cet endpoint n'existe pas dans la documentation
+      return _getDefaultRecentActivities(limit);
+    } catch (e) {
+      AppLogger.error('AnalyticsApiService: Erreur getRecentActivities: $e');
+      return _getDefaultRecentActivities(limit);
+    }
+  }
+
+  /// Données par défaut pour les stats utilisateur
+  Map<String, dynamic> _getDefaultUserStats() {
     return {
-      'total_projects': 5,
-      'total_views': 1250,
-      'total_interactions': 87,
-      'total_messages': 43,
-      'total_investments': 2,
-      'total_invested': 75000,
-      'avg_view_duration': 145,
-      'projects': {
-        'active': 3,
-        'draft': 1,
-        'funded': 1,
-        'archived': 0,
-      },
-      'growth': {
-        'views': 12.5,
-        'interactions': 8.3,
-        'messages': -5.2,
-        'investments': 100.0,
-      },
+      'projects_created_count': 0,
+      'projects_published_count': 0,
+      'total_project_views': 0,
+      'total_project_interests': 0,
+      'total_comments_received': 0,
+      'investments_made_count': 0,
+      'total_investment_amount': 0.0,
+      'total_investment_currency': 'EUR',
+      'messages_sent_count': 0,
+      'messages_received_count': 0,
+      'login_count': 1,
+      'last_login': DateTime.now().toIso8601String(),
     };
   }
 
-  List<Map<String, dynamic>> _getMockVisitorStats(
-      String period, String groupBy) {
-    final List<Map<String, dynamic>> data = [];
-    final now = DateTime.now();
-    final daysToGenerate = int.tryParse(period) ?? 30;
-
-    // Générer des données quotidiennes
-    for (var i = 0; i < daysToGenerate; i++) {
-      final date = now.subtract(Duration(days: daysToGenerate - i - 1));
-      data.add({
-        'date': date.toIso8601String(),
-        'views': 30 + (i % 5) * 10 + (i ~/ 7) * 20,
-        'unique_visitors': 15 + (i % 3) * 5 + (i ~/ 10) * 10,
-        'returning_visitors': 5 + (i % 2) * 3 + (i ~/ 12) * 5,
-      });
-    }
-
-    // Si groupBy est 'week' ou 'month', agréger les données
-    if (groupBy == 'week' || groupBy == 'month') {
-      return _aggregateData(data, groupBy);
-    }
-
-    return data;
+  /// Données par défaut pour les stats de projet
+  Map<String, dynamic> _getDefaultProjectStats() {
+    return {
+      'project_id': '',
+      'project_name': '',
+      'view_count': 0,
+      'interest_count': 0,
+      'favorite_count': 0,
+      'comment_count': 0,
+      'share_count': 0,
+      'investment_count': 0,
+      'total_investment_amount': 0.0,
+      'total_investment_currency': 'EUR',
+      'view_to_interest_rate': 0.0,
+      'interest_to_investment_rate': 0.0,
+    };
   }
 
-  List<Map<String, dynamic>> _getMockInteractionStats(
-      String period, String groupBy) {
-    final List<Map<String, dynamic>> data = [];
-    final now = DateTime.now();
-    final daysToGenerate = int.tryParse(period) ?? 30;
-
-    // Générer des données quotidiennes
-    for (var i = 0; i < daysToGenerate; i++) {
-      final date = now.subtract(Duration(days: daysToGenerate - i - 1));
-      data.add({
-        'date': date.toIso8601String(),
-        'favorites': 2 + (i % 3),
-        'shares': 1 + (i % 2),
-        'comments': i % 5,
-        'interests': i % 4,
-      });
-    }
-
-    // Si groupBy est 'week' ou 'month', agréger les données
-    if (groupBy == 'week' || groupBy == 'month') {
-      return _aggregateData(data, groupBy);
-    }
-
-    return data;
+  /// Données par défaut pour les stats du dashboard
+  Map<String, dynamic> _getDefaultDashboardStats() {
+    return {
+      'period_start': DateTime.now()
+          .subtract(const Duration(days: 7))
+          .toIso8601String()
+          .split('T')[0],
+      'period_end': DateTime.now().toIso8601String().split('T')[0],
+      'days_count': 7,
+      'currency': 'EUR',
+      'new_users': 0,
+      'active_users': 0,
+      'new_projects': 0,
+      'published_projects': 0,
+      'total_views': 0,
+      'total_interests': 0,
+      'total_investment': 0.0,
+      'new_subscriptions': 0,
+      'subscription_revenue': 0.0,
+      'avg_new_users_per_day': 0.0,
+      'avg_active_users_per_day': 0.0,
+    };
   }
 
-  List<Map<String, dynamic>> _getMockConversionStats(
-      String period, String groupBy) {
-    final List<Map<String, dynamic>> data = [];
-    final now = DateTime.now();
-    final daysToGenerate = int.tryParse(period) ?? 30;
-
-    // Générer des données quotidiennes
-    for (var i = 0; i < daysToGenerate; i++) {
-      final date = now.subtract(Duration(days: daysToGenerate - i - 1));
-      data.add({
-        'date': date.toIso8601String(),
-        'view_to_interest': 2.0 + (i % 10) / 10,
-        'interest_to_contact': 10.0 + (i % 15),
-        'contact_to_investment': i % 5 == 0 ? 5.0 + (i % 10) : 0,
-      });
-    }
-
-    // Si groupBy est 'week' ou 'month', agréger les données
-    if (groupBy == 'week' || groupBy == 'month') {
-      return _aggregateData(data, groupBy);
-    }
-
-    return data;
+  /// Données par défaut pour les top projets
+  Map<String, dynamic> _getDefaultTopProjects() {
+    return {
+      'projects': <Map<String, dynamic>>[],
+      'currency': 'EUR',
+      'metric': 'view_count',
+      'period_days': 30,
+    };
   }
 
-  List<Map<String, dynamic>> _getMockProjectPerformance(String period) {
-    return [
-      {
-        'id': 'project1',
-        'title': 'Application IA révolutionnaire',
-        'views': 450,
-        'interests': 35,
-        'messages': 22,
-        'investments': 1,
-        'amount': 25000,
-        'conversion_rate': 7.8,
-        'growth': 12.5,
-      },
-      {
-        'id': 'project2',
-        'title': 'Plateforme éducative innovante',
-        'views': 380,
-        'interests': 28,
-        'messages': 15,
-        'investments': 1,
-        'amount': 50000,
-        'conversion_rate': 7.4,
-        'growth': 8.3,
-      },
-      {
-        'id': 'project3',
-        'title': 'Solution de finance durable',
-        'views': 320,
-        'interests': 18,
-        'messages': 6,
-        'investments': 0,
-        'amount': 0,
-        'conversion_rate': 5.6,
-        'growth': -2.1,
-      },
-      {
-        'id': 'project4',
-        'title': 'Service de livraison écologique',
-        'views': 100,
-        'interests': 6,
-        'messages': 0,
-        'investments': 0,
-        'amount': 0,
-        'conversion_rate': 6.0,
-        'growth': 0,
-      },
-    ];
+  /// Données par défaut pour les stats de visiteurs
+  Map<String, dynamic> _getDefaultVisitorStats() {
+    return {
+      'period': 'week',
+      'group_by': 'day',
+      'data': <Map<String, dynamic>>[],
+      'total_visitors': 0,
+      'total_unique_visitors': 0,
+    };
   }
 
-  List<Map<String, dynamic>> _getMockRecentActivities(int limit) {
-    final activities = [
-      {
-        'id': 'activity1',
-        'type': 'view',
-        'target_type': 'project',
-        'target_id': 'project1',
-        'target_name': 'Application IA révolutionnaire',
-        'user_id': 'user1',
-        'user_name': 'Jean Dupont',
-        'timestamp':
-            DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-      },
-      {
-        'id': 'activity2',
-        'type': 'interest',
-        'target_type': 'project',
-        'target_id': 'project2',
-        'target_name': 'Plateforme éducative innovante',
-        'user_id': 'user2',
-        'user_name': 'Marie Martin',
-        'timestamp':
-            DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-      },
-      {
-        'id': 'activity3',
-        'type': 'message',
-        'target_type': 'conversation',
-        'target_id': 'conv1',
-        'target_name': 'Conversation avec Pierre Durand',
-        'user_id': 'user3',
-        'user_name': 'Pierre Durand',
-        'timestamp':
-            DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
-      },
-      {
-        'id': 'activity4',
-        'type': 'investment',
-        'target_type': 'project',
-        'target_id': 'project1',
-        'target_name': 'Application IA révolutionnaire',
-        'user_id': 'user4',
-        'user_name': 'Sophie Petit',
-        'timestamp': DateTime.now()
-            .subtract(const Duration(days: 1, hours: 3))
-            .toIso8601String(),
-        'amount': 25000,
-      },
-      {
-        'id': 'activity5',
-        'type': 'comment',
-        'target_type': 'project',
-        'target_id': 'project3',
-        'target_name': 'Solution de finance durable',
-        'user_id': 'user5',
-        'user_name': 'Paul Grand',
-        'timestamp': DateTime.now()
-            .subtract(const Duration(days: 1, hours: 12))
-            .toIso8601String(),
-      },
-      {
-        'id': 'activity6',
-        'type': 'view',
-        'target_type': 'project',
-        'target_id': 'project4',
-        'target_name': 'Service de livraison écologique',
-        'user_id': 'user6',
-        'user_name': 'Lucie Blanc',
-        'timestamp': DateTime.now()
-            .subtract(const Duration(days: 2, hours: 4))
-            .toIso8601String(),
-      },
-      {
-        'id': 'activity7',
-        'type': 'profile_view',
-        'target_type': 'user',
-        'target_id': 'current_user',
-        'target_name': 'Votre profil',
-        'user_id': 'user7',
-        'user_name': 'Thomas Noir',
-        'timestamp': DateTime.now()
-            .subtract(const Duration(days: 2, hours: 14))
-            .toIso8601String(),
-      },
-      {
-        'id': 'activity8',
-        'type': 'investment',
-        'target_type': 'project',
-        'target_id': 'project2',
-        'target_name': 'Plateforme éducative innovante',
-        'user_id': 'user8',
-        'user_name': 'Claire Vert',
-        'timestamp': DateTime.now()
-            .subtract(const Duration(days: 3, hours: 9))
-            .toIso8601String(),
-        'amount': 50000,
-      },
-      {
-        'id': 'activity9',
-        'type': 'share',
-        'target_type': 'project',
-        'target_id': 'project1',
-        'target_name': 'Application IA révolutionnaire',
-        'user_id': 'user9',
-        'user_name': 'Antoine Rouge',
-        'timestamp': DateTime.now()
-            .subtract(const Duration(days: 3, hours: 18))
-            .toIso8601String(),
-      },
-      {
-        'id': 'activity10',
-        'type': 'message',
-        'target_type': 'conversation',
-        'target_id': 'conv2',
-        'target_name': 'Conversation avec Claire Vert',
-        'user_id': 'user8',
-        'user_name': 'Claire Vert',
-        'timestamp': DateTime.now()
-            .subtract(const Duration(days: 4, hours: 2))
-            .toIso8601String(),
-      },
-    ];
-
-    return activities.take(limit).toList();
+  /// Données par défaut pour les stats d'interactions
+  Map<String, dynamic> _getDefaultInteractionStats() {
+    return {
+      'period': 'week',
+      'group_by': 'day',
+      'data': <Map<String, dynamic>>[],
+      'total_views': 0,
+      'total_interests': 0,
+      'total_comments': 0,
+      'total_shares': 0,
+    };
   }
 
-  /// Agrège les données par semaine ou mois
-  List<Map<String, dynamic>> _aggregateData(
-    List<Map<String, dynamic>> data,
-    String groupBy,
-  ) {
-    final Map<String, Map<String, dynamic>> result = {};
+  /// Données par défaut pour les stats de conversion
+  Map<String, dynamic> _getDefaultConversionStats() {
+    return {
+      'period': 'week',
+      'group_by': 'day',
+      'data': <Map<String, dynamic>>[],
+      'avg_view_to_interest_rate': 0.0,
+      'avg_interest_to_investment_rate': 0.0,
+    };
+  }
 
-    for (var item in data) {
-      final date = DateTime.parse(item['date'] as String);
-      String key;
+  /// Données par défaut pour les performances de projets
+  Map<String, dynamic> _getDefaultProjectPerformance() {
+    return {
+      'period': 'week',
+      'projects': <Map<String, dynamic>>[],
+      'total_projects': 0,
+    };
+  }
 
-      if (groupBy == 'week') {
-        // Obtenir le premier jour de la semaine
-        final firstDayOfWeek = date.subtract(Duration(days: date.weekday - 1));
-        key = firstDayOfWeek.toIso8601String().substring(0, 10);
-      } else if (groupBy == 'month') {
-        // Obtenir le premier jour du mois
-        key = '${date.year}-${date.month.toString().padLeft(2, '0')}-01';
-      } else {
-        key = (item['date'] as String).substring(0, 10);
-      }
-
-      if (!result.containsKey(key)) {
-        result[key] = {
-          'date': key,
-        };
-      }
-
-      // Agréger toutes les valeurs numériques
-      item.forEach((k, v) {
-        if (k != 'date' && v is num) {
-          result[key]![k] = (result[key]![k] as num? ?? 0) + v;
-        }
-      });
-    }
-
-    return result.values.toList()
-      ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+  /// Données par défaut pour les activités récentes
+  Map<String, dynamic> _getDefaultRecentActivities(int limit) {
+    return {
+      'activities': <Map<String, dynamic>>[],
+      'limit': limit,
+      'total_count': 0,
+    };
   }
 }

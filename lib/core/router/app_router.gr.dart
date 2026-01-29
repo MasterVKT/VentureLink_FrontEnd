@@ -194,6 +194,16 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    PublicProfileRoute.name: (routeData) {
+      final args = routeData.argsAs<PublicProfileRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: PublicProfileScreen(
+          key: args.key,
+          user: args.user,
+        ),
+      );
+    },
     PublicationDetailRoute.name: (routeData) {
       final args = routeData.argsAs<PublicationDetailRouteArgs>();
       return AutoRoutePage<dynamic>(
@@ -765,6 +775,44 @@ class ProjectDetailRouteArgs {
   @override
   String toString() {
     return 'ProjectDetailRouteArgs{key: $key, projectId: $projectId}';
+  }
+}
+
+/// generated route for
+/// [PublicProfileScreen]
+class PublicProfileRoute extends PageRouteInfo<PublicProfileRouteArgs> {
+  PublicProfileRoute({
+    Key? key,
+    required UserModel user,
+    List<PageRouteInfo>? children,
+  }) : super(
+          PublicProfileRoute.name,
+          args: PublicProfileRouteArgs(
+            key: key,
+            user: user,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'PublicProfileRoute';
+
+  static const PageInfo<PublicProfileRouteArgs> page =
+      PageInfo<PublicProfileRouteArgs>(name);
+}
+
+class PublicProfileRouteArgs {
+  const PublicProfileRouteArgs({
+    this.key,
+    required this.user,
+  });
+
+  final Key? key;
+
+  final UserModel user;
+
+  @override
+  String toString() {
+    return 'PublicProfileRouteArgs{key: $key, user: $user}';
   }
 }
 

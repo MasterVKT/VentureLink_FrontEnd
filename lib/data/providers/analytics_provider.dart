@@ -63,7 +63,7 @@ class AnalyticsProvider with ChangeNotifier {
         period: _period,
         groupBy: _groupBy,
       );
-      _visitorStats = response;
+      _visitorStats = List<Map<String, dynamic>>.from(response['data'] ?? []);
       notifyListeners();
     } catch (e) {
       _setError(
@@ -83,7 +83,8 @@ class AnalyticsProvider with ChangeNotifier {
         period: _period,
         groupBy: _groupBy,
       );
-      _interactionStats = response;
+      _interactionStats =
+          List<Map<String, dynamic>>.from(response['data'] ?? []);
       notifyListeners();
     } catch (e) {
       _setError(
@@ -103,7 +104,8 @@ class AnalyticsProvider with ChangeNotifier {
         period: _period,
         groupBy: _groupBy,
       );
-      _conversionStats = response;
+      _conversionStats =
+          List<Map<String, dynamic>>.from(response['data'] ?? []);
       notifyListeners();
     } catch (e) {
       _setError(
@@ -122,7 +124,8 @@ class AnalyticsProvider with ChangeNotifier {
       final response = await _apiService.getProjectPerformance(
         period: _period,
       );
-      _projectPerformance = response;
+      _projectPerformance =
+          List<Map<String, dynamic>>.from(response['projects'] ?? []);
       notifyListeners();
     } catch (e) {
       _setError(
@@ -139,7 +142,8 @@ class AnalyticsProvider with ChangeNotifier {
 
     try {
       final response = await _apiService.getRecentActivities(limit: limit);
-      _recentActivities = response;
+      _recentActivities =
+          List<Map<String, dynamic>>.from(response['activities'] ?? []);
       notifyListeners();
     } catch (e) {
       _setError(

@@ -1,8 +1,11 @@
 import 'package:dio/dio.dart';
+import 'dart:async' as async;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:venturelink/core/config/app_config.dart';
+import 'package:venturelink/core/config/test_config.dart';
 import 'package:venturelink/domain/services/i_api_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:venturelink/core/utils/logger.dart';
 
 class ApiService implements IApiService {
   late final Dio _dio;
@@ -19,19 +22,76 @@ class ApiService implements IApiService {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-DJDT-disable': '1',
+        'User-Agent': 'VentureLink-Mobile-App/1.0',
+        if (TestConfig.enableTestMode) ...TestConfig.forceJsonHeaders,
       },
     ));
 
     _dio.interceptors.add(_createAuthInterceptor());
     _dio.interceptors.add(_createErrorInterceptor());
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      logPrint: (object) => debugPrint('[API] $object'),
-    ));
+    _dio.interceptors.add(_createSmartLogInterceptor());
+  }
+
+  /// Interceptor de logs intelligent qui évite de loguer les réponses HTML
+  InterceptorsWrapper _createSmartLogInterceptor() {
+    return InterceptorsWrapper(
+      onRequest: (options, handler) {
+        AppLogger.info('[API] ${options.method} ${options.path}');
+        if (options.queryParameters.isNotEmpty) {
+          AppLogger.info('[API] Query: ${options.queryParameters}');
+        }
+        handler.next(options);
+      },
+      onResponse: (response, handler) {
+        AppLogger.info(
+            '[API] ${response.statusCode} ${response.requestOptions.path}');
+
+        // Vérifier si la réponse est du HTML (Django Debug Toolbar)
+        if (response.data is String &&
+            (response.data as String).contains('<html')) {
+          AppLogger.warning(
+              '[API] ⚠️ Réponse HTML détectée (Django Debug Toolbar) - non loggée');
+          AppLogger.warning(
+              '[API] Début HTML: ${(response.data as String).substring(0, 100)}...');
+        } else if (response.data != null) {
+          // Loguer seulement les réponses JSON courtes
+          final dataStr = response.data.toString();
+          if (dataStr.length > 1000) {
+            AppLogger.info(
+                '[API] Réponse JSON volumineuse (${dataStr.length} chars) - tronquée');
+            AppLogger.info('[API] Début: ${dataStr.substring(0, 200)}...');
+          } else {
+            AppLogger.info('[API] Réponse: $dataStr');
+          }
+        }
+
+        handler.next(response);
+      },
+      onError: (error, handler) {
+        AppLogger.error(
+            '[API] ❌ ${error.response?.statusCode ?? 'NETWORK'} ${error.requestOptions.path}');
+        AppLogger.error('[API] Erreur: ${error.message}');
+
+        // Vérifier si l'erreur contient du HTML
+        if (error.response?.data is String &&
+            (error.response!.data as String).contains('<html')) {
+          AppLogger.error(
+              '[API] ⚠️ Erreur contient du HTML (Django Debug Toolbar) - non loggée');
+        } else if (error.response?.data != null) {
+          AppLogger.error('[API] Données erreur: ${error.response!.data}');
+        }
+
+        handler.next(error);
+      },
+    );
   }
 
   InterceptorsWrapper _createAuthInterceptor() {
+    int _refreshRetries = 0;
+    const int _maxRefreshRetries = 2;
+
     return InterceptorsWrapper(
       onRequest: (options, handler) async {
         // Ajouter le token d'accès s'il existe
@@ -42,16 +102,35 @@ class ApiService implements IApiService {
         handler.next(options);
       },
       onError: (error, handler) async {
-        // Si le token a expiré (401), essayer de le rafraîchir
-        if (error.response?.statusCode == 401) {
+        // 🔴 CRITICAL FIX: Éviter boucle infinie en ignorant les erreurs 401
+        // sur le endpoint /auth/token/refresh/ lui-même
+        if (error.requestOptions.path.contains('/auth/token/refresh/')) {
+          return handler.next(error);
+        }
+
+        // Si le token a expiré (401), essayer de le rafraîchir (max 2x)
+        if (error.response?.statusCode == 401 &&
+            _refreshRetries < _maxRefreshRetries) {
+          _refreshRetries++;
+          AppLogger.warning(
+              '[AUTH] Token 401, tentative refresh #$_refreshRetries/$_maxRefreshRetries');
+
           final refreshed = await _refreshAccessToken();
           if (refreshed) {
-            // Retry la requête originale avec le nouveau token
-            final clonedRequest = await _dio.fetch(error.requestOptions);
-            handler.resolve(clonedRequest);
-            return;
+            _refreshRetries = 0; // Reset counter on success
+            try {
+              // Retry la requête originale avec le nouveau token
+              final clonedRequest = await _dio.fetch(error.requestOptions);
+              return handler.resolve(clonedRequest);
+            } catch (retryError) {
+              AppLogger.error('[AUTH] Retry after refresh failed: $retryError');
+              return handler.next(error);
+            }
           }
         }
+
+        // Reset retry counter si ce n'est pas un 401
+        _refreshRetries = 0;
         handler.next(error);
       },
     );
@@ -101,9 +180,17 @@ class ApiService implements IApiService {
   Future<bool> _refreshAccessToken() async {
     try {
       final refreshToken = await _storage.read(key: _refreshTokenKey);
-      if (refreshToken == null) return false;
 
-      final response = await _dio.post(
+      // 🔴 CRITICAL FIX: Valider le refresh token avant toute requête
+      if (refreshToken == null || refreshToken.isEmpty) {
+        AppLogger.error('[AUTH] Refresh token is null or empty');
+        await clearAuthTokens();
+        return false;
+      }
+
+      // 🔴 CRITICAL FIX: Timeout strict pour éviter les blocages
+      final response = await _dio
+          .post(
         '/auth/token/refresh/',
         data: {'refresh': refreshToken},
         options: Options(
@@ -111,16 +198,59 @@ class ApiService implements IApiService {
             _authHeader: null
           }, // Retirer l'auth header pour cette requête
         ),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          AppLogger.error('[AUTH] Token refresh timeout after 10 seconds');
+          throw async.TimeoutException(
+            'Token refresh timeout',
+            const Duration(seconds: 10),
+          );
+        },
       );
 
-      final newAccessToken = response.data['access'];
-      final newRefreshToken = response.data['refresh'] ?? refreshToken;
+      // 🔴 CRITICAL FIX: Validation stricte de la réponse
+      if (response.data == null || response.data is! Map<String, dynamic>) {
+        AppLogger.error('[AUTH] Invalid refresh response format');
+        await clearAuthTokens();
+        return false;
+      }
+
+      final responseMap = response.data as Map<String, dynamic>;
+      if (!responseMap.containsKey('access')) {
+        AppLogger.error('[AUTH] No access token in refresh response');
+        await clearAuthTokens();
+        return false;
+      }
+
+      final newAccessToken = responseMap['access'] as String?;
+      final newRefreshToken = responseMap['refresh'] as String? ?? refreshToken;
+
+      // 🔴 CRITICAL FIX: Valider que les tokens ne sont pas vides
+      if (newAccessToken == null || newAccessToken.isEmpty) {
+        AppLogger.error('[AUTH] New access token is null or empty');
+        await clearAuthTokens();
+        return false;
+      }
+
+      if (newRefreshToken.isEmpty) {
+        AppLogger.error('[AUTH] New refresh token is empty');
+        await clearAuthTokens();
+        return false;
+      }
 
       await _storage.write(key: _accessTokenKey, value: newAccessToken);
       await _storage.write(key: _refreshTokenKey, value: newRefreshToken);
 
+      AppLogger.info('[AUTH] Token refresh successful');
       return true;
+    } on async.TimeoutException catch (e) {
+      AppLogger.error('[AUTH] Token refresh timeout: ${e.message}');
+      await clearAuthTokens();
+      return false;
     } catch (e) {
+      AppLogger.error('[AUTH] Token refresh failed: $e');
       // Échec du rafraîchissement, supprimer les tokens
       await clearAuthTokens();
       return false;
@@ -220,7 +350,7 @@ class ApiService implements IApiService {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return TimeoutException('La connexion a expiré');
+        return async.TimeoutException('La connexion a expiré');
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
         final data = error.response?.data;
@@ -278,15 +408,6 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException: $message (Status: $statusCode)';
-}
-
-class TimeoutException implements Exception {
-  final String message;
-
-  TimeoutException(this.message);
-
-  @override
-  String toString() => 'TimeoutException: $message';
 }
 
 class NetworkException implements Exception {

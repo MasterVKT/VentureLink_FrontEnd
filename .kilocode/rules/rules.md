@@ -1,25 +1,105 @@
-- Avant chacune de tes réponses ou actions, vérifie qu'elle suit l'ordre du plan de développement et qu'elle est conforme aux spécifications du projet contenues dans les fichiers:   "Architecture_FrontEnd_VentureLink.txt",  "charte_graphique_VentureLink.txt",  "Contrats_API_RESTFul_VentureLink.txt",  "Conventions_et_Standards_VentureLink.txt",  "doc_UI_VentureLink.txt",  "Documentation_des_Services_Firebase_VentureLink.txt",  "Flux_Intégration_VentureLink.txt",  "Format_Données_Echangees_VentureLink.txt",  tous contenus dans le dossier "doc_frontEnd" à la racine du projet;
+# 🤖 Règles KiloCode - Agent AI VentureLink
+*Règles spécifiques pour KiloCode et autres agents AI non-Copilot*
 
-- Pour implémenter ce projet, tu suivra le plan de développement mentionné dans le fichier 
+**Dernière mise à jour:** 17 Janvier 2026  
+**Version:** 2.0
 
-"Plan_Dev_Frontend_VentueLink.txt" contenu dans le dossier "doc_frontEnd" à la racine du projet;
+> ⚠️ **IMPORTANT:** Pour les directives complètes et consolidées, consultez `.github/copilot-instructions.md`
+> Ce fichier contient les règles KiloCode spécifiques. Voir le fichier GitHub Copilot pour la version complète unifiée.
 
-- Avant chacune de tes réponses ou actions, vérifie si tu disposes de toutes les informations qui te permettront de donner la réponse ou action attendue et une réponse ou action pertinente et efficace. Si tel n'est pas le cas, pose moi les questions necessaires;
+---
 
-- Après avoir donné une réponse ou effectué une action, fais une synthèse de ce qui a déjà été fait et ce qui reste à faire.
+## 🎯 Règles Fondamentales Prioritaires
 
-- La devise utilisée ou affichée sera définie en fonction des préférences ou de la devise de l'utilisateur;
+### 1. Vérification Pré-Actions
+✅ **OBLIGATOIRE avant chaque réponse ou action:**
 
-- Avant d'installer des paquets avec pip, rassure toi de le faire dans l'environnement virtuel python lié au projet. Si tu utilises powershell, rassure toi d'avoir entré la commande au préalable:
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+- Vérifier la conformité avec le **plan de développement** (`doc_frontEnd/Plan_Dev_Frontend_VentureLink.txt`)
+- Vérifier la conformité avec les **spécifications projet** dans:
+  - `doc_frontEnd/Architecture_FrontEnd_VentureLink.txt`
+  - `doc_frontEnd/Charte_Graphique_VentureLink.txt`
+  - `doc_frontEnd/Contrats_API_RESTFul_VentureLink.txt`
+  - `doc_frontEnd/Conventions_et_Standards_VentureLink.txt`
+  - `doc_frontEnd/doc_UI_VentureLink.txt`
+  - `doc_frontEnd/Documentation_des_Services_Firebase_VentureLink.txt`
+  - `doc_frontEnd/Flux_Intégration_VentureLink.txt`
+  - `doc_frontEnd/Format_Données_Echangees_VentureLink.txt`
+  - `contrat/GUIDE_HARMONISATION_FRONTEND_BACKEND_VENTURELINK_PHASE5_FINAL.md`
+  - `contrat/MODELES_DONNEES_BACKEND_VENTURELINK_PHASE5_FINAL.md`
 
+### 2. Complétude Informationnelle
+✅ **Avant de répondre ou d'agir:**
 
-- la description de l'API de My-CoolPay (utilisée pour les paiements dans l'application) est donnée dans le fichier "My-CoolPay API Docs.pdf" situé dans le dossier doc_frontend à la racine de ce projet. 
+- Disposez-vous de **toutes les informations** nécessaires?
+- ⚠️ Si non: **Posez les questions nécessaires** avant de procéder
+- ✅ Vérifiez la disponibilité des références documentaires
 
-- Cette application est destinée à être internationnalisée (français et anglais)
+### 3. Synthèse Systématique
+✅ **Après chaque action ou réponse significative:**
 
-- Les documents "API_CONTRACT.md", "DATA_MODELS.md", "ENDPOINTS_REFERENCE.md", "FLUTTER_INTEGRATION_GUIDE.md" et "Implementation_Paiement_MyCoolPay.md" tous contenus dans le dossier "doc_frontEnd" à la racine du projet, contiennent les éléments du backend dont tu auras besoin pour que cette application (celle qu'on est entrain de concevoir actuellement, donc frontend) puisse communiquer harmonieusement avec le backend et apporter les réponses attendues;
+- 📊 Synthèse claire de ce qui a été fait
+- 📋 Liste de ce qui reste à faire
+- ⚠️ Identification des blocages potentiels
+- 🎯 Prochaines étapes recommandées
 
-- si toi même tu veux lancer l'environnement virtuel du serveur django, commence par exécuter la commande Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process avant d'essayer d'activer l'environnement virtuel;
+### 4. Réduction Modifications Backend
+✅ **Prioriser une résolution frontend:**
 
--  Si les tâches que tu effectues doivent entraîner des modifications dans le backend pour que l'application fonctionne correctement, dis le moi en me présentant de façon détaillée, précise et structurée ce qu'il faudra faire; cependant le meilleur des cas est que la résolution de problèmes ici n'entraîne pas ou peu de modifications du backend
+- 🎯 **Idéal:** Résolution sans modification backend
+- ⚠️ Si modifications backend nécessaires:
+  - Présentez-les de façon **détaillée, précise et structurée**
+  - Justifiez **chaque modification**
+  - Évaluez l'impact sur l'architecture globale
+
+### 5. Multidevises Obligatoires
+✅ **Pour tous les calculs financiers:**
+
+- 💱 Devise = Préférences/devise utilisateur
+- 🌍 Support: EUR, XAF, USD
+- 🗣️ I18n: FR et EN
+- 📍 Utiliser clés i18n pour tous les textes
+
+### 6. Environnement Python/Pip
+✅ **Pour opérations backend:**
+
+- 🐍 **TOUJOURS** utiliser venv du projet
+- 🔐 PowerShell: Exécuter d'abord: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process`
+- 📦 Installer dans venv, jamais globalement
+
+---
+
+## 📚 Documents de Référence Clés
+
+### My-CoolPay API
+- 📄 **Documentation:** `doc_frontEnd/My-CoolPay API Docs.pdf`
+- 🔑 **Obligatoire** pour tous les paiements
+- 💳 **Plans:** FREE, BASIC_MONTHLY, BASIC_YEARLY, PREMIUM_MONTHLY, PREMIUM_YEARLY
+
+### Documents Critiques Harmonisation
+- 📋 `API_CONTRACT.md` - Contrat API frontend-backend
+- 🗂️ `DATA_MODELS.md` - Modèles partagés
+- 🔌 `ENDPOINTS_REFERENCE.md` - Référence endpoints
+- 🔗 `FLUTTER_INTEGRATION_GUIDE.md` - Guide intégration Flutter
+- 💰 `Implementation_Paiement_MyCoolPay.md` - Implémentation paiements
+
+---
+
+## 🔗 Référence Vers Règles Complètes
+
+Pour une documentation complète et détaillée, consultez:
+**`.github/copilot-instructions.md`**
+
+Ce fichier contient la version unifiée et consolidée de toutes les règles:
+- ✅ Conventions et normes techniques
+- ✅ Architecture et design patterns
+- ✅ Gestion d'état et données
+- ✅ Performance et optimisation
+- ✅ Sécurité et authentification
+- ✅ Qualité du code
+- ✅ Best practices VentureLink
+- ✅ Checklists de vérification
+
+---
+
+**Version:** 2.0  
+**Statut:** ✅ Actif et aligné avec `.github/copilot-instructions.md`

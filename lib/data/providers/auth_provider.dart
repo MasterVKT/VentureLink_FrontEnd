@@ -5,6 +5,7 @@ import 'package:venturelink/data/services/auth_api_service.dart';
 import 'package:venturelink/data/services/auth_service.dart';
 import 'package:venturelink/data/services/api_service.dart';
 import 'dart:async';
+import 'package:venturelink/core/config/test_config.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _firebaseAuthService = AuthService();
@@ -12,6 +13,12 @@ class AuthProvider extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _error;
+
+  // 🔴 CRITICAL FIX: Tracking des tentatives d'authentification pour éviter les boucles infinies
+  DateTime? _lastAuthAttemptTime;
+  int _failedAuthAttempts = 0;
+  static const int _maxFailedAttempts = 3;
+  static const int _authFailureWindowSeconds = 30;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -41,7 +48,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _checkExistingAuth() async {
-    print("Vérification de l'état d'authentification...");
+    debugPrint("Vérification de l'état d'authentification...");
 
     try {
       // Vérifier s'il y a un token d'accès stocké
@@ -52,7 +59,7 @@ class AuthProvider extends ChangeNotifier {
         // Essayer de récupérer l'utilisateur actuel avec le token
         _currentUser = await _authApiService.getCurrentUser();
         if (_currentUser != null) {
-          print("Utilisateur connecté via API: ${_currentUser?.email}");
+          debugPrint("Utilisateur connecté via API: ${_currentUser?.email}");
           notifyListeners();
           return;
         }
@@ -61,16 +68,17 @@ class AuthProvider extends ChangeNotifier {
       // Si pas de token valide, vérifier Firebase
       final firebaseUser = _firebaseAuthService.currentUser;
       if (firebaseUser != null) {
-        print(
+        debugPrint(
             "Utilisateur Firebase trouvé, tentative de synchronisation avec l'API...");
         await _syncFirebaseWithApi();
       }
 
-      print(
+      debugPrint(
           "État d'authentification: ${_currentUser != null ? 'Connecté' : 'Non connecté'}");
       notifyListeners();
     } catch (e) {
-      print("Erreur lors de la vérification de l'état d'authentification: $e");
+      debugPrint(
+          "Erreur lors de la vérification de l'état d'authentification: $e");
       _error = e.toString();
       notifyListeners();
     }
@@ -155,7 +163,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print("AuthProvider: Début de connexion pour $email");
+      debugPrint("AuthProvider: Début de connexion pour $email");
 
       // Tenter de se connecter via l'API backend
       final result = await _authApiService.login(
@@ -165,20 +173,20 @@ class AuthProvider extends ChangeNotifier {
 
       if (result.isSuccess && result.user != null) {
         _currentUser = result.user;
-        print(
+        debugPrint(
             "AuthProvider: Connexion API réussie pour ${_currentUser?.email}");
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
         _error = result.error ?? "Échec de connexion";
-        print("AuthProvider: Erreur de connexion API: $_error");
+        debugPrint("AuthProvider: Erreur de connexion API: $_error");
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      print("AuthProvider: Erreur de connexion: $e");
+      debugPrint("AuthProvider: Erreur de connexion: $e");
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -199,7 +207,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print("AuthProvider: Début d'inscription pour $email");
+      debugPrint("AuthProvider: Début d'inscription pour $email");
 
       final result = await _authApiService.register(
         email: email,
@@ -212,19 +220,20 @@ class AuthProvider extends ChangeNotifier {
 
       if (result.isSuccess && result.user != null) {
         _currentUser = result.user;
-        print("AuthProvider: Inscription réussie pour ${_currentUser?.email}");
+        debugPrint(
+            "AuthProvider: Inscription réussie pour ${_currentUser?.email}");
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
         _error = result.error ?? "Échec d'inscription";
-        print("AuthProvider: Erreur d'inscription: $_error");
+        debugPrint("AuthProvider: Erreur d'inscription: $_error");
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      print("AuthProvider: Erreur d'inscription: $e");
+      debugPrint("AuthProvider: Erreur d'inscription: $e");
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -240,7 +249,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       // D'abord, se connecter avec Firebase
-      final firebaseUser = await _firebaseAuthService.signInWithGoogle();
+      await _firebaseAuthService.signInWithGoogle();
 
       // Ensuite, synchroniser avec l'API
       await _syncFirebaseWithApi();
@@ -271,7 +280,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       // D'abord, se connecter avec Firebase
-      final firebaseUser = await _firebaseAuthService.signInWithApple();
+      await _firebaseAuthService.signInWithApple();
 
       // Ensuite, synchroniser avec l'API
       await _syncFirebaseWithApi();
@@ -318,9 +327,9 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = null;
       _error = null;
 
-      print("AuthProvider: Déconnexion réussie");
+      debugPrint("AuthProvider: Déconnexion réussie");
     } catch (e) {
-      print("AuthProvider: Erreur lors de la déconnexion: $e");
+      debugPrint("AuthProvider: Erreur lors de la déconnexion: $e");
       // Même en cas d'erreur, on efface les données locales
       _currentUser = null;
       _error = null;
@@ -340,7 +349,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print("Erreur lors du rafraîchissement de l'utilisateur: $e");
+      debugPrint("Erreur lors du rafraîchissement de l'utilisateur: $e");
     }
   }
 
@@ -351,6 +360,27 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> checkAndRefreshAuthState() async {
+    // 🔴 CRITICAL FIX: Vérifier les tentatives répétées (limite 3 tentatives en 30s)
+    if (_lastAuthAttemptTime != null) {
+      final timeSinceLastAttempt =
+          DateTime.now().difference(_lastAuthAttemptTime!);
+
+      if (_failedAuthAttempts >= _maxFailedAttempts &&
+          timeSinceLastAttempt.inSeconds < _authFailureWindowSeconds) {
+        debugPrint(
+            "AuthProvider: ⚠️ LOOP DETECTION: $_failedAuthAttempts auth attempts failed in ${timeSinceLastAttempt.inSeconds}s. Aborting to prevent infinite loop.");
+        _isLoading = false;
+        _error = 'Authentication failed. Please login again.';
+        notifyListeners();
+        return;
+      }
+
+      // Reset counter if window has passed
+      if (timeSinceLastAttempt.inSeconds >= _authFailureWindowSeconds) {
+        _failedAuthAttempts = 0;
+      }
+    }
+
     _isLoading = true;
     notifyListeners();
 
@@ -377,22 +407,30 @@ class AuthProvider extends ChangeNotifier {
 
               if (response.isSuccess && response.user != null) {
                 _currentUser = response.user;
+                _failedAuthAttempts = 0; // Reset on success
+                _lastAuthAttemptTime = DateTime.now();
                 debugPrint(
                     "AuthProvider: Synchronisation Firebase-API réussie pour ${_currentUser?.email}");
               } else {
+                _failedAuthAttempts++;
+                _lastAuthAttemptTime = DateTime.now();
                 debugPrint(
                     "AuthProvider: Échec de la synchronisation Firebase-API: ${response.error}");
               }
             } catch (e) {
+              _failedAuthAttempts++;
+              _lastAuthAttemptTime = DateTime.now();
               debugPrint(
                   "AuthProvider: Erreur lors de la synchronisation avec l'API: $e");
 
-              // Créer un utilisateur minimal avec les données Firebase en cas d'erreur
-              // En environnement de développement, cela permettra de continuer à travailler
-              if (e.toString().contains('Token Firebase invalide') ||
+              // En mode développement, permettre un mode de contournement pour les erreurs de token
+              if (e.toString().contains('token_not_valid') ||
+                  e.toString().contains('Token Firebase invalide') ||
                   e.toString().contains('Token issuer invalide')) {
                 debugPrint(
-                    "AuthProvider: Utilisation des données Firebase locales suite à l'erreur de validation du token");
+                    "AuthProvider: Mode de contournement activé - utilisation des données Firebase locales");
+                debugPrint(
+                    "AuthProvider: Erreur de validation du token Firebase: $e");
 
                 // Extraire les informations de nom et prénom
                 String firstName = '';
@@ -460,6 +498,31 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Authentification automatique pour les tests (mode debug uniquement)
+  Future<void> autoLoginForTesting() async {
+    if (!TestConfig.autoLoginEnabled) return;
+
+    try {
+      debugPrint(
+          'AuthProvider: Tentative d\'authentification automatique pour les tests...');
+
+      // Essayer de se connecter avec les identifiants de test
+      final success = await login(
+        TestConfig.testEmail,
+        TestConfig.testPassword,
+      );
+
+      if (success) {
+        debugPrint('AuthProvider: Authentification automatique réussie');
+      } else {
+        debugPrint('AuthProvider: Échec de l\'authentification automatique');
+      }
+    } catch (e) {
+      debugPrint('AuthProvider: Échec de l\'authentification automatique: $e');
+      // En cas d'échec, continuer sans authentification
     }
   }
 }

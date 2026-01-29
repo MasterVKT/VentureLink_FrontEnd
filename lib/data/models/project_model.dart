@@ -1,20 +1,14 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'user_model.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:math'; // Ajout de l'import pour la fonction min
-import 'package:venturelink/core/config/app_config.dart'; // Import pour la configuration
+import 'user_model.dart';
+import 'package:venturelink/core/config/app_config.dart';
 
-part 'project_model.g.dart';
-
-/// 🔥 NOUVEAU : Modèle pour les médias du backend (format media_urls)
-@JsonSerializable()
+/// Modèle pour les médias du projet
 class ProjectMedia {
   final String id;
   final String url;
   final String type; // 'IMAGE', 'VIDEO', 'DOCUMENT'
   final String? title;
   final String? description;
-  @JsonKey(name: 'is_primary')
   final bool isPrimary;
   final int order;
 
@@ -29,11 +23,6 @@ class ProjectMedia {
   });
 
   factory ProjectMedia.fromJson(Map<String, dynamic> json) {
-    try {
-      return _$ProjectMediaFromJson(json);
-    } catch (e) {
-      debugPrint('Erreur parsing ProjectMedia: $e');
-      // Créer un objet par défaut en cas d'erreur
       return ProjectMedia(
         id: json['id']?.toString() ?? '',
         url: json['url']?.toString() ?? '',
@@ -43,10 +32,17 @@ class ProjectMedia {
         isPrimary: json['is_primary'] == true,
         order: (json['order'] as num?)?.toInt() ?? 0,
       );
-    }
   }
 
-  Map<String, dynamic> toJson() => _$ProjectMediaToJson(this);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'url': url,
+        'type': type,
+        'title': title,
+        'description': description,
+        'is_primary': isPrimary,
+        'order': order,
+      };
 
   /// Obtient l'URL complète si elle n'est pas déjà absolue
   String get fullUrl {
@@ -55,71 +51,154 @@ class ProjectMedia {
   }
 }
 
-@JsonSerializable()
 class ProjectModel {
   final String id;
   final UserModel creator;
-  @JsonKey(name: 'creator_name')
   final String? creatorName;
+  final String? creatorId;
+  final String? creatorProfilePicture;
   final String title;
-  @JsonKey(name: 'short_description')
   final String shortDescription;
-  @JsonKey(
-    name: 'full_description',
-    fromJson: _fullDescriptionFromJson,
-  )
   final String fullDescription;
   final CategoryModel category;
   final String stage;
   final String status;
-  @JsonKey(name: 'funding_min', fromJson: _fundingFromJson)
   final double fundingMin;
-  @JsonKey(name: 'funding_max', fromJson: _fundingFromJson)
   final double fundingMax;
-  @JsonKey(name: 'funding_currency')
   final String fundingCurrency;
-  @JsonKey(name: 'location_country')
   final String? locationCountry;
-  @JsonKey(name: 'location_city')
   final String? locationCity;
-  @JsonKey(name: 'business_plan')
   final String? businessPlan;
-  @JsonKey(name: 'video_url')
   final String? videoUrl;
-  @JsonKey(name: 'is_premium')
   final bool isPremium;
-  @JsonKey(name: 'is_featured')
   final bool isFeatured;
-  @JsonKey(name: 'is_draft')
   final bool isDraft;
-  @JsonKey(name: 'views_count')
   final int viewsCount;
-  @JsonKey(name: 'interests_count')
   final int interestsCount;
-  @JsonKey(name: 'favorites_count')
   final int favoritesCount;
-  @JsonKey(name: 'published_at', fromJson: _dateTimeFromJson)
   final DateTime? publishedAt;
-  @JsonKey(name: 'created_at', fromJson: _dateTimeFromJsonRequired)
-  final DateTime createdAt;
-  @JsonKey(name: 'updated_at', fromJson: _dateTimeFromJsonRequired)
-  final DateTime updatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
   final List<TagModel>? tags;
-
-  // 🔥 NOUVEAU : Support des médias multiples via media_urls du backend
-  @JsonKey(name: 'media_urls', fromJson: _mediaUrlsFromJson)
   final List<ProjectMedia> mediaList;
-
-  // ANCIEN : Support rétrocompatibilité avec le système existant
-  final List<ProjectMediaModel>? media;
-  @JsonKey(name: 'primary_image_url')
   final String? primaryImageUrl;
-
+  final List<ProjectMediaModel>? media; // Ancien système de médias
   final List<ProjectNeedModel>? needs;
-  @JsonKey(name: 'skills_needed')
   final List<SkillModel>? skillsNeeded;
 
-  // Fonction de conversion pour media_urls
+  ProjectModel({
+    required this.id,
+    required this.creator,
+    this.creatorName,
+    this.creatorId,
+    this.creatorProfilePicture,
+    required this.title,
+    required this.shortDescription,
+    required this.fullDescription,
+    required this.category,
+    required this.stage,
+    this.status = 'ACTIVE',
+    required this.fundingMin,
+    required this.fundingMax,
+    this.fundingCurrency = 'EUR',
+    this.locationCountry,
+    this.locationCity,
+    this.businessPlan,
+    this.videoUrl,
+    this.isPremium = false,
+    this.isFeatured = false,
+    this.isDraft = false,
+    this.viewsCount = 0,
+    this.interestsCount = 0,
+    this.favoritesCount = 0,
+    this.publishedAt,
+    this.createdAt,
+    this.updatedAt,
+    this.tags,
+    this.mediaList = const [],
+    this.primaryImageUrl,
+    this.media,
+    this.needs,
+    this.skillsNeeded,
+  });
+
+  factory ProjectModel.fromJson(Map<String, dynamic> json) {
+    // Reconstruire le creator à partir des champs individuels
+    final creator = _createCreatorFromProjectData(json);
+
+    return ProjectModel(
+      id: json['id']?.toString() ?? '',
+      creator: creator,
+      creatorName: json['creator_name']?.toString(),
+      creatorId: json['creator_id']?.toString(),
+      creatorProfilePicture: json['creator_profile_picture']?.toString(),
+      title: json['title']?.toString() ?? '',
+      shortDescription: json['short_description']?.toString() ?? '',
+      fullDescription: json['full_description']?.toString() ?? '',
+      category: _categoryFromJson(json['category']),
+      stage: json['stage']?.toString() ?? 'IDEA',
+      status: json['status']?.toString() ?? 'ACTIVE',
+      fundingMin: _fundingFromJson(json['funding_min']),
+      fundingMax: _fundingFromJson(json['funding_max']),
+      fundingCurrency: json['funding_currency']?.toString() ?? 'EUR',
+      locationCountry: json['location_country']?.toString(),
+      locationCity: json['location_city']?.toString(),
+      businessPlan: json['business_plan']?.toString(),
+      videoUrl: json['video_url']?.toString(),
+      isPremium: json['is_premium'] == true,
+      isFeatured: json['is_featured'] == true,
+      isDraft: json['is_draft'] == true,
+      viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
+      interestsCount: (json['interests_count'] as num?)?.toInt() ?? 0,
+      favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
+      publishedAt: _dateTimeFromJson(json['published_at']),
+      createdAt: _dateTimeFromJson(json['created_at']),
+      updatedAt: _dateTimeFromJson(json['updated_at']),
+      tags: _tagsFromJson(json['tags']),
+      mediaList: _mediaUrlsFromJson(json['media_urls']),
+      primaryImageUrl: json['primary_image_url']?.toString(),
+      media: _oldMediaFromJson(json['media']),
+      needs: _needsFromJson(json['needs']),
+      skillsNeeded: _skillsFromJson(json['skills_needed']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'creator_name': creatorName,
+        'creator_id': creatorId,
+        'creator_profile_picture': creatorProfilePicture,
+        'title': title,
+        'short_description': shortDescription,
+        'full_description': fullDescription,
+        'category': category.toJson(),
+        'stage': stage,
+        'status': status,
+        'funding_min': fundingMin,
+        'funding_max': fundingMax,
+        'funding_currency': fundingCurrency,
+        'location_country': locationCountry,
+        'location_city': locationCity,
+        'business_plan': businessPlan,
+        'video_url': videoUrl,
+        'is_premium': isPremium,
+        'is_featured': isFeatured,
+        'is_draft': isDraft,
+        'views_count': viewsCount,
+        'interests_count': interestsCount,
+        'favorites_count': favoritesCount,
+        'published_at': publishedAt?.toIso8601String(),
+        'created_at': createdAt?.toIso8601String(),
+        'updated_at': updatedAt?.toIso8601String(),
+        'tags': tags?.map((t) => t.toJson()).toList(),
+        'media_urls': mediaList.map((m) => m.toJson()).toList(),
+        'primary_image_url': primaryImageUrl,
+        'media': media?.map((m) => m.toJson()).toList(),
+        'needs': needs?.map((n) => n.toJson()).toList(),
+        'skills_needed': skillsNeeded?.map((s) => s.toJson()).toList(),
+      };
+
+  // Fonctions de conversion statiques
   static List<ProjectMedia> _mediaUrlsFromJson(dynamic value) {
     if (value == null) return [];
     if (value is! List) return [];
@@ -141,14 +220,6 @@ class ProjectModel {
         .toList();
   }
 
-  // Fonction de conversion sécurisée pour full_description
-  static String _fullDescriptionFromJson(dynamic value) {
-    if (value is String) return value;
-    if (value == null) return '';
-    return value.toString();
-  }
-
-  // Fonction de conversion sécurisée pour les montants financiers
   static double _fundingFromJson(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
@@ -164,7 +235,6 @@ class ProjectModel {
     return 0.0;
   }
 
-  // Fonction de conversion sécurisée pour les dates (nullable)
   static DateTime? _dateTimeFromJson(dynamic value) {
     if (value == null) return null;
     if (value is String) {
@@ -178,161 +248,263 @@ class ProjectModel {
     return null;
   }
 
-  // Fonction de conversion sécurisée pour les dates (obligatoires)
-  static DateTime _dateTimeFromJsonRequired(dynamic value) {
-    if (value == null) return DateTime.now();
-    if (value is String) {
-      try {
-        return DateTime.parse(value);
-      } catch (e) {
-        debugPrint('Erreur parsing date obligatoire: $value -> $e');
-        return DateTime.now();
-      }
-    }
-    return DateTime.now();
+  static List<TagModel> _tagsFromJson(dynamic value) {
+    if (value == null) return [];
+    if (value is! List) return [];
+
+    return value
+        .map((item) {
+          try {
+            if (item is Map<String, dynamic>) {
+              return TagModel.fromJson(item);
+            }
+            return null;
+          } catch (e) {
+            debugPrint('Erreur parsing TagModel: $e');
+            return null;
+          }
+        })
+        .where((item) => item != null)
+        .cast<TagModel>()
+        .toList();
   }
 
-  ProjectModel({
-    required this.id,
-    required this.creator,
-    this.creatorName,
-    required this.title,
-    required this.shortDescription,
-    required this.fullDescription,
-    required this.category,
-    required this.stage,
-    this.status = 'ACTIVE',
-    required this.fundingMin,
-    required this.fundingMax,
-    this.fundingCurrency = 'EUR',
-    this.locationCountry,
-    this.locationCity,
-    this.businessPlan,
-    this.videoUrl,
-    this.isPremium = false,
-    this.isFeatured = false,
-    this.isDraft = false,
-    this.viewsCount = 0,
-    this.interestsCount = 0,
-    this.favoritesCount = 0,
-    this.publishedAt,
-    required this.createdAt,
-    required this.updatedAt,
-    this.tags,
-    this.mediaList = const [], // 🔥 NOUVEAU : Liste des médias du backend
-    this.media, // ANCIEN : Compatibilité
-    this.needs,
-    this.skillsNeeded,
-    this.primaryImageUrl, // ANCIEN : Compatibilité
-  });
+  static List<ProjectMediaModel>? _oldMediaFromJson(dynamic value) {
+    if (value == null) return null;
+    if (value is! List) return null;
 
-  // 🎯 NOUVELLES MÉTHODES : Unified Media Access
+    return value
+        .map((item) {
+          try {
+            if (item is Map<String, dynamic>) {
+              return ProjectMediaModel.fromJson(item);
+            }
+            return null;
+          } catch (e) {
+            debugPrint('Erreur parsing ProjectMediaModel: $e');
+            return null;
+          }
+        })
+        .where((item) => item != null)
+        .cast<ProjectMediaModel>()
+        .toList();
+  }
 
-  /// Obtient le média principal (avec priorité aux nouveaux médias)
+  static List<ProjectNeedModel>? _needsFromJson(dynamic value) {
+    if (value == null) return null;
+    if (value is! List) return null;
+
+    return value
+        .map((item) {
+          try {
+            if (item is Map<String, dynamic>) {
+              return ProjectNeedModel.fromJson(item);
+            }
+            return null;
+      } catch (e) {
+            debugPrint('Erreur parsing ProjectNeedModel: $e');
+            return null;
+          }
+        })
+        .where((item) => item != null)
+        .cast<ProjectNeedModel>()
+        .toList();
+  }
+
+  static List<SkillModel>? _skillsFromJson(dynamic value) {
+    if (value == null) return null;
+    if (value is! List) return null;
+
+    return value
+        .map((item) {
+          try {
+            if (item is Map<String, dynamic>) {
+              return SkillModel.fromJson(item);
+            }
+            return null;
+          } catch (e) {
+            debugPrint('Erreur parsing SkillModel: $e');
+            return null;
+          }
+        })
+        .where((item) => item != null)
+        .cast<SkillModel>()
+        .toList();
+  }
+
+  static CategoryModel _categoryFromJson(dynamic value) {
+    if (value == null) {
+      return CategoryModel(
+        id: 'unknown',
+        nameFr: 'Non catégorisé',
+        nameEn: 'Uncategorized',
+        icon: null,
+      );
+    }
+
+    if (value is Map<String, dynamic>) {
+      try {
+        return CategoryModel.fromJson(value);
+      } catch (e) {
+        debugPrint('Erreur parsing CategoryModel: $e');
+        return CategoryModel(
+          id: value['id']?.toString() ?? 'unknown',
+          nameFr: value['name_fr']?.toString() ?? 'Non catégorisé',
+          nameEn: value['name_en']?.toString() ?? 'Uncategorized',
+          icon: value['icon']?.toString(),
+        );
+      }
+    }
+
+    return CategoryModel(
+      id: 'unknown',
+      nameFr: 'Non catégorisé',
+      nameEn: 'Uncategorized',
+      icon: null,
+    );
+  }
+
+  static UserModel _createCreatorFromProjectData(Map<String, dynamic> json) {
+    final creatorId = json['creator_id']?.toString();
+    final creatorName = json['creator_name']?.toString();
+    final creatorProfilePicture = json['creator_profile_picture']?.toString();
+
+    debugPrint(
+        '[PROJECT] 💡 Reconstruction creator - ID: $creatorId, Nom: $creatorName');
+
+    if (creatorName == null || creatorName.isEmpty) {
+      debugPrint(
+          '[PROJECT] 🔴 Champ creator_name manquant, utilisation d\'un utilisateur par défaut');
+      return UserModel(
+        id: creatorId ?? 'unknown',
+        email: 'utilisateur@exemple.com',
+        firstName: 'Utilisateur',
+        lastName: 'Inconnu',
+        userType: 'ENTREPRENEUR',
+        dateJoined: DateTime.now(),
+        isVerified: false,
+      );
+    }
+
+    // Diviser le nom en prénom et nom si possible
+    final nameParts = creatorName.trim().split(' ');
+    final firstName = nameParts.isNotEmpty ? nameParts.first : creatorName;
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+    debugPrint('[PROJECT] ✅ Creator reconstruit: $firstName $lastName');
+
+    // Créer un profil avec l'image si disponible
+    ProfileModel? profile;
+    if (creatorProfilePicture != null && creatorProfilePicture.isNotEmpty) {
+      profile = ProfileModel(
+        id: 'profile_${creatorId ?? 'unknown'}',
+        userId: creatorId ?? 'unknown',
+        profilePicture: creatorProfilePicture,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    return UserModel(
+      id: creatorId ??
+          'project_creator_${DateTime.now().millisecondsSinceEpoch}',
+      email: 'creator@venturelink.com',
+      firstName: firstName,
+      lastName: lastName,
+      userType: 'ENTREPRENEUR',
+      dateJoined: DateTime.now(),
+      isVerified: true,
+      profile: profile,
+    );
+  }
+
+  // Getters utilitaires
   ProjectMedia? get primaryMedia {
-    // D'abord essayer les nouveaux médias
     if (mediaList.isNotEmpty) {
-      final primaryFromList = mediaList.where((m) => m.isPrimary).firstOrNull;
-      if (primaryFromList != null) return primaryFromList;
+      final primary = mediaList.where((m) => m.isPrimary).firstOrNull;
+      if (primary != null) return primary;
       return mediaList.first;
     }
 
-    // Fallback vers l'ancien système si nécessaire
     if (primaryImageUrl != null && primaryImageUrl!.isNotEmpty) {
       return ProjectMedia(
-        id: 'primary_legacy',
-        url: _buildFullUrl(primaryImageUrl!),
+        id: 'legacy',
+        url: primaryImageUrl!,
         type: 'IMAGE',
         isPrimary: true,
-        order: 0,
       );
     }
 
     return null;
   }
 
-  /// Obtient toutes les URLs de médias (unifié nouveau + ancien système)
+  String? get primaryImageFullUrl {
+    final primary = primaryMedia;
+    if (primary != null) {
+      return primary.fullUrl;
+    }
+    return null;
+  }
+
+  bool get hasImage => primaryMedia != null;
+
   List<ProjectMedia> get allMedia {
-    final allMediaList = <ProjectMedia>[];
+    final List<ProjectMedia> allMediaList = [];
 
-    // Priorité aux nouveaux médias
-    if (mediaList.isNotEmpty) {
-      allMediaList.addAll(mediaList);
-    } else {
-      // Fallback vers l'ancien système
-      // Ajouter l'image principale si disponible
-      if (primaryImageUrl != null && primaryImageUrl!.isNotEmpty) {
-        allMediaList.add(ProjectMedia(
-          id: 'primary_legacy',
-          url: _buildFullUrl(primaryImageUrl!),
-          type: 'IMAGE',
-          isPrimary: true,
-          order: 0,
-        ));
-      }
+    // Ajouter les nouveaux médias
+    allMediaList.addAll(mediaList);
 
-      // Ajouter les autres médias de l'ancien système
-      if (media != null) {
-        for (int i = 0; i < media!.length; i++) {
-          final mediaItem = media![i];
-          if (mediaItem.fileUrl != null && mediaItem.fileUrl!.isNotEmpty) {
-            // Éviter les doublons avec l'image principale
-            final isDuplicate = primaryImageUrl != null &&
-                mediaItem.fileUrl!.contains(primaryImageUrl!.split('/').last);
-            if (!isDuplicate) {
-              allMediaList.add(ProjectMedia(
-                id: mediaItem.id,
-                url: _buildFullUrl(mediaItem.fileUrl!),
-                type: mediaItem.mediaType,
-                isPrimary: false,
-                order: mediaItem.displayOrder,
-                title: mediaItem.caption,
-              ));
-            }
+    // Ajouter les anciens médias convertis (si pas déjà présents)
+    if (media != null) {
+      for (final oldMedia in media!) {
+        if (oldMedia.fileUrl != null) {
+          // Vérifier qu'on n'a pas déjà ce média
+          final alreadyExists =
+              allMediaList.any((m) => m.url == oldMedia.fileUrl);
+          if (!alreadyExists) {
+            allMediaList.add(ProjectMedia(
+              id: oldMedia.id,
+              url: oldMedia.fileUrl!,
+              type: oldMedia.mediaType.toUpperCase(),
+              title: oldMedia.caption,
+              order: oldMedia.displayOrder,
+            ));
           }
         }
       }
     }
 
-    // Trier par ordre d'affichage puis par isPrimary
-    allMediaList.sort((a, b) {
-      if (a.isPrimary && !b.isPrimary) return -1;
-      if (!a.isPrimary && b.isPrimary) return 1;
-      return a.order.compareTo(b.order);
-    });
-
     return allMediaList;
   }
 
-  /// Helper pour construire l'URL complète
-  String _buildFullUrl(String url) {
-    if (url.startsWith('http')) return url;
-    return AppConfig.apiBaseUrl + url;
-  }
+  // Getters de compatibilité
+  String get description => fullDescription;
+  List<String> get images =>
+      allMedia.where((m) => m.type == 'IMAGE').map((m) => m.url).toList();
+  String get location => [locationCity, locationCountry]
+      .where((l) => l != null && l.isNotEmpty)
+      .join(', ');
+  bool get isVerified => isPremium || isFeatured;
+  double get fundingGoal => fundingMax;
+  double get fundingRaised =>
+      fundingMax * (interestsCount / 100.0).clamp(0.0, 1.0);
+  List<String> get interestedInvestors =>
+      List.generate(interestsCount, (i) => 'investor_$i');
+  int get mediaCount => allMedia.length;
 
-  /// Vérifie si le projet a des médias
-  bool get hasAnyMedia => allMedia.isNotEmpty;
+  // Getters pour compatibilité avec l'ancien code
+  bool get hasAnyMedia => allMedia.isNotEmpty || (media?.isNotEmpty ?? false);
+  bool get hasMultipleMedia => allMedia.length > 1 || (media?.length ?? 0) > 1;
 
-  /// Vérifie si le projet a plusieurs médias
-  bool get hasMultipleMedia => allMedia.length > 1;
+  List<ProjectMedia> get imageMedias =>
+      allMedia.where((m) => m.type.toUpperCase() == 'IMAGE').toList();
 
-  /// Obtient les médias par type
-  List<ProjectMedia> getMediaByType(String mediaType) {
-    return allMedia
-        .where((media) => media.type.toUpperCase() == mediaType.toUpperCase())
-        .toList();
-  }
+  List<ProjectMedia> get videoMedias =>
+      allMedia.where((m) => m.type.toUpperCase() == 'VIDEO').toList();
 
-  /// Obtient toutes les images
-  List<ProjectMedia> get imageMedias => getMediaByType('IMAGE');
+  List<ProjectMedia> get documentMedias =>
+      allMedia.where((m) => m.type.toUpperCase() == 'DOCUMENT').toList();
 
-  /// Obtient toutes les vidéos
-  List<ProjectMedia> get videoMedias => getMediaByType('VIDEO');
-
-  /// Obtient tous les documents
-  List<ProjectMedia> get documentMedias => getMediaByType('DOCUMENT');
-
-  /// Obtient une description des types de médias présents
   String get mediaTypesDescription {
     final types = <String>[];
     if (imageMedias.isNotEmpty) {
@@ -354,130 +526,21 @@ class ProjectModel {
     return '${types.sublist(0, types.length - 1).join(', ')} et ${types.last}';
   }
 
-  /// Méthode pour obtenir l'URL complète de l'image
   String? get fullImageUrl {
     final primary = primaryMedia;
-    if (primary != null && primary.type == 'IMAGE') {
-      return primary.url;
-    }
-
-    // Fallback vers l'ancien système
-    if (primaryImageUrl != null && primaryImageUrl!.isNotEmpty) {
-      return _buildFullUrl(primaryImageUrl!);
+    if (primary != null && primary.type.toUpperCase() == 'IMAGE') {
+      return primary.fullUrl;
     }
     return null;
   }
-
-  /// COMPATIBILITÉ : Ancienne méthode hasImage
-  bool get hasImage =>
-      primaryMedia?.type == 'IMAGE' ||
-      (primaryImageUrl != null && primaryImageUrl!.isNotEmpty);
-
-  // SUPPRIMÉ : Méthodes obsolètes remplacées par le système unifié
-
-  // Méthode fromJson personnalisée avec gestion d'erreurs
-  static ProjectModel fromJson(Map<String, dynamic> json) {
-    try {
-      return _$ProjectModelFromJson(json);
-    } catch (e) {
-      debugPrint('Erreur de parsing JSON pour ProjectModel: $e');
-      debugPrint(
-          'JSON problématique: ${json.toString().substring(0, min(500, json.toString().length))}...');
-
-      // En cas d'erreur, corriger les champs problématiques
-      final correctedJson = Map<String, dynamic>.from(json);
-
-      // Corrections des champs obligatoires avec valeurs par défaut
-      if (json['id'] == null) correctedJson['id'] = '';
-      if (json['title'] == null) correctedJson['title'] = 'Sans titre';
-      if (json['short_description'] == null) {
-        correctedJson['short_description'] = '';
-      }
-      if (json['full_description'] == null) {
-        correctedJson['full_description'] = '';
-      }
-      if (json['stage'] == null) correctedJson['stage'] = 'IDEA';
-      if (json['status'] == null) correctedJson['status'] = 'ACTIVE';
-      if (json['funding_currency'] == null) {
-        correctedJson['funding_currency'] = 'EUR';
-      }
-
-      // Gérer les champs numériques
-      if (json['funding_min'] == null) correctedJson['funding_min'] = 0.0;
-      if (json['funding_max'] == null) correctedJson['funding_max'] = 0.0;
-
-      // Créer des objets par défaut pour les champs complexes
-      if (json['creator'] == null) {
-        correctedJson['creator'] = {
-          'id': '1',
-          'email': 'utilisateur@exemple.com',
-          'first_name': json['creator_name'] ?? 'Utilisateur',
-          'last_name': 'Inconnu',
-          'user_type': 'ENTREPRENEUR',
-          'date_joined': DateTime.now().toIso8601String(),
-          'is_verified': true,
-        };
-      }
-
-      if (json['category'] == null) {
-        correctedJson['category'] = {
-          'id': '',
-          'name_fr': 'Non catégorisé',
-          'name_en': 'Uncategorized',
-          'icon': null,
-        };
-      }
-
-      // Dates par défaut
-      if (json['created_at'] == null) {
-        correctedJson['created_at'] = DateTime.now().toIso8601String();
-      }
-      if (json['updated_at'] == null) {
-        correctedJson['updated_at'] = DateTime.now().toIso8601String();
-      }
-
-      try {
-        return _$ProjectModelFromJson(correctedJson);
-      } catch (secondError) {
-        debugPrint('Deuxième erreur lors de la conversion JSON: $secondError');
-        throw Exception(
-            'Impossible de créer le projet à partir des données: $secondError');
-      }
-    }
-  }
-
-  Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
-
-  // Getters de compatibilité pour les widgets existants
-  String get description => fullDescription;
-  List<String> get images =>
-      allMedia.where((m) => m.type == 'IMAGE').map((m) => m.url).toList();
-  String get location => [locationCity, locationCountry]
-      .where((l) => l != null && l.isNotEmpty)
-      .join(', ');
-  bool get isVerified => isPremium || isFeatured;
-  double get fundingGoal => fundingMax;
-  double get fundingRaised =>
-      fundingMax * (interestsCount / 100.0).clamp(0.0, 1.0);
-  List<String> get interestedInvestors =>
-      List.generate(interestsCount, (i) => 'investor_$i');
-
-  // Méthode pour compter le nombre total de médias (ancien système)
-  int get mediaCount => allMedia.length;
 }
 
-@JsonSerializable()
 class CategoryModel {
   final String id;
-  @JsonKey(name: 'name_fr')
   final String nameFr;
-  @JsonKey(name: 'name_en')
   final String nameEn;
-  @JsonKey(fromJson: _iconFromJson)
   final String? icon;
-  @JsonKey(name: 'description_fr')
   final String? descriptionFr;
-  @JsonKey(name: 'description_en')
   final String? descriptionEn;
 
   CategoryModel({
@@ -489,47 +552,36 @@ class CategoryModel {
     this.descriptionEn,
   });
 
-  // Fonction de conversion sécurisée pour l'icône
-  static String? _iconFromJson(dynamic value) {
-    if (value is String) return value;
-    return null; // Retourner null si la valeur n'est pas une chaîne
+  factory CategoryModel.fromJson(Map<String, dynamic> json) {
+    return CategoryModel(
+      id: json['id']?.toString() ?? '',
+      nameFr: json['name_fr']?.toString() ?? 'Catégorie',
+      nameEn: json['name_en']?.toString() ?? 'Category',
+      icon: json['icon']?.toString(),
+      descriptionFr: json['description_fr']?.toString(),
+      descriptionEn: json['description_en']?.toString(),
+    );
   }
 
-  // Méthode fromJson sécurisée
-  static CategoryModel fromJson(Map<String, dynamic> json) {
-    try {
-      return _$CategoryModelFromJson(json);
-    } catch (e) {
-      // Corriger les champs problématiques
-      final correctedJson = Map<String, dynamic>.from(json);
-
-      // S'assurer que les champs obligatoires ont des valeurs par défaut
-      if (json['id'] == null) correctedJson['id'] = '';
-      if (json['name_fr'] == null) correctedJson['name_fr'] = 'Catégorie';
-      if (json['name_en'] == null) correctedJson['name_en'] = 'Category';
-
-      // Ne pas mettre de valeur par défaut pour icon puisqu'il est maintenant nullable
-
-      return _$CategoryModelFromJson(correctedJson);
-    }
-  }
-
-  Map<String, dynamic> toJson() => _$CategoryModelToJson(this);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name_fr': nameFr,
+        'name_en': nameEn,
+        'icon': icon,
+        'description_fr': descriptionFr,
+        'description_en': descriptionEn,
+      };
 
   String getName(String locale) => locale == 'fr' ? nameFr : nameEn;
 
   @override
-  String toString() => nameFr; // Retourne le nom français par défaut
+  String toString() => nameFr;
 }
 
-@JsonSerializable()
 class TagModel {
   final String id;
-  @JsonKey(name: 'name_fr')
   final String nameFr;
-  @JsonKey(name: 'name_en')
   final String nameEn;
-  @JsonKey(fromJson: _colorFromJson)
   final String? color;
 
   TagModel({
@@ -539,74 +591,33 @@ class TagModel {
     this.color,
   });
 
-  // Fonction de conversion sécurisée pour la couleur
-  static String? _colorFromJson(dynamic value) {
-    if (value is String) return value;
-    return '#CCCCCC'; // Retourner une couleur par défaut si null
+  factory TagModel.fromJson(Map<String, dynamic> json) {
+        return TagModel(
+      id: json['id']?.toString() ?? '',
+      nameFr: json['name_fr']?.toString() ?? 'Tag',
+      nameEn: json['name_en']?.toString() ?? 'Tag',
+      color: json['color']?.toString() ?? '#CCCCCC',
+    );
   }
 
-  // Méthode fromJson sécurisée
-  static TagModel fromJson(Map<String, dynamic> json) {
-    try {
-      return _$TagModelFromJson(json);
-    } catch (e) {
-      debugPrint('Erreur de parsing JSON pour TagModel: $e');
-      // Si c'est une erreur liée au champ 'color' manquant
-      if (e.toString().contains("'color'") ||
-          e.toString().contains('is not a subtype of type')) {
-        // Créer un tag minimal valide avec les champs essentiels
-        return TagModel(
-          id: json['id'] as String? ?? '',
-          nameFr: json['name_fr'] as String? ?? 'Tag',
-          nameEn: json['name_en'] as String? ?? 'Tag',
-          color: '#CCCCCC', // Couleur par défaut
-        );
-      }
-
-      // Pour d'autres types d'erreurs, corriger les champs problématiques
-      final correctedJson = Map<String, dynamic>.from(json);
-
-      // S'assurer que les champs obligatoires ont des valeurs par défaut
-      if (json['id'] == null) correctedJson['id'] = '';
-      if (json['name_fr'] == null) correctedJson['name_fr'] = 'Tag';
-      if (json['name_en'] == null) correctedJson['name_en'] = 'Tag';
-      // Fournir une valeur par défaut pour color si nécessaire
-      if (json['color'] == null) correctedJson['color'] = '#CCCCCC';
-
-      try {
-        return _$TagModelFromJson(correctedJson);
-      } catch (e) {
-        // En dernier recours, créer un objet minimal
-        debugPrint(
-            'Échec de parsing TagModel, utilisation d\'un tag par défaut: $e');
-        return TagModel(
-          id: json['id'] as String? ?? '',
-          nameFr: json['name_fr'] as String? ?? 'Tag',
-          nameEn: json['name_en'] as String? ?? 'Tag',
-          color: '#CCCCCC',
-        );
-      }
-    }
-  }
-
-  Map<String, dynamic> toJson() => _$TagModelToJson(this);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name_fr': nameFr,
+        'name_en': nameEn,
+        'color': color,
+      };
 
   String getName(String locale) => locale == 'fr' ? nameFr : nameEn;
 }
 
-@JsonSerializable()
+// Classe pour compatibilité avec l'ancien système
 class ProjectMediaModel {
   final String id;
-  @JsonKey(name: 'project_id')
   final String projectId;
-  @JsonKey(name: 'media_type')
   final String mediaType;
-  @JsonKey(name: 'file_url')
   final String? fileUrl;
   final String? caption;
-  @JsonKey(name: 'display_order')
   final int displayOrder;
-  @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
   ProjectMediaModel({
@@ -619,124 +630,153 @@ class ProjectMediaModel {
     required this.createdAt,
   });
 
-  // Méthode fromJson sécurisée
-  static ProjectMediaModel fromJson(Map<String, dynamic> json) {
-    try {
-      return _$ProjectMediaModelFromJson(json);
-    } catch (e) {
-      // Corriger les champs problématiques
-      final correctedJson = Map<String, dynamic>.from(json);
-
-      // S'assurer que les champs obligatoires ont des valeurs par défaut
-      if (json['id'] == null) correctedJson['id'] = '';
-      if (json['project_id'] == null) correctedJson['project_id'] = '';
-      if (json['media_type'] == null) correctedJson['media_type'] = 'IMAGE';
-      // file_url peut être null, pas besoin de valeur par défaut
-      if (json['display_order'] == null) correctedJson['display_order'] = 0;
-      if (json['created_at'] == null) {
-        correctedJson['created_at'] = DateTime.now().toIso8601String();
-      }
-
-      return _$ProjectMediaModelFromJson(correctedJson);
-    }
+  factory ProjectMediaModel.fromJson(Map<String, dynamic> json) {
+    return ProjectMediaModel(
+      id: json['id']?.toString() ?? '',
+      projectId: json['project_id']?.toString() ?? '',
+      mediaType: json['media_type']?.toString() ?? 'IMAGE',
+      fileUrl: json['file_url']?.toString(),
+      caption: json['caption']?.toString(),
+      displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+    );
   }
 
-  Map<String, dynamic> toJson() => _$ProjectMediaModelToJson(this);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'project_id': projectId,
+        'media_type': mediaType,
+        'file_url': fileUrl,
+        'caption': caption,
+        'display_order': displayOrder,
+        'created_at': createdAt.toIso8601String(),
+      };
 }
 
-@JsonSerializable()
 class ProjectNeedModel {
   final String id;
-  @JsonKey(name: 'project_id')
   final String projectId;
-  @JsonKey(name: 'need_type')
-  final String needType;
+  final String resourceType;
   final String title;
-  final String description;
+  final String? description;
   final double? amount;
-  final String? currency;
-  @JsonKey(name: 'is_urgent')
-  final bool isUrgent;
-  @JsonKey(name: 'created_at')
+  final String? amountCurrency;
+  final bool isCritical;
+  final DateTime? deadline;
+  final bool isSatisfied;
   final DateTime createdAt;
 
   ProjectNeedModel({
     required this.id,
     required this.projectId,
-    required this.needType,
+    required this.resourceType,
     required this.title,
-    required this.description,
+    this.description,
     this.amount,
-    this.currency,
-    this.isUrgent = false,
+    this.amountCurrency,
+    this.isCritical = false,
+    this.deadline,
+    this.isSatisfied = false,
     required this.createdAt,
   });
 
-  // Méthode fromJson sécurisée
-  static ProjectNeedModel fromJson(Map<String, dynamic> json) {
-    try {
-      return _$ProjectNeedModelFromJson(json);
-    } catch (e) {
-      // Corriger les champs problématiques
-      final correctedJson = Map<String, dynamic>.from(json);
-
-      // S'assurer que les champs obligatoires ont des valeurs par défaut
-      if (json['id'] == null) correctedJson['id'] = '';
-      if (json['project_id'] == null) correctedJson['project_id'] = '';
-      if (json['need_type'] == null) correctedJson['need_type'] = 'FUNDING';
-      if (json['title'] == null) correctedJson['title'] = 'Besoin';
-      if (json['description'] == null) {
-        correctedJson['description'] = 'Description du besoin';
-      }
-      if (json['is_urgent'] == null) correctedJson['is_urgent'] = false;
-      if (json['created_at'] == null) {
-        correctedJson['created_at'] = DateTime.now().toIso8601String();
-      }
-
-      return _$ProjectNeedModelFromJson(correctedJson);
-    }
+  factory ProjectNeedModel.fromJson(Map<String, dynamic> json) {
+    return ProjectNeedModel(
+      id: json['id']?.toString() ?? '',
+      projectId: json['project_id']?.toString() ?? '',
+      resourceType: json['resource_type']?.toString() ?? 'FUNDING',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString(),
+      amount: _parseDouble(json['amount']),
+      amountCurrency: json['amount_currency']?.toString(),
+      isCritical: json['is_critical'] == true,
+      deadline: _parseDateTime(json['deadline']),
+      isSatisfied: json['is_satisfied'] == true,
+      createdAt: _parseDateTime(json['created_at']) ?? DateTime.now(),
+    );
   }
 
-  Map<String, dynamic> toJson() => _$ProjectNeedModelToJson(this);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'project_id': projectId,
+        'resource_type': resourceType,
+        'title': title,
+        'description': description,
+        'amount': amount,
+        'amount_currency': amountCurrency,
+        'is_critical': isCritical,
+        'deadline': deadline?.toIso8601String(),
+        'is_satisfied': isSatisfied,
+        'created_at': createdAt.toIso8601String(),
+      };
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+    } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
 }
 
-@JsonSerializable()
 class SkillModel {
   final String id;
-  @JsonKey(name: 'name_fr')
-  final String nameFr;
-  @JsonKey(name: 'name_en')
-  final String nameEn;
-  final String category;
+  final String name;
   final String? description;
+  final String priority;
+  final int requiredLevel;
+  final bool isSatisfied;
+  final DateTime createdAt;
 
   SkillModel({
     required this.id,
-    required this.nameFr,
-    required this.nameEn,
-    required this.category,
+    required this.name,
     this.description,
+    required this.priority,
+    required this.requiredLevel,
+    this.isSatisfied = false,
+    required this.createdAt,
   });
 
-  // Méthode fromJson sécurisée
-  static SkillModel fromJson(Map<String, dynamic> json) {
-    try {
-      return _$SkillModelFromJson(json);
-    } catch (e) {
-      // Corriger les champs problématiques
-      final correctedJson = Map<String, dynamic>.from(json);
-
-      // S'assurer que les champs obligatoires ont des valeurs par défaut
-      if (json['id'] == null) correctedJson['id'] = '';
-      if (json['name_fr'] == null) correctedJson['name_fr'] = 'Compétence';
-      if (json['name_en'] == null) correctedJson['name_en'] = 'Skill';
-      if (json['category'] == null) correctedJson['category'] = 'OTHER';
-
-      return _$SkillModelFromJson(correctedJson);
-    }
+  factory SkillModel.fromJson(Map<String, dynamic> json) {
+    return SkillModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      priority: json['priority']?.toString() ?? 'MEDIUM',
+      requiredLevel: (json['required_level'] as num?)?.toInt() ?? 1,
+      isSatisfied: json['is_satisfied'] == true,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+    );
   }
 
-  Map<String, dynamic> toJson() => _$SkillModelToJson(this);
-
-  String getName(String locale) => locale == 'fr' ? nameFr : nameEn;
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'priority': priority,
+        'required_level': requiredLevel,
+        'is_satisfied': isSatisfied,
+        'created_at': createdAt.toIso8601String(),
+      };
 }

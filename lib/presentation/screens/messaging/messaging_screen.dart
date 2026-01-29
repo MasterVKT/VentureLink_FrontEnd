@@ -6,7 +6,7 @@ import 'package:venturelink/data/providers/messaging_provider.dart';
 import 'package:venturelink/data/models/conversation_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/router/app_router.dart';
+
 import '../../common_widgets/vl_app_bar.dart';
 import '../../common_widgets/vl_loading_indicator.dart';
 import 'conversation_screen.dart';
@@ -133,25 +133,6 @@ class _MessagingScreenState extends State<MessagingScreen>
     );
   }
 
-  Widget _buildSearchField() {
-    final l10n = AppLocalizations.of(context)!;
-
-    return TextField(
-      controller: _searchController,
-      autofocus: true,
-      decoration: InputDecoration(
-        hintText: 'Rechercher dans les conversations...',
-        border: InputBorder.none,
-        hintStyle: TextStyle(
-          color: context.appTheme.textSecondaryColor,
-        ),
-      ),
-      style: TextStyle(
-        color: context.appTheme.textPrimaryColor,
-      ),
-    );
-  }
-
   Widget _buildTabBar() {
     final l10n = AppLocalizations.of(context)!;
 
@@ -169,8 +150,8 @@ class _MessagingScreenState extends State<MessagingScreen>
             indicatorColor: AppTheme.primaryColor,
             tabs: [
               Tab(text: isCompact ? l10n.all : 'Toutes les conversations'),
-              Tab(text: 'Non lues'),
-              Tab(text: 'Archivées'),
+              const Tab(text: 'Non lues'),
+              const Tab(text: 'Archivées'),
             ],
           ),
         );

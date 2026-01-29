@@ -49,8 +49,8 @@ class MatchingProvider with ChangeNotifier {
         ..._filters,
       };
 
-      final response = await _apiService.get('/api/v1/matching/projects/',
-          queryParameters: params);
+      final response =
+          await _apiService.get('/matching/projects/', queryParameters: params);
       final List<dynamic> results = response.data['results'] ?? [];
       final newRecommendations =
           results.map((json) => ProjectModel.fromJson(json)).toList();
@@ -80,7 +80,7 @@ class MatchingProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.get('/api/v1/matching/users/');
+      final response = await _apiService.get('/matching/users/');
       final List<dynamic> results = response.data['results'] ?? [];
       _recommendedUsers =
           results.map((json) => UserModel.fromJson(json)).toList();
@@ -127,7 +127,7 @@ class MatchingProvider with ChangeNotifier {
   /// Indiquer un intérêt pour un projet
   Future<bool> showInterest(String projectId) async {
     try {
-      await _apiService.post('/api/v1/projects/$projectId/interest/');
+      await _apiService.post('/projects/$projectId/interest/');
       return true;
     } catch (e) {
       _error = 'Erreur lors de l\'indication d\'intérêt: $e';
@@ -139,7 +139,7 @@ class MatchingProvider with ChangeNotifier {
   /// Refuser un projet
   Future<bool> dismissProject(String projectId) async {
     try {
-      await _apiService.post('/api/v1/projects/$projectId/dismiss/');
+      await _apiService.post('/projects/$projectId/dismiss/');
       _recommendations.removeWhere((project) => project.id == projectId);
       notifyListeners();
       return true;

@@ -3,13 +3,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:venturelink/core/config/app_config.dart';
+import 'package:flutter/foundation.dart';
+import 'package:venturelink/firebase_options.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
 
   static FirebaseAnalytics? _sharedAnalytics;
   static FirebaseMessaging? _sharedMessaging;
@@ -21,13 +21,7 @@ class FirebaseService {
   static Future<void> init() async {
     try {
       await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: AppConfig.firebaseApiKey,
-          appId: AppConfig.firebaseAppId,
-          messagingSenderId: AppConfig.firebaseMessagingSenderId,
-          projectId: AppConfig.firebaseProjectId,
-          storageBucket: AppConfig.firebaseStorageBucket,
-        ),
+        options: DefaultFirebaseOptions.currentPlatform,
       );
 
       _sharedAnalytics = FirebaseAnalytics.instance;
@@ -37,7 +31,7 @@ class FirebaseService {
       await _configureMessaging();
     } catch (e) {
       // Gérer l'erreur d'initialisation de Firebase
-      print('Erreur lors de l\'initialisation de Firebase: $e');
+      debugPrint('Erreur lors de l\'initialisation de Firebase: $e');
     }
   }
 
@@ -51,16 +45,17 @@ class FirebaseService {
 
     // Obtenir le token FCM
     final token = await _sharedMessaging?.getToken();
-    print('FCM Token: $token');
+    debugPrint('FCM Token: $token');
 
     // Configurer les gestionnaires de messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Message reçu en premier plan: ${message.notification?.title}');
+      debugPrint(
+          'Message reçu en premier plan: ${message.notification?.title}');
       // TODO: Afficher une notification locale
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print(
+      debugPrint(
           'Message ouvert depuis la notification: ${message.notification?.title}');
       // TODO: Naviguer vers l'écran approprié
     });
@@ -118,7 +113,7 @@ class FirebaseService {
         parameters: parameters,
       );
     } catch (e) {
-      print('Erreur lors de l\'enregistrement de l\'événement: $e');
+      debugPrint('Erreur lors de l\'enregistrement de l\'événement: $e');
     }
   }
 
@@ -140,7 +135,7 @@ class FirebaseService {
         );
       }
     } catch (e) {
-      print('Erreur lors de la définition des propriétés utilisateur: $e');
+      debugPrint('Erreur lors de la définition des propriétés utilisateur: $e');
     }
   }
 
@@ -197,7 +192,7 @@ class FirebaseService {
 
   Future<void> updateUserEmail(String newEmail) async {
     try {
-      await _auth.currentUser?.updateEmail(newEmail);
+      await _auth.currentUser?.verifyBeforeUpdateEmail(newEmail);
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }

@@ -55,14 +55,14 @@ class SocialProjectCard extends StatelessWidget {
   }
 
   Widget _buildPostHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Photo de profil du créateur
-          GestureDetector(
-            onTap: onProfileTap,
-            child: CircleAvatar(
+    return InkWell(
+      onTap: onProfileTap,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Photo de profil du créateur
+            CircleAvatar(
               radius: 24,
               backgroundImage: project.creator.profile?.profilePicture != null
                   ? CachedNetworkImageProvider(
@@ -78,119 +78,121 @@ class SocialProjectCard extends StatelessWidget {
                     )
                   : null,
             ),
-          ),
 
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
 
-          // Infos du créateur
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Nom du créateur uniquement
-                Text(
-                  project.creator.fullName,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                const SizedBox(height: 2),
-
-                // Badges organisés horizontalement avec espacement
-                Row(
-                  children: [
-                    // Badge vérifié
-                    if (project.isVerified) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+            // Infos du créateur
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Nom du créateur uniquement
+                  Text(
+                    project.creator.fullName,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Vérifié',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 2),
+
+                  // Badges organisés horizontalement avec espacement
+                  Row(
+                    children: [
+                      // Badge vérifié
+                      if (project.isVerified) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Vérifié',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                    ],
+                        const SizedBox(width: 6),
+                      ],
 
-                    // Badge Premium
-                    if (project.isPremium) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.amber,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'PREMIUM',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                      // Badge Premium
+                      if (project.isPremium) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'PREMIUM',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
+                        const SizedBox(width: 6),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
 
-                const SizedBox(height: 2),
+                  const SizedBox(height: 2),
 
-                // Qualité et temps sur une ligne séparée
-                Row(
-                  children: [
-                    // Qualité/titre du créateur
-                    if (project.creator.profile?.title != null) ...[
-                      Expanded(
-                        child: Text(
-                          project.creator.profile!.title!,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey[600],
-                                    fontSize: 11,
-                                  ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Text(' • ',
-                          style: TextStyle(color: Colors.grey, fontSize: 11)),
-                    ],
-
-                    // Temps écoulé depuis publication
-                    Text(
-                      _getTimeAgo(project.publishedAt ?? project.createdAt),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
-                            fontSize: 11,
+                  // Qualité et temps sur une ligne séparée
+                  Row(
+                    children: [
+                      // Qualité/titre du créateur
+                      if (project.creator.profile?.title != null) ...[
+                        Expanded(
+                          child: Text(
+                            project.creator.profile!.title!,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey[600],
+                                      fontSize: 11,
+                                    ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                    ),
-                  ],
-                ),
-              ],
+                        ),
+                        const Text(' • ',
+                            style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      ],
+
+                      // Temps écoulé depuis publication
+                      Text(
+                        _getTimeAgo(project.publishedAt ??
+                            project.createdAt ??
+                            DateTime.now()),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                              fontSize: 11,
+                            ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Menu options
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: onMenuTap,
-          ),
-        ],
+            // Menu options
+            IconButton(
+              icon: const Icon(Icons.more_vert),
+              onPressed: onMenuTap,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -402,7 +404,7 @@ class SocialProjectCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    'Il y a ${_getTimeAgo(project.publishedAt ?? project.createdAt)}',
+                    'Il y a ${_getTimeAgo(project.publishedAt ?? project.createdAt ?? DateTime.now())}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey[600],
                           fontSize: 11,
@@ -576,7 +578,7 @@ class SocialProjectCard extends StatelessWidget {
         // Pourcentage en ORANGE
         Text(
           '${(progressPercent * 100).toInt()}% de l\'objectif atteint',
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.orange,
             fontSize: 11,
             fontWeight: FontWeight.bold,

@@ -10,13 +10,14 @@ import 'package:venturelink/core/localization/localization_service.dart';
 import 'package:venturelink/core/navigation/navigation_service.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/core/theme/app_theme.dart';
+import 'package:venturelink/core/utils/logger.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
 import 'package:venturelink/data/providers/content_provider.dart';
 import 'package:venturelink/data/providers/notification_provider.dart';
 import 'package:venturelink/data/providers/subscription_provider.dart';
+import 'package:venturelink/data/providers/simple_subscription_provider.dart';
 import 'package:venturelink/data/providers/theme_provider.dart';
-import 'package:venturelink/data/services/storage_service.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:venturelink/data/providers/locale_provider.dart';
 import 'package:venturelink/services/firebase_check_service.dart';
 import 'package:venturelink/services/firebase_crashlytics_service.dart';
@@ -25,6 +26,7 @@ import 'package:venturelink/data/providers/messaging_provider.dart';
 import 'package:venturelink/data/providers/investment_provider.dart';
 import 'package:venturelink/data/providers/profile_provider.dart';
 import 'package:venturelink/data/providers/matching_provider.dart';
+import 'package:venturelink/data/providers/user_stats_provider.dart';
 import 'package:venturelink/data/services/api_service.dart';
 import 'package:venturelink/data/services/auth_service.dart';
 import 'package:venturelink/data/services/messaging_api_service.dart';
@@ -37,15 +39,20 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Assurer que Firebase est initialisé avant de traiter le message
   await Firebase.initializeApp();
-  debugPrint("Notification reçue en arrière-plan: ${message.messageId}");
+  // Initialiser le logger pour les messages en arrière-plan
+  AppLogger.init();
+  AppLogger.info("Notification reçue en arrière-plan: ${message.messageId}");
 }
 
 void main() async {
+  // Initialiser le service de logging en premier
+  AppLogger.init();
+
   // Capturer les erreurs non gérées
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    debugPrint('FlutterError: ${details.exception}');
-    debugPrint('Stack trace: ${details.stack}');
+    AppLogger.error(
+        'FlutterError: ${details.exception}', details.exception, details.stack);
   };
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,8 +73,9 @@ void main() async {
 
     // Initialiser Crashlytics pour le monitoring des crashes
     await FirebaseCrashlyticsService().initialize();
+    AppLogger.info('Firebase initialisé avec succès');
   } catch (e) {
-    debugPrint('Erreur lors de l\'initialisation de Firebase: $e');
+    AppLogger.error('Erreur lors de l\'initialisation de Firebase: $e');
     // Continuer l'exécution même en cas d'erreur Firebase
   }
 
@@ -78,7 +86,6 @@ void main() async {
   final authProvider = serviceLocator<AuthProvider>();
 
   final prefs = await SharedPreferences.getInstance();
-  final storageService = StorageService(prefs, const FlutterSecureStorage());
   final localizationService = LocalizationService(prefs);
   final navigationService = NavigationService();
   final appRouter = AppRouter();
@@ -90,7 +97,7 @@ void main() async {
   final webSocketService = WebSocketService(authService);
 
   // S'assurer que tous les services sont initialisés
-  debugPrint('Tous les services sont initialisés');
+  AppLogger.info('Tous les services sont initialisés');
 
   runApp(
     MultiProvider(
@@ -124,7 +131,13 @@ void main() async {
           create: (_) => serviceLocator<SubscriptionProvider>(),
         ),
         ChangeNotifierProvider(
+          create: (_) => serviceLocator<SimpleSubscriptionProvider>(),
+        ),
+        ChangeNotifierProvider(
           create: (_) => serviceLocator<MatchingProvider>(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => serviceLocator<UserStatsProvider>(),
         ),
         ChangeNotifierProvider(
           create: (_) => ContentProvider(),

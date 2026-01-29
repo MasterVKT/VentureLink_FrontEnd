@@ -683,13 +683,16 @@ class _InvestmentListScreenState extends State<InvestmentListScreen>
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              final navigator = Navigator.of(context);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+              navigator.pop();
               final success = await context
                   .read<InvestmentProvider>()
                   .cancelInvestment(investment.id);
 
               if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                scaffoldMessenger.showSnackBar(
                   const SnackBar(content: Text('Investissement annulé')),
                 );
               }

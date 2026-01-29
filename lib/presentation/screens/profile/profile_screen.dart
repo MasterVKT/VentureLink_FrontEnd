@@ -115,6 +115,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
           return RefreshIndicator(
             onRefresh: () async {
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+
               _refreshController
                   .forward()
                   .then((_) => _refreshController.reset());
@@ -127,7 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
               if (mounted) {
                 HapticFeedback.lightImpact();
-                ScaffoldMessenger.of(context).showSnackBar(
+                scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: const Text('Profil mis à jour'),
                     backgroundColor: theme.colorScheme.primary,
@@ -984,13 +986,16 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (confirmed == true && mounted) {
       HapticFeedback.heavyImpact();
       await context.read<AuthProvider>().logout();
-      context.router.replaceAll([const LoginRoute()]);
+      if (mounted) {
+        context.router.replaceAll([const LoginRoute()]);
+      }
     }
   }
 
   void _takePicture() async {
     final profileProvider = context.read<ProfileProvider>();
     final theme = Theme.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
       _photoController.forward();
@@ -999,7 +1004,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (mounted) {
         if (success) {
           HapticFeedback.lightImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: const Text('Photo de profil mise à jour'),
               backgroundColor: theme.colorScheme.primary,
@@ -1007,9 +1012,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           );
           // Rafraîchir les données utilisateur
-          context.read<AuthProvider>().refreshUser();
+          if (mounted) {
+            context.read<AuthProvider>().refreshUser();
+          }
         } else if (profileProvider.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text(profileProvider.error!),
               backgroundColor: theme.colorScheme.error,
@@ -1020,7 +1027,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Erreur: ${e.toString()}'),
             backgroundColor: theme.colorScheme.error,
@@ -1036,6 +1043,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _pickFromGallery() async {
     final profileProvider = context.read<ProfileProvider>();
     final theme = Theme.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
       _photoController.forward();
@@ -1044,7 +1052,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (mounted) {
         if (success) {
           HapticFeedback.lightImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: const Text('Photo de profil mise à jour'),
               backgroundColor: theme.colorScheme.primary,
@@ -1052,9 +1060,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           );
           // Rafraîchir les données utilisateur
-          context.read<AuthProvider>().refreshUser();
+          if (mounted) {
+            context.read<AuthProvider>().refreshUser();
+          }
         } else if (profileProvider.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text(profileProvider.error!),
               backgroundColor: theme.colorScheme.error,
@@ -1065,7 +1075,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Erreur: ${e.toString()}'),
             backgroundColor: theme.colorScheme.error,
@@ -1105,12 +1115,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     if (confirmed == true && mounted) {
       final profileProvider = context.read<ProfileProvider>();
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+
       try {
         final success = await profileProvider.removeProfilePicture();
 
-        if (success) {
+        if (success && mounted) {
           HapticFeedback.lightImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: const Text('Photo de profil supprimée'),
               backgroundColor: theme.colorScheme.primary,
@@ -1118,9 +1130,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           );
           // Rafraîchir les données utilisateur
-          context.read<AuthProvider>().refreshUser();
-        } else if (profileProvider.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (mounted) {
+            context.read<AuthProvider>().refreshUser();
+          }
+        } else if (profileProvider.error != null && mounted) {
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text(profileProvider.error!),
               backgroundColor: theme.colorScheme.error,
@@ -1129,13 +1143,15 @@ class _ProfileScreenState extends State<ProfileScreen>
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: theme.colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        if (mounted) {
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text('Erreur: ${e.toString()}'),
+              backgroundColor: theme.colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }

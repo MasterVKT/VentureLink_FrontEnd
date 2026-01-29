@@ -8,6 +8,7 @@ import '../../../data/providers/content_provider.dart';
 import '../../../data/models/publication_model.dart';
 import '../../widgets/content/comment_widget.dart';
 import '../../widgets/content/comment_input_widget.dart';
+import '../../widgets/content/publication_media_widget.dart';
 
 @RoutePage()
 class PublicationDetailScreen extends StatefulWidget {
@@ -21,7 +22,8 @@ class PublicationDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<PublicationDetailScreen> createState() => _PublicationDetailScreenState();
+  State<PublicationDetailScreen> createState() =>
+      _PublicationDetailScreenState();
 }
 
 class _PublicationDetailScreenState extends State<PublicationDetailScreen>
@@ -35,12 +37,12 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     // Naviguer vers l'onglet commentaires si spécifié
     if (widget.tab == 'comments') {
       _tabController.index = 1;
     }
-    
+
     _loadPublication();
   }
 
@@ -53,15 +55,16 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
 
   Future<void> _loadPublication() async {
     final contentProvider = context.read<ContentProvider>();
-    
+
     try {
-      final publication = await contentProvider.getPublicationById(widget.publicationId);
+      final publication =
+          await contentProvider.getPublicationById(widget.publicationId);
       if (publication != null) {
         setState(() {
           _publication = publication;
           _isLoading = false;
         });
-        
+
         // Charger les commentaires
         await contentProvider.loadPublicationComments(widget.publicationId);
       } else {
@@ -150,21 +153,21 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
     return Stack(
       children: [
         // Image de fond
-        if (_publication!.primaryImageUrl != null)
+        if (_publication!.primaryImageFullUrl != null)
           Positioned.fill(
             child: CachedNetworkImage(
-              imageUrl: _publication!.primaryImageUrl!,
+              imageUrl: _publication!.primaryImageFullUrl!,
               fit: BoxFit.cover,
               placeholder: (context, url) => Container(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               errorWidget: (context, url, error) => Container(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: const Icon(Icons.image_not_supported),
               ),
             ),
           ),
-        
+
         // Overlay gradient
         Positioned.fill(
           child: Container(
@@ -194,7 +197,8 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(12),
@@ -202,14 +206,15 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                     child: Text(
                       _publication!.typeDisplayName,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.secondary,
                       borderRadius: BorderRadius.circular(12),
@@ -217,24 +222,24 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                     child: Text(
                       _publication!.domainDisplayName,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSecondary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                            color: Theme.of(context).colorScheme.onSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              
+
               // Titre
               Text(
                 _publication!.title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
-              
+
               // Informations
               const SizedBox(height: 8),
               Row(
@@ -242,9 +247,9 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                   Text(
                     'VentureLink',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w500,
-                    ),
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500,
+                        ),
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -259,8 +264,8 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                   Text(
                     _publication!.formattedPublishedDate,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
-                    ),
+                          color: Colors.white70,
+                        ),
                   ),
                 ],
               ),
@@ -293,7 +298,8 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Résumé
-          if (_publication!.summary != null && _publication!.summary!.isNotEmpty) ...[
+          if (_publication!.summary != null &&
+              _publication!.summary!.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -303,21 +309,22 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
               child: Text(
                 _publication!.summary!,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w500,
-                ),
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w500,
+                    ),
               ),
             ),
             const SizedBox(height: 24),
           ],
 
           // Contenu principal
-          if (_publication!.content != null && _publication!.content!.isNotEmpty) ...[
+          if (_publication!.content != null &&
+              _publication!.content!.isNotEmpty) ...[
             Text(
               _publication!.content!,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                height: 1.6,
-              ),
+                    height: 1.6,
+                  ),
             ),
             const SizedBox(height: 24),
           ],
@@ -333,8 +340,8 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
             Text(
               'Tags',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -342,16 +349,18 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
               runSpacing: 8,
               children: _publication!.tagsList.map((tag) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     '#$tag',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                 );
               }).toList(),
@@ -360,7 +369,8 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
           ],
 
           // Information de sponsoring
-          if (_publication!.isSponsored && _publication!.sponsorName != null) ...[
+          if (_publication!.isSponsored &&
+              _publication!.sponsorName != null) ...[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -378,15 +388,19 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                     children: [
                       Icon(
                         Icons.campaign,
-                        color: Theme.of(context).colorScheme.onTertiaryContainer,
+                        color:
+                            Theme.of(context).colorScheme.onTertiaryContainer,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Contenu sponsorisé',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onTertiaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onTertiaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                     ],
                   ),
@@ -394,8 +408,9 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                   Text(
                     'Ce contenu est sponsorisé par ${_publication!.sponsorName}',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onTertiaryContainer,
-                    ),
+                          color:
+                              Theme.of(context).colorScheme.onTertiaryContainer,
+                        ),
                   ),
                   if (_publication!.sponsorUrl != null) ...[
                     const SizedBox(height: 8),
@@ -424,11 +439,14 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
         Text(
           'Médias',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 12),
-        ..._publication!.media.map((media) => _buildMediaItem(media)),
+        PublicationMediaList(
+          mediaList: _publication!.media ?? [],
+          showDescriptions: true,
+        ),
       ],
     );
   }
@@ -443,17 +461,16 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
             Text(
               media.title!,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 8),
           ],
-          
           if (media.isImage)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: CachedNetworkImage(
-                imageUrl: media.file,
+                imageUrl: media.fullUrl,
                 fit: BoxFit.cover,
                 width: double.infinity,
               ),
@@ -462,14 +479,13 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
             _buildVideoPlayer(media)
           else if (media.isDocument)
             _buildDocumentItem(media),
-          
           if (media.description != null) ...[
             const SizedBox(height: 8),
             Text(
               media.description!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
           ],
         ],
@@ -481,7 +497,7 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Stack(
@@ -517,7 +533,7 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -534,7 +550,7 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
             ),
           ),
           IconButton(
-            onPressed: () => _launchUrl(media.file),
+            onPressed: () => _launchUrl(media.fullUrl),
             icon: const Icon(Icons.download),
           ),
         ],
@@ -548,7 +564,7 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -574,23 +590,23 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                   ),
                   _buildStatItem(
                     Icons.share,
-                    _publication!.sharesCount.toString(),
+                    (_publication!.sharesCount ?? 0).toString(),
                     'Partages',
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
-              
+
               // Actions
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildActionButton(
-                    icon: _publication!.userHasLiked 
-                        ? Icons.favorite 
+                    icon: _publication!.userHasLiked
+                        ? Icons.favorite
                         : Icons.favorite_border,
                     label: 'J\'aime',
                     isActive: _publication!.userHasLiked,
@@ -626,14 +642,14 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
         Text(
           value,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
       ],
     );
@@ -645,8 +661,8 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
     bool isActive = false,
     VoidCallback? onTap,
   }) {
-    final color = isActive 
-        ? Theme.of(context).colorScheme.primary 
+    final color = isActive
+        ? Theme.of(context).colorScheme.primary
         : Theme.of(context).colorScheme.onSurfaceVariant;
 
     return InkWell(
@@ -661,9 +677,9 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
             Text(
               label,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: color,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-              ),
+                    color: color,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                  ),
             ),
           ],
         ),
@@ -674,8 +690,10 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
   Widget _buildCommentsTab() {
     return Consumer<ContentProvider>(
       builder: (context, contentProvider, child) {
-        final comments = contentProvider.getCommentsForPublication(widget.publicationId);
-        final isLoadingComments = contentProvider.isLoadingComments(widget.publicationId);
+        final comments =
+            contentProvider.getCommentsForPublication(widget.publicationId);
+        final isLoadingComments =
+            contentProvider.isLoadingComments(widget.publicationId);
 
         return Column(
           children: [
@@ -683,9 +701,9 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
             CommentInputWidget(
               onSubmit: (content) => _handleCreateComment(content),
             ),
-            
+
             const Divider(height: 1),
-            
+
             // Liste des commentaires
             Expanded(
               child: isLoadingComments
@@ -699,11 +717,12 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                             return CommentWidget(
                               comment: comments[index],
                               publicationId: widget.publicationId,
-                              onReply: (parentId, content) => 
-                                  _handleCreateComment(content, parentId: parentId),
-                              onLike: (commentId) => 
+                              onReply: (parentId, content) =>
+                                  _handleCreateComment(content,
+                                      parentId: parentId),
+                              onLike: (commentId) =>
                                   _handleCommentLike(commentId),
-                              onDelete: (commentId) => 
+                              onDelete: (commentId) =>
                                   _handleDeleteComment(commentId),
                             );
                           },
@@ -751,8 +770,9 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
   // Gestionnaires d'événements
   Future<void> _handleLike() async {
     final contentProvider = context.read<ContentProvider>();
-    final liked = await contentProvider.togglePublicationLike(widget.publicationId);
-    
+    final liked =
+        await contentProvider.togglePublicationLike(widget.publicationId);
+
     // Mettre à jour la publication locale
     if (liked != _publication!.userHasLiked) {
       setState(() {
@@ -770,7 +790,9 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
           publishedAt: _publication!.publishedAt,
           scheduledFor: _publication!.scheduledFor,
           viewsCount: _publication!.viewsCount,
-          likesCount: liked ? _publication!.likesCount + 1 : _publication!.likesCount - 1,
+          likesCount: liked
+              ? _publication!.likesCount + 1
+              : _publication!.likesCount - 1,
           commentsCount: _publication!.commentsCount,
           sharesCount: _publication!.sharesCount,
           isFeatured: _publication!.isFeatured,
@@ -797,7 +819,7 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
   Future<void> _handleShare() async {
     final contentProvider = context.read<ContentProvider>();
     await contentProvider.sharePublication(widget.publicationId);
-    
+
     await Share.share(
       'Découvrez cette publication sur VentureLink: ${_publication!.title}\n\n${_publication!.summary ?? ''}',
       subject: _publication!.title,
@@ -811,7 +833,7 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
       content: content,
       parentId: parentId,
     );
-    
+
     if (success) {
       // Mettre à jour le compteur de commentaires
       setState(() {
@@ -860,8 +882,9 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
 
   Future<void> _handleDeleteComment(String commentId) async {
     final contentProvider = context.read<ContentProvider>();
-    final success = await contentProvider.deleteComment(widget.publicationId, commentId);
-    
+    final success =
+        await contentProvider.deleteComment(widget.publicationId, commentId);
+
     if (success) {
       // Mettre à jour le compteur de commentaires
       setState(() {
@@ -930,7 +953,8 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
       color: Theme.of(context).colorScheme.surface,
       child: tabBar,
@@ -941,4 +965,4 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
     return false;
   }
-} 
+}

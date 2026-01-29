@@ -402,7 +402,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           'Intérêts',
         ),
         Text(
-          'Publié le ${DateFormat('dd/MM/yyyy').format(project.publishedAt ?? project.createdAt)}',
+          'Publié le ${DateFormat('dd/MM/yyyy').format(project.publishedAt ?? project.createdAt ?? DateTime.now())}',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
@@ -597,64 +597,75 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
               ),
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundImage: project.creator.profile?.profilePicture != null
-                    ? CachedNetworkImageProvider(
-                        project.creator.profile!.profilePicture!)
-                    : null,
-                child: project.creator.profile?.profilePicture == null
-                    ? Text(
-                        project.creator.firstName[0].toUpperCase(),
-                        style: const TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      project.creator.fullName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    if (project.creator.profile?.title != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        project.creator.profile!.title!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.7),
-                            ),
-                      ),
-                    ],
-                    if (project.creator.profile?.bioShort != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        project.creator.profile!.bioShort!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              height: 1.4,
-                            ),
-                      ),
-                    ],
-                  ],
+        InkWell(
+          onTap: () {
+            context.router.push(
+              PublicProfileRoute(user: project.creator),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 32,
+                  backgroundImage:
+                      project.creator.profile?.profilePicture != null
+                          ? CachedNetworkImageProvider(
+                              project.creator.profile!.profilePicture!)
+                          : null,
+                  child: project.creator.profile?.profilePicture == null
+                      ? Text(
+                          project.creator.firstName[0].toUpperCase(),
+                          style: const TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
+                        )
+                      : null,
                 ),
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        project.creator.fullName,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      if (project.creator.profile?.title != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          project.creator.profile!.title!,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                        ),
+                      ],
+                      if (project.creator.profile?.bioShort != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          project.creator.profile!.bioShort!,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    height: 1.4,
+                                  ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -912,7 +923,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
       if (mounted && conversation != null) {
         // Naviguer vers la conversation
-        context.router.push(MessagingRoute());
+        context.router.push(const MessagingRoute());
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

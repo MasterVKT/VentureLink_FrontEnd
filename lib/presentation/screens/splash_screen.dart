@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:venturelink/core/config/config_service.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
+import 'dart:async' as async;
 
 @RoutePage()
 class SplashScreen extends StatefulWidget {
@@ -46,28 +47,51 @@ class _SplashScreenState extends State<SplashScreen>
 
       final authProvider = context.read<AuthProvider>();
 
-      // Forcer un rafraîchissement de l'état d'authentification
-      await authProvider.checkAndRefreshAuthState();
+      // 🔴 CRITICAL FIX: Ajouter un timeout strict pour éviter les boucles infinies
+      // Si la vérification prend plus de 15 secondes, rediriger vers login
+      try {
+        await authProvider.checkAndRefreshAuthState().timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            debugPrint(
+                "SplashScreen: Auth check timeout (>15s) - suspected infinite loop");
+            throw async.TimeoutException(
+              'Auth check took too long',
+              const Duration(seconds: 15),
+            );
+          },
+        );
+      } on async.TimeoutException catch (e) {
+        debugPrint(
+            "SplashScreen: Auth verification timed out: ${e.message}. Redirecting to login.");
+        if (mounted) {
+          context.router.replace(const LoginRoute());
+        }
+        return;
+      }
 
       // Vérifier l'état actuel de l'authentification après rafraîchissement
-      print("SplashScreen: Vérification de l'état d'authentification");
-      print("SplashScreen: isAuthenticated = ${authProvider.isAuthenticated}");
-      print(
+      debugPrint("SplashScreen: Vérification de l'état d'authentification");
+      debugPrint(
+          "SplashScreen: isAuthenticated = ${authProvider.isAuthenticated}");
+      debugPrint(
           "SplashScreen: currentUser = ${authProvider.currentUser?.email ?? 'null'}");
 
+      if (!mounted) return;
+
       if (authProvider.isAuthenticated && authProvider.currentUser != null) {
-        print(
+        debugPrint(
             "SplashScreen: Utilisateur authentifié, redirection vers l'écran principal");
         context.router.replace(const MainRoute());
       } else {
         // Si l'utilisateur n'est pas authentifié, aller à l'écran de connexion
-        print(
+        debugPrint(
             "SplashScreen: Utilisateur non authentifié, redirection vers l'écran de connexion");
         context.router.replace(const LoginRoute());
       }
     } catch (e) {
       // En cas d'erreur, rediriger vers login
-      print(
+      debugPrint(
           "SplashScreen: Erreur lors de la vérification d'authentification: $e");
       if (mounted) {
         context.router.replace(const LoginRoute());

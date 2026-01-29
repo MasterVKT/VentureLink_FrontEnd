@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/router/app_router.dart';
+import '../../../core/utils/phone_validator.dart';
 import '../../../data/providers/simple_subscription_provider.dart';
 import '../../../data/models/subscription_plan_model.dart';
 import '../../common_widgets/vl_app_bar.dart';
@@ -398,9 +398,10 @@ class _SimpleSubscriptionScreenState extends State<SimpleSubscriptionScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
               final success = await provider.activateFreePlan();
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              if (mounted && success) {
+                scaffoldMessenger.showSnackBar(
                   const SnackBar(
                     content: Text('Plan gratuit activé avec succès !'),
                     backgroundColor: Colors.green,
@@ -423,143 +424,10 @@ class _SimpleSubscriptionScreenState extends State<SimpleSubscriptionScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) => Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Titre
-              Text(
-                'Souscrire au ${plan.name}',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Prix: ${plan.getFormattedPrice(_selectedCurrency)}',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Options de paiement
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  children: [
-                    _buildPaymentOption(
-                      icon: Icons.link,
-                      title: 'Lien de paiement',
-                      subtitle: 'Paiement sécurisé via My-CoolPay',
-                      onTap: () => _payWithLink(plan, provider),
-                    ),
-                    _buildPaymentOption(
-                      icon: Icons.phone_android,
-                      title: 'Orange Money',
-                      subtitle: 'Paiement direct depuis votre mobile',
-                      onTap: () => _payWithMobileMoney(plan, provider, 'CM_OM'),
-                    ),
-                    _buildPaymentOption(
-                      icon: Icons.phone_android,
-                      title: 'MTN Mobile Money',
-                      subtitle: 'Paiement direct depuis votre mobile',
-                      onTap: () =>
-                          _payWithMobileMoney(plan, provider, 'CM_MOMO'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentOption({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(icon, color: AppTheme.primaryColor),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  void _payWithLink(
-      SubscriptionPlanModel plan, SimpleSubscriptionProvider provider) async {
-    Navigator.pop(context);
-
-    final success = await provider.subscribeToPlan(
-      planId: plan.id,
-      currency: _selectedCurrency,
-      paymentMethod: 'PAYLINK',
-    );
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Abonnement créé avec succès !'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text('Erreur: ${provider.paymentError ?? 'Erreur inconnue'}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _payWithMobileMoney(
-    SubscriptionPlanModel plan,
-    SimpleSubscriptionProvider provider,
-    String operator,
-  ) {
-    Navigator.pop(context);
-
-    // Afficher un dialog pour saisir le numéro de téléphone
-    showDialog(
-      context: context,
-      builder: (context) => _MobileMoneyDialog(
+      builder: (context) => _PhoneNumberForm(
         plan: plan,
         provider: provider,
-        operator: operator,
-        currency: _selectedCurrency,
+        selectedCurrency: _selectedCurrency,
       ),
     );
   }
@@ -582,186 +450,273 @@ class _SimpleSubscriptionScreenState extends State<SimpleSubscriptionScreen> {
   }
 }
 
-class _MobileMoneyDialog extends StatefulWidget {
+/// Formulaire de saisie du numéro de téléphone pour My-CoolPay
+class _PhoneNumberForm extends StatefulWidget {
   final SubscriptionPlanModel plan;
   final SimpleSubscriptionProvider provider;
-  final String operator;
-  final String currency;
+  final String selectedCurrency;
 
-  const _MobileMoneyDialog({
+  const _PhoneNumberForm({
     required this.plan,
     required this.provider,
-    required this.operator,
-    required this.currency,
+    required this.selectedCurrency,
   });
 
   @override
-  State<_MobileMoneyDialog> createState() => _MobileMoneyDialogState();
+  State<_PhoneNumberForm> createState() => _PhoneNumberFormState();
 }
 
-class _MobileMoneyDialogState extends State<_MobileMoneyDialog> {
-  final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
+class _PhoneNumberFormState extends State<_PhoneNumberForm> {
+  final TextEditingController _phoneController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  String? _phoneError;
   bool _isProcessing = false;
-  bool _otpRequired = false;
-  String? _transactionRef;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _otpController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Paiement ${_getOperatorName()}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('Plan: ${widget.plan.name}'),
-          Text('Prix: ${widget.plan.getFormattedPrice(widget.currency)}'),
-          const SizedBox(height: 16),
-          if (!_otpRequired) ...[
-            TextField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Numéro de téléphone',
-                hintText: '+237123456789',
-                border: OutlineInputBorder(),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.8,
+      maxChildSize: 0.95,
+      minChildSize: 0.6,
+      expand: false,
+      builder: (context, scrollController) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-              keyboardType: TextInputType.phone,
-            ),
-          ] else ...[
-            TextField(
-              controller: _otpController,
-              decoration: const InputDecoration(
-                labelText: 'Code OTP',
-                hintText: '123456',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 20),
+
+              // Titre
+              Text(
+                'Souscrire au ${widget.plan.name}',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-            ),
-          ],
-        ],
+              const SizedBox(height: 8),
+              Text(
+                'Prix: ${widget.plan.getFormattedPrice(widget.selectedCurrency)}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Champ numéro de téléphone
+              const Text(
+                'Numéro de téléphone *',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  hintText: '+237699999999',
+                  prefixIcon: const Icon(Icons.phone),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
+                  ),
+                  errorText: _phoneError,
+                ),
+                onChanged: (value) {
+                  if (_phoneError != null) {
+                    setState(() {
+                      _phoneError = null;
+                    });
+                  }
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Le numéro de téléphone est requis';
+                  }
+                  final validation = PhoneValidator.validatePhoneNumber(value);
+                  return validation.isValid ? null : validation.message;
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Format international recommandé (ex: +237699999999)',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Information My-CoolPay
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info, color: Colors.blue, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Méthodes de paiement disponibles',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text('• Orange Money'),
+                    Text('• MTN Mobile Money'),
+                    Text('• Cartes bancaires (Visa, Mastercard)'),
+                    SizedBox(height: 8),
+                    Text(
+                      'Vous serez redirigé vers la page sécurisée My-CoolPay pour finaliser votre paiement.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Spacer(),
+
+              // Bouton de paiement
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isProcessing ? null : _handlePayment,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isProcessing
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Payer ${widget.plan.getFormattedPrice(widget.selectedCurrency)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isProcessing ? null : () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        ElevatedButton(
-          onPressed: _isProcessing ? null : _processPayment,
-          child: _isProcessing
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(_otpRequired ? 'Confirmer' : 'Payer'),
-        ),
-      ],
     );
   }
 
-  void _processPayment() async {
-    if (_otpRequired) {
-      await _authorizePayment();
-    } else {
-      await _initiatePayment();
-    }
-  }
-
-  Future<void> _initiatePayment() async {
-    if (_phoneController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Veuillez saisir votre numéro de téléphone')),
-      );
+  Future<void> _handlePayment() async {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() => _isProcessing = true);
-
-    final result = await widget.provider.payWithMobileMoney(
-      planId: widget.plan.id,
-      operator: widget.operator,
-      phoneNumber: _phoneController.text,
-      currency: widget.currency,
-    );
-
-    setState(() => _isProcessing = false);
-
-    if (result != null && result['status'] == 'REQUIRE_OTP') {
+    final phoneValidation =
+        PhoneValidator.validatePhoneNumber(_phoneController.text);
+    if (!phoneValidation.isValid) {
       setState(() {
-        _otpRequired = true;
-        _transactionRef = result['transaction_ref'];
+        _phoneError = phoneValidation.message;
       });
-    } else if (result != null && result['status'] == 'COMPLETED') {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Paiement effectué avec succès !'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Erreur: ${widget.provider.paymentError ?? 'Erreur inconnue'}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _authorizePayment() async {
-    if (_otpController.text.isEmpty || _transactionRef == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez saisir le code OTP')),
-      );
       return;
     }
 
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+    });
 
-    final success = await widget.provider.authorizePayment(
-      transactionRef: _transactionRef!,
-      otpCode: _otpController.text,
-    );
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    setState(() => _isProcessing = false);
-
-    if (success) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Paiement autorisé avec succès !'),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      final result = await widget.provider.subscribeToPlan(
+        planId: widget.plan.id,
+        phoneNumber: phoneValidation.formatted!,
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Erreur: ${widget.provider.paymentError ?? 'Code OTP invalide'}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
-  String _getOperatorName() {
-    switch (widget.operator) {
-      case 'CM_OM':
-        return 'Orange Money';
-      case 'CM_MOMO':
-        return 'MTN Mobile Money';
-      default:
-        return 'Mobile Money';
+      if (!mounted) return;
+
+      navigator.pop(); // Fermer le modal
+
+      if (result != null) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Abonnement créé avec succès !'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(
+                'Erreur: ${widget.provider.paymentError ?? 'Erreur inconnue'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _phoneError = 'Erreur lors du paiement: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 }

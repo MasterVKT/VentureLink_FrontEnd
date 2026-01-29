@@ -24,23 +24,49 @@ class InvestmentApiService {
     if (page != null) queryParams['page'] = page;
     if (pageSize != null) queryParams['page_size'] = pageSize;
 
-    final response = await _apiService.get(
-      '/investments/',
-      queryParameters: queryParams,
-    );
+    try {
+      final response = await _apiService.get(
+        '/investments/investments/',
+        queryParameters: queryParams,
+      );
 
-    if (response.statusCode == 200) {
-      final data = response.data;
-      final results = data['results'] as List? ?? data as List;
-      return results.map((json) => InvestmentModel.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load investments: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        // Vérifier si la réponse est bien structurée avec des résultats
+        if (data is Map<String, dynamic>) {
+          // Si c'est un Map avec pagination
+          if (data.containsKey('results')) {
+            final results = data['results'] as List<dynamic>;
+            return results
+                .map((json) => InvestmentModel.fromJson(json))
+                .toList();
+          }
+          // Si c'est juste un Map avec des URLs d'endpoints, retourner une liste vide
+          else if (data.containsKey('investments') ||
+              data.containsKey('repayments')) {
+            return [];
+          }
+        }
+        // Si c'est directement une liste
+        else if (data is List) {
+          return data.map((json) => InvestmentModel.fromJson(json)).toList();
+        }
+
+        // Format inattendu
+        return [];
+      } else {
+        throw Exception('Failed to load investments: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to load investments: $e');
     }
   }
 
   /// Récupérer un investissement spécifique
   Future<InvestmentModel?> getInvestment(String investmentId) async {
-    final response = await _apiService.get('/investments/$investmentId/');
+    final response =
+        await _apiService.get('/investments/investments/$investmentId/');
 
     if (response.statusCode == 200) {
       return InvestmentModel.fromJson(response.data);
@@ -74,7 +100,8 @@ class InvestmentApiService {
       if (description != null) 'description': description,
     };
 
-    final response = await _apiService.post('/investments/', data: body);
+    final response =
+        await _apiService.post('/investments/investments/', data: body);
 
     if (response.statusCode == 201) {
       return InvestmentModel.fromJson(response.data);
@@ -104,8 +131,8 @@ class InvestmentApiService {
   /// Mettre à jour un investissement (uniquement si PENDING)
   Future<InvestmentModel?> updateInvestment(
       String investmentId, Map<String, dynamic> data) async {
-    final response =
-        await _apiService.put('/investments/$investmentId/', data: data);
+    final response = await _apiService
+        .put('/investments/investments/$investmentId/', data: data);
 
     if (response.statusCode == 200) {
       return InvestmentModel.fromJson(response.data);
@@ -122,8 +149,9 @@ class InvestmentApiService {
       if (comment != null) 'comment': comment,
     };
 
-    final response = await _apiService
-        .patch('/investments/$investmentId/update_status/', data: body);
+    final response = await _apiService.patch(
+        '/investments/investments/$investmentId/update_status/',
+        data: body);
     return response.statusCode == 200;
   }
 
@@ -171,7 +199,8 @@ class InvestmentApiService {
 
   /// Supprimer un investissement (uniquement si PENDING)
   Future<bool> deleteInvestment(String investmentId) async {
-    final response = await _apiService.delete('/investments/$investmentId/');
+    final response =
+        await _apiService.delete('/investments/investments/$investmentId/');
     return response.statusCode == 204;
   }
 }
