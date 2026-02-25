@@ -352,7 +352,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           color: isMyMessage
-                              ? Colors.white.withOpacity(0.7)
+                              ? Colors.white.withValues(alpha: 0.7)
                               : Colors.grey[600],
                         ),
                       ),
@@ -363,7 +363,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           size: 14,
                           color: message.read
                               ? Colors.blue[300]
-                              : Colors.white.withOpacity(0.7),
+                              : Colors.white.withValues(alpha: 0.7),
                         ),
                       ],
                     ],
@@ -403,7 +403,7 @@ class _ChatScreenState extends State<ChatScreen> {
         color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
           ),
         ),
       ),

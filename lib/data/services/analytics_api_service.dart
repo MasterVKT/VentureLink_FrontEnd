@@ -15,16 +15,6 @@ class AnalyticsApiService {
     return data is String && data.contains('<html');
   }
 
-  /// Gère les réponses HTML en retournant des données par défaut
-  T _handleHtmlResponse<T>(dynamic data, T defaultData, String context) {
-    if (_isHtmlResponse(data)) {
-      AppLogger.error(
-          '$context: Réponse HTML détectée (Django Debug Toolbar) - utilisation des données par défaut');
-      return defaultData;
-    }
-    return data as T;
-  }
-
   /// Récupère les statistiques de l'utilisateur connecté
   Future<Map<String, dynamic>> getUserStats({String? currency}) async {
     try {

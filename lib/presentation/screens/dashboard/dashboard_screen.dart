@@ -322,7 +322,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: changeColor.withOpacity(0.1),
+                    color: changeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -423,7 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         },
         backgroundColor: Colors.grey[200],
-        selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+        selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
         labelStyle: TextStyle(
           color: isSelected ? AppTheme.primaryColor : Colors.black87,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -534,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           drawVerticalLine: false,
           horizontalInterval: maxY / 5,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             strokeWidth: 1,
           ),
         ),
@@ -607,7 +607,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: Colors.blue.withOpacity(0.2),
+              color: Colors.blue.withValues(alpha: 0.2),
             ),
           ),
         ],
@@ -853,7 +853,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: color.withOpacity(0.2),
+        backgroundColor: color.withValues(alpha: 0.2),
         child: Icon(
           icon,
           color: color,

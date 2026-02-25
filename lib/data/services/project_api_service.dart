@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:venturelink/data/models/project_model.dart';
+import 'package:venturelink/data/models/project_filters.dart';
 import 'package:venturelink/domain/services/i_api_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:venturelink/core/utils/logger.dart';
@@ -25,6 +26,7 @@ class ProjectApiService {
     List<String>? tags,
     String? sortBy,
     String? sortOrder,
+    ProjectFilters? filters,
   }) async {
     try {
       final queryParams = <String, dynamic>{
@@ -32,16 +34,28 @@ class ProjectApiService {
         'page_size': pageSize,
       };
 
-      if (search != null) queryParams['search'] = search;
-      if (category != null) queryParams['category'] = category;
-      if (stage != null) queryParams['stage'] = stage;
-      if (location != null) queryParams['location'] = location;
-      if (fundingMin != null) queryParams['funding_min'] = fundingMin;
-      if (fundingMax != null) queryParams['funding_max'] = fundingMax;
-      if (tags != null && tags.isNotEmpty) queryParams['tags'] = tags.join(',');
-      if (sortBy != null) {
-        queryParams['ordering'] = sortOrder == 'desc' ? '-$sortBy' : sortBy;
+      // Utiliser les paramètres explicites ou ceux du filtre
+      final effectiveSearch = search ?? filters?.searchQuery;
+      final effectiveCategory = category ?? filters?.categoryId;
+      final effectiveStage = stage ?? filters?.stage;
+      final effectiveFundingMin = fundingMin ?? filters?.fundingMin;
+      final effectiveFundingMax = fundingMax ?? filters?.fundingMax;
+      final effectiveTags = tags ?? (filters?.tagIds.isNotEmpty == true ? filters?.tagIds : null);
+      final effectiveSortBy = sortBy ?? filters?.sortBy;
+
+      if (effectiveSearch != null) queryParams['search'] = effectiveSearch;
+      if (effectiveCategory != null) queryParams['category'] = effectiveCategory;
+      if (effectiveStage != null) queryParams['stage'] = effectiveStage;
+      if (filters?.locationCountry != null) queryParams['location_country'] = filters!.locationCountry;
+      if (filters?.locationCity != null) queryParams['location_city'] = filters!.locationCity;
+      if (effectiveFundingMin != null) queryParams['funding_min'] = effectiveFundingMin;
+      if (effectiveFundingMax != null) queryParams['funding_max'] = effectiveFundingMax;
+      if (effectiveTags != null && effectiveTags.isNotEmpty) queryParams['tags'] = effectiveTags.join(',');
+      if (effectiveSortBy != null) {
+        queryParams['ordering'] = sortOrder == 'desc' ? '-$effectiveSortBy' : effectiveSortBy;
       }
+      if (filters?.isFeatured == true) queryParams['is_featured'] = 'true';
+      if (filters?.isPremium == true) queryParams['is_premium'] = 'true';
 
       final response = await _apiService.get('$_baseEndpoint/',
           queryParameters: queryParams);
@@ -881,13 +895,10 @@ class ProjectListResult {
         if (item != null && item is Map<String, dynamic>) {
           try {
             // Compter les champs manquants sans les logger individuellement
-            bool hasMissingFields = false;
-
             if (item['updated_at'] == null ||
                 item['created_at'] == null ||
                 item['category'] == null ||
                 (item['category'] is Map && item['category']['icon'] == null)) {
-              hasMissingFields = true;
               missingFieldsCount++;
             }
 
@@ -929,24 +940,5 @@ class ProjectListResult {
       return ProjectListResult.failure(
           'Erreur lors du traitement de la réponse API: $e');
     }
-  }
-
-  // Méthode de debug pour les images des projets (seulement en mode debug)
-  static void _debugProjectImages(List<ProjectModel> projects) {
-    if (!kDebugMode) return; // Seulement en mode debug
-
-    AppLogger.info(
-        '🖼️ Debug des images de projets: ${projects.length} projets');
-
-    int projectsWithImages = 0;
-    int projectsWithMultipleMedia = 0;
-
-    for (var project in projects) {
-      if (project.hasImage) projectsWithImages++;
-      if (project.hasMultipleMedia) projectsWithMultipleMedia++;
-    }
-
-    AppLogger.info(
-        '📊 Résumé médias: $projectsWithImages avec image, $projectsWithMultipleMedia avec médias multiples');
   }
 }

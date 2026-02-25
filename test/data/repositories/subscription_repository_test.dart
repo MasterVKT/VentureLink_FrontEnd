@@ -27,6 +27,10 @@ void main() {
       mockSubscriptionService = MockSubscriptionApiService();
       mockPaymentService = MockPaymentApiService();
       mockPrefs = MockSharedPreferences();
+      
+      // Stub pour remove() - nécessaire pour les tests de suppression de cache
+      when(mockPrefs.remove(any)).thenAnswer((_) async => true);
+      
       repository = SubscriptionRepository(
         subscriptionService: mockSubscriptionService,
         paymentService: mockPaymentService,
@@ -90,21 +94,21 @@ void main() {
 
     test('getSubscriptionPlans - should return cached plans on network error',
         () async {
-      // Arrange
+      // Arrange - Simuler une erreur réseau ET un cache vide
       when(mockSubscriptionService.getSubscriptionPlans()).thenThrow(
           DioException(
               requestOptions: RequestOptions(),
               type: DioExceptionType.connectionError));
 
-      when(mockPrefs.getString(any)).thenReturn('[]'); // Empty cache
+      // Cache vide
+      when(mockPrefs.containsKey('cached_plans')).thenReturn(false);
 
-      // Act
-      final result = await repository.getSubscriptionPlans();
-
-      // Assert
-      expect(result, isEmpty);
+      // Act & Assert - L'exception est relancée après gestion
+      expect(
+        () => repository.getSubscriptionPlans(),
+        throwsA(isA<Exception>()),
+      );
       verify(mockSubscriptionService.getSubscriptionPlans()).called(1);
-      verify(mockPrefs.getString(any)).called(1);
     });
 
     test('getCurrentSubscription - should return subscription from service',

@@ -8,6 +8,7 @@ import 'package:venturelink/presentation/common_widgets/vl_button.dart';
 import 'package:venturelink/presentation/common_widgets/vl_card.dart';
 import 'package:venturelink/presentation/common_widgets/vl_text_field.dart';
 import 'package:venturelink/presentation/common_widgets/vl_bottom_nav_bar.dart';
+import 'package:venturelink/presentation/widgets/media_uploader.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/core/utils/premium_utils.dart';
@@ -15,7 +16,8 @@ import 'package:venturelink/core/utils/validation_utils.dart';
 import 'package:venturelink/core/services/auto_save_service.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/models/project_model.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/data/models/media_file.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 import 'dart:async';
 
 @RoutePage()
@@ -57,6 +59,9 @@ class _ProjectCreateScreenEnhancedState
   String? _currentDraftId;
   bool _hasUnsavedChanges = false;
   Timer? _validationTimer;
+
+  // Médias du projet (images et vidéos)
+  List<MediaFile> _projectMedia = [];
 
   // Données des dropdowns
   List<CategoryModel> _categories = [];
@@ -635,6 +640,8 @@ class _ProjectCreateScreenEnhancedState
             SizedBox(height: isTablet ? 32 : 24),
             _buildBasicInfoCard(isTablet),
             SizedBox(height: isTablet ? 24 : 16),
+            _buildMediaCard(isTablet),
+            SizedBox(height: isTablet ? 24 : 16),
             _buildDetailedDescriptionCard(isTablet),
             SizedBox(height: isTablet ? 24 : 16),
             _buildFundingCard(isTablet),
@@ -828,6 +835,44 @@ class _ProjectCreateScreenEnhancedState
     );
   }
 
+  Widget _buildMediaCard(bool isTablet) {
+    return VLCard(
+      padding: EdgeInsets.all(isTablet ? 24.0 : 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Images et vidéos',
+            style: TextStyle(
+              fontSize: DesignConstants.titleSmall,
+              fontWeight: DesignConstants.semiBold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Ajoutez jusqu\'à 10 médias pour présenter votre projet. '
+            'Le premier média sera utilisé comme image de couverture.',
+            style: TextStyle(
+              fontSize: 13,
+              color: DesignConstants.darkGrey,
+            ),
+          ),
+          const SizedBox(height: 16),
+          MediaUploader(
+            initialMedia: _projectMedia,
+            maxMedia: 10,
+            onMediaChanged: (updatedMedia) {
+              setState(() {
+                _projectMedia = updatedMedia;
+              });
+              _onFormChanged();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDetailedDescriptionCard(bool isTablet) {
     return VLCard(
       padding: EdgeInsets.all(isTablet ? 24.0 : 20.0),
@@ -947,7 +992,7 @@ class _ProjectCreateScreenEnhancedState
                 HapticFeedback.selectionClick();
               },
               backgroundColor: DesignConstants.lightGrey,
-              selectedColor: DesignConstants.primaryBlue.withOpacity(0.2),
+              selectedColor: DesignConstants.primaryBlue.withValues(alpha: 0.2),
               checkmarkColor: DesignConstants.primaryBlue,
               labelStyle: TextStyle(
                 color: isSelected
@@ -997,7 +1042,7 @@ class _ProjectCreateScreenEnhancedState
                 HapticFeedback.selectionClick();
               },
               backgroundColor: DesignConstants.lightGrey,
-              selectedColor: DesignConstants.primaryBlue.withOpacity(0.2),
+              selectedColor: DesignConstants.primaryBlue.withValues(alpha: 0.2),
               checkmarkColor: DesignConstants.primaryBlue,
               labelStyle: TextStyle(
                 color: isSelected
@@ -1068,10 +1113,10 @@ class _ProjectCreateScreenEnhancedState
     return Container(
       padding: const EdgeInsets.all(DesignConstants.paddingMedium),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFD700).withOpacity(0.1),
+        color: const Color(0xFFFFD700).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(DesignConstants.radiusSmall),
         border: Border.all(
-          color: const Color(0xFFFFD700).withOpacity(0.3),
+          color: const Color(0xFFFFD700).withValues(alpha: 0.3),
         ),
       ),
       child: Column(

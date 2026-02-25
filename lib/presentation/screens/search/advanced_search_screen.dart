@@ -128,7 +128,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
               color: AppTheme.primaryColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -372,7 +372,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
     Function(String?) onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      value: value.isEmpty ? null : value,
+      initialValue: value.isEmpty ? null : value,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),

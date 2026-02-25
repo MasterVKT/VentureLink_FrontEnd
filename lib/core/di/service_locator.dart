@@ -59,15 +59,21 @@ Future<void> setupServiceLocator() async {
 
   // Services API avec Retrofit
   serviceLocator.registerLazySingleton<SubscriptionApiService>(
-    () => SubscriptionApiService(serviceLocator<Dio>()),
+    () => SubscriptionApiService(
+      serviceLocator<Dio>(),
+    ),
   );
 
   serviceLocator.registerLazySingleton<UserApiService>(
-    () => UserApiService(serviceLocator<Dio>()),
+    () => UserApiService(
+      serviceLocator<Dio>(),
+    ),
   );
 
   serviceLocator.registerLazySingleton<PaymentApiService>(
-    () => PaymentApiService(serviceLocator<Dio>()),
+    () => PaymentApiService(
+      serviceLocator<Dio>(),
+    ),
   );
 
   serviceLocator.registerLazySingleton<UserPreferencesService>(

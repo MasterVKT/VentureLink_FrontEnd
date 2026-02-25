@@ -32,7 +32,7 @@ class ProfilePictureWidget extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
@@ -136,7 +136,7 @@ class ProfilePictureWidget extends StatelessWidget {
               leading: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -156,7 +156,7 @@ class ProfilePictureWidget extends StatelessWidget {
               leading: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -182,7 +182,7 @@ class ProfilePictureWidget extends StatelessWidget {
                 leading: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(

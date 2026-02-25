@@ -47,9 +47,6 @@ class PremiumUtils {
       case PremiumFeature.prioritySupport:
         // Le support prioritaire est réservé aux utilisateurs Premium
         return false;
-
-      default:
-        return false;
     }
   }
 
@@ -177,13 +174,6 @@ class PremiumUtils {
           description:
               'Les membres Premium bénéficient d\'une assistance prioritaire et d\'un accès à un conseiller dédié.',
           icon: Icons.support_agent,
-        );
-
-      default:
-        return _FeatureDetails(
-          title: 'Fonctionnalité Premium',
-          description: 'Cette fonctionnalité est réservée aux membres Premium.',
-          icon: Icons.star,
         );
     }
   }

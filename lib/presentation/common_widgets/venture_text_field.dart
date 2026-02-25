@@ -131,7 +131,7 @@ class VentureTextField extends StatelessWidget {
                 color: AppTheme.darkGrey,
               ),
           hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.darkGrey.withOpacity(0.5),
+                color: AppTheme.darkGrey.withValues(alpha: 0.5),
               ),
           errorStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppTheme.alertRed,

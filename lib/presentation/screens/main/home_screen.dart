@@ -71,7 +71,7 @@ class HomeScreen extends StatelessWidget {
       height: 200,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(ConfigService.defaultBorderRadius),
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       child: Center(
         child: Column(

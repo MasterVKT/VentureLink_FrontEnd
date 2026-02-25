@@ -276,7 +276,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 5,
             offset: const Offset(0, -2),
           ),
@@ -306,7 +306,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.primaryColor.withOpacity(0.5),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.5),
                 ),
               ),
           ],

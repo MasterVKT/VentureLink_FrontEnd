@@ -179,7 +179,7 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
                 color: Theme.of(context)
                     .colorScheme
                     .primaryContainer
-                    .withOpacity(0.3),
+                    .withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -252,7 +252,7 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _investmentType,
+          initialValue: _investmentType,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             hintText: 'Sélectionnez le type',
@@ -307,7 +307,7 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
             SizedBox(
               width: 80,
               child: DropdownButtonFormField<String>(
-                value: _currency,
+                initialValue: _currency,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                 ),
@@ -419,9 +419,9 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.amber.withOpacity(0.1),
+            color: Colors.amber.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.amber.withOpacity(0.3)),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

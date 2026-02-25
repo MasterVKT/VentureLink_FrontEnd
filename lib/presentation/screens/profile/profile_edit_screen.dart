@@ -304,7 +304,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                         color: Theme.of(context)
                             .colorScheme
                             .primary
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                         blurRadius: 20,
                         spreadRadius: 2,
                       ),
@@ -427,7 +427,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     required String Function(String) itemBuilder,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(
