@@ -48,7 +48,7 @@ class VentureCard extends StatelessWidget {
             if (isLoading)
               Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.white.withOpacity(0.7),
+                  color: AppTheme.white.withValues(alpha: 0.7),
                   borderRadius: borderRadius ??
                       BorderRadius.circular(AppTheme.defaultBorderRadius),
                 ),

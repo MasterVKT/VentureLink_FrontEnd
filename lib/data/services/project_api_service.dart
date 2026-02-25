@@ -881,13 +881,12 @@ class ProjectListResult {
         if (item != null && item is Map<String, dynamic>) {
           try {
             // Compter les champs manquants sans les logger individuellement
-            bool hasMissingFields = false;
+            int missingFieldsCount = 0;
 
             if (item['updated_at'] == null ||
                 item['created_at'] == null ||
                 item['category'] == null ||
                 (item['category'] is Map && item['category']['icon'] == null)) {
-              hasMissingFields = true;
               missingFieldsCount++;
             }
 
@@ -929,24 +928,5 @@ class ProjectListResult {
       return ProjectListResult.failure(
           'Erreur lors du traitement de la réponse API: $e');
     }
-  }
-
-  // Méthode de debug pour les images des projets (seulement en mode debug)
-  static void _debugProjectImages(List<ProjectModel> projects) {
-    if (!kDebugMode) return; // Seulement en mode debug
-
-    AppLogger.info(
-        '🖼️ Debug des images de projets: ${projects.length} projets');
-
-    int projectsWithImages = 0;
-    int projectsWithMultipleMedia = 0;
-
-    for (var project in projects) {
-      if (project.hasImage) projectsWithImages++;
-      if (project.hasMultipleMedia) projectsWithMultipleMedia++;
-    }
-
-    AppLogger.info(
-        '📊 Résumé médias: $projectsWithImages avec image, $projectsWithMultipleMedia avec médias multiples');
   }
 }

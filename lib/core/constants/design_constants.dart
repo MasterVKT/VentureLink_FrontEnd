@@ -37,7 +37,7 @@ class DesignConstants {
   // Ombres
   static List<BoxShadow> shadowS = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withValues(alpha: 0.1),
       blurRadius: 4,
       offset: const Offset(0, 2),
     ),
@@ -45,7 +45,7 @@ class DesignConstants {
 
   static List<BoxShadow> shadowM = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.15),
+      color: Colors.black.withValues(alpha: 0.15),
       blurRadius: 8,
       offset: const Offset(0, 4),
     ),
@@ -53,7 +53,7 @@ class DesignConstants {
 
   static List<BoxShadow> shadowL = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.2),
+      color: Colors.black.withValues(alpha: 0.2),
       blurRadius: 16,
       offset: const Offset(0, 8),
     ),

@@ -198,7 +198,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withOpacity(0.7),
+                        .withValues(alpha: 0.7),
                   ),
             ),
             const SizedBox(height: 24),
@@ -276,7 +276,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         gradient: LinearGradient(
           colors: [
             Theme.of(context).colorScheme.errorContainer,
-            Theme.of(context).colorScheme.error.withOpacity(0.8),
+            Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
           ],
         ),
       ),
@@ -351,7 +351,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         Text(
           project.shortDescription,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
         ),
 
@@ -404,7 +404,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         Text(
           'Publié le ${DateFormat('dd/MM/yyyy').format(project.publishedAt ?? project.createdAt ?? DateTime.now())}',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
         ),
       ],
@@ -431,7 +431,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   minimumSize: const Size(0, 48), // Accessibilité
                   backgroundColor: _hasInterest
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                       : null,
                 ),
               ),
@@ -533,7 +533,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withOpacity(0.8),
+                        .withValues(alpha: 0.8),
                   ),
             ),
           ),
@@ -647,7 +647,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurface
-                                        .withOpacity(0.7),
+                                        .withValues(alpha: 0.7),
                                   ),
                         ),
                       ],
@@ -704,14 +704,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         Icon(
           icon,
           size: 16,
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           semanticLabel: label,
         ),
         const SizedBox(width: 4),
         Text(
           count,
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),

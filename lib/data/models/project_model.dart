@@ -76,6 +76,7 @@ class ProjectModel {
   final int viewsCount;
   final int interestsCount;
   final int favoritesCount;
+  final bool isFavorite;
   final DateTime? publishedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -110,6 +111,7 @@ class ProjectModel {
     this.isDraft = false,
     this.viewsCount = 0,
     this.interestsCount = 0,
+    this.isFavorite = false,
     this.favoritesCount = 0,
     this.publishedAt,
     this.createdAt,
@@ -151,6 +153,7 @@ class ProjectModel {
       viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
       interestsCount: (json['interests_count'] as num?)?.toInt() ?? 0,
       favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
+      isFavorite: json['is_favorite'] == true,
       publishedAt: _dateTimeFromJson(json['published_at']),
       createdAt: _dateTimeFromJson(json['created_at']),
       updatedAt: _dateTimeFromJson(json['updated_at']),
@@ -187,6 +190,7 @@ class ProjectModel {
         'views_count': viewsCount,
         'interests_count': interestsCount,
         'favorites_count': favoritesCount,
+        'is_favorite': isFavorite,
         'published_at': publishedAt?.toIso8601String(),
         'created_at': createdAt?.toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),

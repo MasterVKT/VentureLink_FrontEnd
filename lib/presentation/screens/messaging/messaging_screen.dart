@@ -11,7 +11,7 @@ import '../../common_widgets/vl_app_bar.dart';
 import '../../common_widgets/vl_loading_indicator.dart';
 import 'conversation_screen.dart';
 import 'new_conversation_screen.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
@@ -441,12 +441,12 @@ class _MessagingScreenState extends State<MessagingScreen>
               EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 16 : 12),
           decoration: BoxDecoration(
             color: isUnread
-                ? AppTheme.primaryColor.withOpacity(0.05)
+                ? AppTheme.primaryColor.withValues(alpha: 0.05)
                 : Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),

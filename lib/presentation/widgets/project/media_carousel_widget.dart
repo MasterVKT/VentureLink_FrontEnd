@@ -230,7 +230,7 @@ class _MediaCarouselWidgetState extends State<MediaCarouselWidget> {
             shape: BoxShape.circle,
             color: _currentIndex == index
                 ? Colors.white
-                : Colors.white.withOpacity(0.5),
+                : Colors.white.withValues(alpha: 0.5),
           ),
         );
       }),
@@ -241,7 +241,7 @@ class _MediaCarouselWidgetState extends State<MediaCarouselWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
+        color: Colors.black.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(

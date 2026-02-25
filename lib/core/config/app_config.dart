@@ -4,6 +4,7 @@ import 'dart:io'
 
 class AppConfig {
   // Configuration API
+  static const String baseUrl = 'http:// 127.0.0.1:8000/api/v1';
   static String get _devApiBaseUrl {
     // Vérifier si nous sommes sur le web
     if (kIsWeb) {
@@ -13,7 +14,7 @@ class AppConfig {
     // Pour l'émulateur Android, utiliser 10.0.2.2 au lieu de localhost
     try {
       if (Platform.isAndroid) {
-        return 'http://10.0.2.2:8000';
+        return 'http://127.0.0.1:8000';
       }
     } catch (e) {
       // Ignorer les erreurs de plateforme non supportée
@@ -37,7 +38,7 @@ class AppConfig {
 
     try {
       if (Platform.isAndroid) {
-        return 'ws://10.0.2.2:8000';
+        return 'ws://127.0.0.1:8000';
       }
     } catch (e) {
       // Ignorer les erreurs de plateforme non supportée

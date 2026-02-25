@@ -135,14 +135,14 @@ class ProfileScreen extends StatelessWidget {
           Icon(
             Icons.work_outline,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: ConfigService.defaultSpacing),
           Text(
             'Aucun projet pour le moment',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
           ),
           const SizedBox(height: ConfigService.defaultSpacing / 2),
@@ -150,7 +150,7 @@ class ProfileScreen extends StatelessWidget {
             'Créez votre premier projet pour commencer',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
           ),
           const SizedBox(height: ConfigService.defaultPadding),

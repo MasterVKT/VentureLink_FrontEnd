@@ -6,7 +6,7 @@ import 'package:venturelink/data/providers/notification_provider.dart';
 import 'package:venturelink/data/models/notification_model.dart';
 
 import 'package:venturelink/core/router/app_router.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
@@ -252,7 +252,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         hintText: l10n.searchNotifications,
         border: InputBorder.none,
         hintStyle: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
         ),
       ),
       onChanged: _onSearchChanged,
@@ -284,18 +284,18 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       ),
       decoration: BoxDecoration(
         color: isUnread
-            ? theme.colorScheme.primaryContainer.withOpacity(0.08)
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.08)
             : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isUnread
-              ? theme.colorScheme.primary.withOpacity(0.15)
-              : theme.colorScheme.outline.withOpacity(0.12),
+              ? theme.colorScheme.primary.withValues(alpha: 0.15)
+              : theme.colorScheme.outline.withValues(alpha: 0.12),
           width: isUnread ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.04),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -349,7 +349,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           width: containerSize,
           height: containerSize,
           decoration: BoxDecoration(
-            color: notification.categoryColor.withOpacity(0.12),
+            color: notification.categoryColor.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -403,7 +403,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           notification.content,
           style: theme.textTheme.bodyMedium?.copyWith(
             color:
-                theme.colorScheme.onSurface.withOpacity(isUnread ? 0.75 : 0.65),
+                theme.colorScheme.onSurface.withValues(alpha: isUnread ? 0.75 : 0.65),
             height: 1.4,
           ),
           maxLines: isTablet ? 4 : 3,
@@ -423,7 +423,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         Text(
           _formatNotificationTime(notification.createdAt),
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -432,14 +432,14 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           width: 4,
           height: 4,
           decoration: BoxDecoration(
-            color: theme.colorScheme.onSurface.withOpacity(0.3),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: notification.categoryColor.withOpacity(0.1),
+            color: notification.categoryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -472,7 +472,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       child: PopupMenuButton<String>(
         icon: Icon(
           Icons.more_vert,
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           size: 20,
         ),
         tooltip: 'Plus d\'options',
@@ -534,7 +534,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             Text(
               error,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
               maxLines: 3,
@@ -566,13 +566,13 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           Icon(
             _isSearchActive ? Icons.search_off : Icons.notifications_none,
             size: 80,
-            color: theme.colorScheme.onSurface.withOpacity(0.3),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
             _isSearchActive ? 'Aucun résultat' : l10n.noNotifications,
             style: theme.textTheme.titleLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           if (_isSearchActive) ...[
@@ -580,7 +580,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             Text(
               'Essayez d\'autres mots-clés',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
           ],

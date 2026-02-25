@@ -61,7 +61,7 @@ class ThemeProvider extends ChangeNotifier {
         elevation: AppTheme.elevationSmall,
         centerTitle: true,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppTheme.white,
         elevation: AppTheme.elevationSmall,
         shape: RoundedRectangleBorder(
@@ -186,7 +186,7 @@ class ThemeProvider extends ChangeNotifier {
         type: BottomNavigationBarType.fixed,
         elevation: AppTheme.elevationSmall,
       ),
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         labelColor: AppTheme.black,
         unselectedLabelColor: AppTheme.darkGrey,
         indicatorColor: AppTheme.primaryBlue,

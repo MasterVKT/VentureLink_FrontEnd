@@ -123,8 +123,8 @@ class UniversalMediaWidget extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.3),
-                Colors.black.withOpacity(0.7),
+                Colors.black.withValues(alpha: 0.3),
+                Colors.black.withValues(alpha: 0.7),
               ],
             ),
           ),
@@ -134,7 +134,7 @@ class UniversalMediaWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha: 0.6),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -185,7 +185,7 @@ class UniversalMediaWidget extends StatelessWidget {
     final color = _getDocumentColor(extension);
 
     return Container(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -208,7 +208,7 @@ class UniversalMediaWidget extends StatelessWidget {
             Text(
               extension.toUpperCase(),
               style: TextStyle(
-                color: color.withOpacity(0.7),
+                color: color.withValues(alpha: 0.7),
                 fontSize: height > 150 ? 12 : 10,
               ),
             ),

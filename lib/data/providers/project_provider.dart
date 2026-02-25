@@ -16,9 +16,7 @@ class ProjectProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   final bool _hasMore = true;
-  final int _currentPage = 1;
   bool _isLoadingProjects = false;
-  DateTime _lastLoadTime = DateTime.now();
 
   List<ProjectModel> get projects => _projects;
   List<ProjectModel> get featuredProjects => _featuredProjects;
@@ -117,8 +115,6 @@ class ProjectProvider extends ChangeNotifier {
             '[ProjectProvider] Erreur lors du chargement de tous les projets: ${allProjectsResult.error}');
         _projects = [];
       }
-
-      _lastLoadTime = DateTime.now();
     } catch (e) {
       debugPrint('Erreur lors du chargement des projets: $e');
       // En cas d'erreur, initialiser avec des listes vides pour éviter les erreurs null
@@ -150,6 +146,34 @@ class ProjectProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+  /// Charger les projets avec pagination
+Future<List<ProjectModel>> fetchProjectsPage({
+  required int page,
+  int pageSize = 20,
+}) async {
+  try {
+    debugPrint('[ProjectProvider] 📥 Chargement page $page ($pageSize projets)');
+    
+    // Charger tous les projets (pour l'instant)
+    await loadProjects();
+    
+    // Calculer les index de début et fin
+    final startIndex = (page - 1) * pageSize;
+    final endIndex = startIndex + pageSize;
+    
+    // Retourner les projets de cette page
+    if (startIndex >= _projects.length) {
+      return []; // Pas de projets pour cette page
+    }
+    
+    final end = endIndex > _projects.length ? _projects.length : endIndex;
+    return _projects.sublist(startIndex, end);
+    
+  } catch (e) {
+    debugPrint('[ProjectProvider] ❌ Erreur chargement page: $e');
+    rethrow;
+  }
+}
 
   /// Créer un nouveau projet
   Future<bool> createProject({
