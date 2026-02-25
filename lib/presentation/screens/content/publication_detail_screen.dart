@@ -177,7 +177,7 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withOpacity(0.7),
+                  Colors.black.withValues(alpha: 0.7),
                 ],
               ),
             ),
@@ -448,113 +448,6 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen>
           showDescriptions: true,
         ),
       ],
-    );
-  }
-
-  Widget _buildMediaItem(PublicationMedia media) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (media.title != null) ...[
-            Text(
-              media.title!,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          if (media.isImage)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: CachedNetworkImage(
-                imageUrl: media.fullUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-              ),
-            )
-          else if (media.isVideo)
-            _buildVideoPlayer(media)
-          else if (media.isDocument)
-            _buildDocumentItem(media),
-          if (media.description != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              media.description!,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVideoPlayer(PublicationMedia media) {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Icon(
-              Icons.play_circle_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          Positioned(
-            bottom: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'Vidéo',
-                style: TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocumentItem(PublicationMedia media) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.description,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              media.title ?? 'Document',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          IconButton(
-            onPressed: () => _launchUrl(media.fullUrl),
-            icon: const Icon(Icons.download),
-          ),
-        ],
-      ),
     );
   }
 

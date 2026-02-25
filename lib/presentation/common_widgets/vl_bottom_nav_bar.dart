@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:venturelink/constants/design_constants.dart';
 import 'package:venturelink/data/providers/notification_provider.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 
 class VLBottomNavBar extends StatelessWidget {
   final int currentIndex;

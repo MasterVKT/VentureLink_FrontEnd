@@ -35,14 +35,14 @@ class VLCard extends StatelessWidget {
           boxShadow: elevation != null && elevation! > 0
               ? [
                   BoxShadow(
-                    color: AppTheme.black.withOpacity(0.1),
+                    color: AppTheme.black.withValues(alpha: 0.1),
                     blurRadius: elevation!,
                     offset: Offset(0, elevation! / 2),
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: AppTheme.black.withOpacity(0.05),
+                    color: AppTheme.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -53,7 +53,7 @@ class VLCard extends StatelessWidget {
                   width: 1.5,
                 )
               : Border.all(
-                  color: AppTheme.mediumGrey.withOpacity(0.1),
+                  color: AppTheme.mediumGrey.withValues(alpha: 0.1),
                   width: 1,
                 ),
         ),
@@ -102,8 +102,8 @@ class VLCard extends StatelessWidget {
                 color: backgroundColor ?? AppTheme.white,
                 child: InkWell(
                   onTap: onTap,
-                  splashColor: AppTheme.primaryBlue.withOpacity(0.1),
-                  highlightColor: AppTheme.lightGrey.withOpacity(0.2),
+                  splashColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  highlightColor: AppTheme.lightGrey.withValues(alpha: 0.2),
                   child: Padding(
                     padding: padding ??
                         const EdgeInsets.all(AppTheme.defaultPadding),

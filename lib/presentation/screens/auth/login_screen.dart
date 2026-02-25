@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:venturelink/core/config/config_service.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 
 @RoutePage()
 class LoginScreen extends StatefulWidget {

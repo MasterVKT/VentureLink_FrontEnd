@@ -242,7 +242,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(16.0),
           ),
           child: Text(

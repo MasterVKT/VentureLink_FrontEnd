@@ -54,13 +54,13 @@ class MediaLimitIndicator extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: user.isPremium
-            ? Colors.amber.withOpacity(0.1)
-            : Colors.blue.withOpacity(0.1),
+            ? Colors.amber.withValues(alpha: 0.1)
+            : Colors.blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: user.isPremium
-              ? Colors.amber.withOpacity(0.3)
-              : Colors.blue.withOpacity(0.3),
+              ? Colors.amber.withValues(alpha: 0.3)
+              : Colors.blue.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -225,7 +225,7 @@ class MediaCountBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
+        color: Colors.black.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -280,12 +280,12 @@ class PremiumUpgradePrompt extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Colors.amber.withOpacity(0.1),
-              Colors.orange.withOpacity(0.1)
+              Colors.amber.withValues(alpha: 0.1),
+              Colors.orange.withValues(alpha: 0.1)
             ],
           ),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.amber.withOpacity(0.3)),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [

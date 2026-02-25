@@ -304,7 +304,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                         color: Theme.of(context)
                             .colorScheme
                             .primary
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                         blurRadius: 20,
                         spreadRadius: 2,
                       ),

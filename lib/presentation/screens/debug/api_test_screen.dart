@@ -99,10 +99,10 @@ class _ApiTestScreenState extends State<ApiTestScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isError
-                            ? Colors.red.withOpacity(0.1)
+                            ? Colors.red.withValues(alpha: 0.1)
                             : isSuccess
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.grey.withOpacity(0.1),
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : Colors.grey.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

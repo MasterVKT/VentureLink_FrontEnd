@@ -25,7 +25,7 @@ class VentureBottomNavBar extends StatelessWidget {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: AppTheme.black.withOpacity(0.1),
+            color: AppTheme.black.withValues(alpha: 0.1),
             blurRadius: elevation,
             offset: const Offset(0, -2),
           ),
