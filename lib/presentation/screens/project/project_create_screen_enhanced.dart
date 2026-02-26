@@ -16,6 +16,7 @@ import 'package:venturelink/core/utils/validation_utils.dart';
 import 'package:venturelink/core/services/auto_save_service.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/models/project_model.dart';
+import 'package:venturelink/data/models/media_file.dart';
 import 'package:venturelink/l10n/app_localizations.dart';
 import 'dart:async';
 

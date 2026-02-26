@@ -19,21 +19,30 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
+  void initState() {
+    super.initState();
+    // Charger les favoris au démarrage
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProjectProvider>().loadProjects(forceRefresh: true);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
       body: Consumer<ProjectProvider>(
         builder: (context, projectProvider, child) {
+          if (projectProvider.isLoadingProjects) {
+            return const LoadingStateWidget(
+              message: 'Chargement de vos favoris...',
+            );
+          }
+
           // Filtrer les projets favoris
-          // Note: Cette implémentation suppose que les projets ont un champ isFavorite
-          // Dans une vraie implémentation, il faudrait charger les favoris depuis l'API
           final favoriteProjects = projectProvider.projects
               .where((project) => project.isFavorite)
               .toList();
-
-          if (projectProvider.isLoading) {
-            return const LoadingStateWidget(message: 'Chargement de vos favoris...');
-          }
 
           if (favoriteProjects.isEmpty) {
             return EmptyStateWidget(
@@ -92,6 +101,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Future<void> _toggleFavorite(ProjectModel project) async {
     final projectProvider = context.read<ProjectProvider>();
+    
+    // Optimistic update
     final success = await projectProvider.toggleFavorite(project.id);
 
     if (!success && mounted) {

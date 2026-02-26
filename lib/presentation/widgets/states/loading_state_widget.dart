@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 
-/// Widget affichant un état de chargement (initial ou pagination suivante)
+/// Widget de chargement centralisé réutilisable
 class LoadingStateWidget extends StatelessWidget {
-  /// Message optionnel à afficher sous le spinner (seulement pour chargement initial)
+  /// Message optionnel à afficher sous le spinner
   final String? message;
 
   /// true = chargement initial (gros spinner centré)
   /// false = chargement page suivante (petit spinner en bas de liste)
   final bool isInitialLoading;
-/// Widget de chargement centralisé réutilisable
-  final bool showSpinner;
 
   const LoadingStateWidget({
     super.key,
     this.message,
     this.isInitialLoading = true,
-    this.showSpinner = true,
   });
 
   @override
@@ -26,56 +23,39 @@ class LoadingStateWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(),
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).colorScheme.primary,
+              ),
+            ),
             if (message != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Text(
                 message!,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
-            ] else
-              const SizedBox(height: 16),
-            const Text(
-              'Chargement en cours...',
-              style: TextStyle(fontSize: 15, color: Colors.grey),
-            ),
+            ],
           ],
         ),
       );
     }
 
     // Chargement de la page suivante (footer de la liste)
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
         child: SizedBox(
           width: 28,
           height: 28,
-          child: CircularProgressIndicator(strokeWidth: 3),
+          child: CircularProgressIndicator(
+            strokeWidth: 3,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Theme.of(context).colorScheme.primary,
+            ),
+          ),
         ),
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (showSpinner)
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(
-              message!,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
-        ],
       ),
     );
   }
