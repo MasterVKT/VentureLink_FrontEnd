@@ -4,76 +4,6 @@ import 'package:venturelink/data/models/project_filters.dart';
 import 'package:venturelink/data/services/project_api_service.dart';
 import 'package:venturelink/data/services/api_service.dart';
 
-/// Modèle pour stocker les filtres actifs
-class ProjectFilters {
-  String? search;
-  String? category;
-  String? stage;
-  String? location;
-  double? fundingMin;
-  double? fundingMax;
-  List<String>? tags;
-  String? sortBy;
-  String? sortOrder;
-
-  ProjectFilters({
-    this.search,
-    this.category,
-    this.stage,
-    this.location,
-    this.fundingMin,
-    this.fundingMax,
-    this.tags,
-    this.sortBy,
-    this.sortOrder,
-  });
-
-  ProjectFilters copyWith({
-    String? search,
-    String? category,
-    String? stage,
-    String? location,
-    double? fundingMin,
-    double? fundingMax,
-    List<String>? tags,
-    String? sortBy,
-    String? sortOrder,
-  }) {
-    return ProjectFilters(
-      search: search ?? this.search,
-      category: category ?? this.category,
-      stage: stage ?? this.stage,
-      location: location ?? this.location,
-      fundingMin: fundingMin ?? this.fundingMin,
-      fundingMax: fundingMax ?? this.fundingMax,
-      tags: tags ?? this.tags,
-      sortBy: sortBy ?? this.sortBy,
-      sortOrder: sortOrder ?? this.sortOrder,
-    );
-  }
-
-  bool get hasActiveFilters =>
-      search != null ||
-      category != null ||
-      stage != null ||
-      location != null ||
-      fundingMin != null ||
-      fundingMax != null ||
-      (tags != null && tags!.isNotEmpty);
-
-  void clear() {
-    search = null;
-    category = null;
-    stage = null;
-    location = null;
-    fundingMin = null;
-    fundingMax = null;
-    tags = null;
-    sortBy = null;
-    sortOrder = null;
-  }
-}
-
 class ProjectProvider extends ChangeNotifier {
   late final ProjectApiService _projectApiService;
 
@@ -105,6 +35,7 @@ class ProjectProvider extends ChangeNotifier {
   List<TagModel> get tags => _tags;
   ProjectModel? get currentProject => _currentProject;
   bool get isLoading => _isLoading;
+  bool get isLoadingProjects => _isLoadingProjects;
   String? get error => _error;
   bool get hasMore => _hasMore;
   int get currentPage => _currentPage;
@@ -165,15 +96,14 @@ class ProjectProvider extends ChangeNotifier {
       final allProjectsResult = await _projectApiService.getProjects(
         page: targetPage,
         pageSize: pageSize,
-        search: _filters.search,
-        category: _filters.category,
+        search: _filters.searchQuery,
+        category: _filters.categoryId,
         stage: _filters.stage,
-        location: _filters.location,
+        location: _filters.locationCountry,
         fundingMin: _filters.fundingMin,
         fundingMax: _filters.fundingMax,
-        tags: _filters.tags,
+        tags: _filters.tagIds.isEmpty ? null : _filters.tagIds,
         sortBy: _filters.sortBy,
-        sortOrder: _filters.sortOrder,
       );
 
       if (allProjectsResult.isSuccess && allProjectsResult.projects != null) {
@@ -477,32 +407,31 @@ Future<List<ProjectModel>> fetchProjectsPage({
 
   /// Rechercher des projets
   Future<void> searchProjects(String query) async {
-    _filters.search = query.isEmpty ? null : query;
+    _filters = _filters.copyWith(searchQuery: query.isEmpty ? null : query);
     await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par catégorie
   Future<void> filterByCategory(String? categoryId) async {
-    _filters.category = categoryId;
+    _filters = _filters.copyWith(categoryId: categoryId);
     await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par stage
   Future<void> filterByStage(String? stage) async {
-    _filters.stage = stage;
+    _filters = _filters.copyWith(stage: stage);
     await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par localisation
-  Future<void> filterByLocation(String? location) async {
-    _filters.location = location;
+  Future<void> filterByLocation(String? country, String? city) async {
+    _filters = _filters.copyWith(locationCountry: country, locationCity: city);
     await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par budget (min/max)
   Future<void> filterByBudget(double? min, double? max) async {
-    _filters.fundingMin = min;
-    _filters.fundingMax = max;
+    _filters = _filters.copyWith(fundingMin: min, fundingMax: max);
     await loadProjects(forceRefresh: true);
   }
 
