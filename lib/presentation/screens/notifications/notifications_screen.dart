@@ -6,7 +6,7 @@ import 'package:venturelink/data/providers/notification_provider.dart';
 import 'package:venturelink/data/models/notification_model.dart';
 
 import 'package:venturelink/core/router/app_router.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 

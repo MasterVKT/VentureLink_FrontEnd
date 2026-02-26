@@ -252,7 +252,7 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _investmentType,
+          initialValue: _investmentType,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             hintText: 'Sélectionnez le type',
@@ -307,7 +307,7 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
             SizedBox(
               width: 80,
               child: DropdownButtonFormField<String>(
-                value: _currency,
+                initialValue: _currency,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                 ),

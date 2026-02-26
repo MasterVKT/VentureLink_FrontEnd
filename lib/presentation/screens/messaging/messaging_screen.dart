@@ -11,7 +11,7 @@ import '../../common_widgets/vl_app_bar.dart';
 import '../../common_widgets/vl_loading_indicator.dart';
 import 'conversation_screen.dart';
 import 'new_conversation_screen.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 

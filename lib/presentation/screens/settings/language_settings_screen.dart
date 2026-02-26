@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:venturelink/constants/design_constants.dart';
 import 'package:venturelink/data/providers/locale_provider.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 import 'package:venturelink/presentation/common_widgets/vl_app_bar.dart';
 
 /// Écran de sélection de la langue de l'application

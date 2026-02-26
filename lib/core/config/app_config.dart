@@ -7,18 +7,18 @@ class AppConfig {
   static String get _devApiBaseUrl {
     // Vérifier si nous sommes sur le web
     if (kIsWeb) {
-      return 'http://127.0.0.1:8000';
+      return 'http://127.0.0.1:8001';
     }
 
     // Pour l'émulateur Android, utiliser 10.0.2.2 au lieu de localhost
     try {
       if (Platform.isAndroid) {
-        return 'http://10.0.2.2:8000';
+        return 'http://10.0.2.2:8001';
       }
     } catch (e) {
       // Ignorer les erreurs de plateforme non supportée
     }
-    return 'http://127.0.0.1:8000';
+    return 'http://127.0.0.1:8001';
   }
 
   static const String _prodApiBaseUrl = 'https://api.venturelink.com';

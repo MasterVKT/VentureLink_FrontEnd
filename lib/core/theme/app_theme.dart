@@ -195,7 +195,7 @@ class AppTheme {
         vertical: defaultPadding / 2,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: white,
       elevation: 1,
       shape: RoundedRectangleBorder(
@@ -319,7 +319,7 @@ class AppTheme {
         vertical: defaultPadding / 2,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: darkGrey,
       elevation: 1,
       shape: RoundedRectangleBorder(

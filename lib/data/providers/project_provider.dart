@@ -3,6 +3,76 @@ import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/data/services/project_api_service.dart';
 import 'package:venturelink/data/services/api_service.dart';
 
+/// Modèle pour stocker les filtres actifs
+class ProjectFilters {
+  String? search;
+  String? category;
+  String? stage;
+  String? location;
+  double? fundingMin;
+  double? fundingMax;
+  List<String>? tags;
+  String? sortBy;
+  String? sortOrder;
+
+  ProjectFilters({
+    this.search,
+    this.category,
+    this.stage,
+    this.location,
+    this.fundingMin,
+    this.fundingMax,
+    this.tags,
+    this.sortBy,
+    this.sortOrder,
+  });
+
+  ProjectFilters copyWith({
+    String? search,
+    String? category,
+    String? stage,
+    String? location,
+    double? fundingMin,
+    double? fundingMax,
+    List<String>? tags,
+    String? sortBy,
+    String? sortOrder,
+  }) {
+    return ProjectFilters(
+      search: search ?? this.search,
+      category: category ?? this.category,
+      stage: stage ?? this.stage,
+      location: location ?? this.location,
+      fundingMin: fundingMin ?? this.fundingMin,
+      fundingMax: fundingMax ?? this.fundingMax,
+      tags: tags ?? this.tags,
+      sortBy: sortBy ?? this.sortBy,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  bool get hasActiveFilters =>
+      search != null ||
+      category != null ||
+      stage != null ||
+      location != null ||
+      fundingMin != null ||
+      fundingMax != null ||
+      (tags != null && tags!.isNotEmpty);
+
+  void clear() {
+    search = null;
+    category = null;
+    stage = null;
+    location = null;
+    fundingMin = null;
+    fundingMax = null;
+    tags = null;
+    sortBy = null;
+    sortOrder = null;
+  }
+}
+
 class ProjectProvider extends ChangeNotifier {
   late final ProjectApiService _projectApiService;
 
@@ -15,10 +85,16 @@ class ProjectProvider extends ChangeNotifier {
   ProjectModel? _currentProject;
   bool _isLoading = false;
   String? _error;
-  final bool _hasMore = true;
-  final int _currentPage = 1;
   bool _isLoadingProjects = false;
-  DateTime _lastLoadTime = DateTime.now();
+
+  // Pagination
+  int _currentPage = 1;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  static const int pageSize = 20;
+
+  // Filtres
+  ProjectFilters _filters = ProjectFilters();
 
   List<ProjectModel> get projects => _projects;
   List<ProjectModel> get featuredProjects => _featuredProjects;
@@ -30,6 +106,9 @@ class ProjectProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasMore => _hasMore;
+  int get currentPage => _currentPage;
+  ProjectFilters get filters => _filters;
+  bool get isLoadingMore => _isLoadingMore;
 
   // Getter pour les projets de l'utilisateur actuel
   List<ProjectModel> get userProjects =>
@@ -61,73 +140,75 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Charger les projets depuis l'API
-  Future<void> loadProjects({bool forceRefresh = false}) async {
-    if (_isLoadingProjects && !forceRefresh) return;
-
-    _isLoadingProjects = true;
-    notifyListeners();
+  /// Charger les projets depuis l'API avec pagination et filtres
+  Future<void> loadProjects({
+    bool forceRefresh = false,
+    int? page,
+    bool loadMore = false,
+  }) async {
+    if (loadMore) {
+      if (_isLoadingMore || !_hasMore) return;
+      _isLoadingMore = true;
+      notifyListeners();
+    } else {
+      if (_isLoadingProjects && !forceRefresh) return;
+      _isLoadingProjects = true;
+      _currentPage = 1;
+      notifyListeners();
+    }
 
     try {
-      // Charger les projets recommandés
-      final recommendedResult =
-          await _projectApiService.getRecommendedProjects();
-      if (recommendedResult.isSuccess && recommendedResult.projects != null) {
-        _recommendedProjects = recommendedResult.projects!;
-        debugPrint(
-            '[ProjectProvider] ${_recommendedProjects.length} projets recommandés chargés');
-      } else {
-        debugPrint(
-            '[ProjectProvider] Erreur lors du chargement des projets recommandés: ${recommendedResult.error}');
-        _recommendedProjects = [];
-      }
+      final targetPage = page ?? _currentPage;
 
-      // Charger les projets en vedette
-      final featuredResult = await _projectApiService.getFeaturedProjects();
-      if (featuredResult.isSuccess && featuredResult.projects != null) {
-        _featuredProjects = featuredResult.projects!;
-        debugPrint(
-            '[ProjectProvider] ${_featuredProjects.length} projets en vedette chargés');
-      } else {
-        debugPrint(
-            '[ProjectProvider] Erreur lors du chargement des projets en vedette: ${featuredResult.error}');
-        _featuredProjects = [];
-      }
+      // Charger tous les projets avec filtres et pagination
+      final allProjectsResult = await _projectApiService.getProjects(
+        page: targetPage,
+        pageSize: pageSize,
+        search: _filters.search,
+        category: _filters.category,
+        stage: _filters.stage,
+        location: _filters.location,
+        fundingMin: _filters.fundingMin,
+        fundingMax: _filters.fundingMax,
+        tags: _filters.tags,
+        sortBy: _filters.sortBy,
+        sortOrder: _filters.sortOrder,
+      );
 
-      // Charger les projets tendance
-      final trendingResult = await _projectApiService.getTrendingProjects();
-      if (trendingResult.isSuccess && trendingResult.projects != null) {
-        _trendingProjects = trendingResult.projects!;
-        debugPrint(
-            '[ProjectProvider] ${_trendingProjects.length} projets tendance chargés');
-      } else {
-        debugPrint(
-            '[ProjectProvider] Erreur lors du chargement des projets tendance: ${trendingResult.error}');
-        _trendingProjects = [];
-      }
-
-      // Charger tous les projets
-      final allProjectsResult = await _projectApiService.getProjects();
       if (allProjectsResult.isSuccess && allProjectsResult.projects != null) {
-        _projects = allProjectsResult.projects!;
+        final newProjects = allProjectsResult.projects!;
+        
+        if (loadMore) {
+          // Ajouter aux projets existants
+          _projects.addAll(newProjects);
+          _currentPage = targetPage + 1;
+          _hasMore = newProjects.length >= pageSize;
+        } else {
+          // Remplacer la liste
+          _projects = newProjects;
+          _currentPage = targetPage + 1;
+          _hasMore = newProjects.length >= pageSize;
+        }
+        
         debugPrint(
-            '[ProjectProvider] ${_projects.length} projets au total chargés');
+            '[ProjectProvider] ${_projects.length} projets au total chargés (page $targetPage)');
       } else {
         debugPrint(
             '[ProjectProvider] Erreur lors du chargement de tous les projets: ${allProjectsResult.error}');
-        _projects = [];
+        if (!loadMore) {
+          _projects = [];
+        }
+        _hasMore = false;
       }
-
-      _lastLoadTime = DateTime.now();
     } catch (e) {
       debugPrint('Erreur lors du chargement des projets: $e');
-      // En cas d'erreur, initialiser avec des listes vides pour éviter les erreurs null
-      _recommendedProjects = [];
-      _featuredProjects = [];
-      _trendingProjects = [];
-      _projects = [];
+      if (!loadMore) {
+        _projects = [];
+      }
+      _hasMore = false;
     } finally {
       _isLoadingProjects = false;
+      _isLoadingMore = false;
       notifyListeners();
     }
   }
@@ -359,29 +440,50 @@ class ProjectProvider extends ChangeNotifier {
 
   /// Rechercher des projets
   Future<void> searchProjects(String query) async {
+    _filters.search = query.isEmpty ? null : query;
     await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par catégorie
-  Future<void> filterByCategory(String categoryId) async {
+  Future<void> filterByCategory(String? categoryId) async {
+    _filters.category = categoryId;
     await loadProjects(forceRefresh: true);
   }
 
   /// Filtrer par stage
-  Future<void> filterByStage(String stage) async {
+  Future<void> filterByStage(String? stage) async {
+    _filters.stage = stage;
+    await loadProjects(forceRefresh: true);
+  }
+
+  /// Filtrer par localisation
+  Future<void> filterByLocation(String? location) async {
+    _filters.location = location;
+    await loadProjects(forceRefresh: true);
+  }
+
+  /// Filtrer par budget (min/max)
+  Future<void> filterByBudget(double? min, double? max) async {
+    _filters.fundingMin = min;
+    _filters.fundingMax = max;
     await loadProjects(forceRefresh: true);
   }
 
   /// Réinitialiser les filtres
   Future<void> clearFilters() async {
+    _filters.clear();
+    await loadProjects(forceRefresh: true);
+  }
+
+  /// Appliquer plusieurs filtres à la fois
+  Future<void> applyFilters(ProjectFilters newFilters) async {
+    _filters = newFilters;
     await loadProjects(forceRefresh: true);
   }
 
   /// Charger plus de projets (pagination)
   Future<void> loadMoreProjects() async {
-    if (!_isLoading && _hasMore) {
-      await loadProjects();
-    }
+    await loadProjects(loadMore: true);
   }
 
   void clearCurrentProject() {

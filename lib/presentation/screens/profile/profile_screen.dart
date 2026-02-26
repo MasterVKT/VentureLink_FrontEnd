@@ -11,7 +11,7 @@ import 'package:venturelink/core/config/app_config.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/core/services/profile_share_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 
 @RoutePage()
 class ProfileScreen extends StatefulWidget {

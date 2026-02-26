@@ -219,11 +219,12 @@ class ProjectCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            const Text(
-                              '0€', // TODO: Implémenter la propriété fundingRaised
-                              style: TextStyle(
+                            Text(
+                              _formatAmount(project.fundingRaised),
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                color: AppTheme.successColor,
                               ),
                             ),
                           ],
@@ -242,9 +243,9 @@ class ProjectCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            const Text(
-                              '0%', // TODO: Calculer avec les vraies valeurs
-                              style: TextStyle(
+                            Text(
+                              '${project.progressPercentage.toStringAsFixed(0)}%',
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.accentColor,
@@ -260,7 +261,7 @@ class ProjectCard extends StatelessWidget {
 
                   // Barre de progression
                   LinearProgressIndicator(
-                    value: 0.0, // TODO: Calculer avec les vraies valeurs
+                    value: project.progressPercentage / 100.0,
                     backgroundColor: Colors.grey[300],
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       AppTheme.accentColor,

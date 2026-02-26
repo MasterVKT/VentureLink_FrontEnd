@@ -1,8 +1,8 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
-    id 'com.google.gms.google-services' // Cette ligne est correcte
-    id 'dev.flutter.flutter-gradle-plugin' // Cette ligne est correcte
+    id 'com.google.gms.google-services'
+    id 'dev.flutter.flutter-gradle-plugin'
 }
 
 def localProperties = new Properties()
@@ -34,6 +34,7 @@ android {
     ndkVersion flutter.ndkVersion
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -48,8 +49,8 @@ android {
 
     defaultConfig {
         applicationId "com.xprience.venturelink"
-        minSdkVersion 21
-        targetSdkVersion 34 // Mise à jour de 35 à 34
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
@@ -57,7 +58,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug // Pour la production, utilisez une configuration de signature appropriée
+            signingConfig signingConfigs.debug
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -65,9 +66,9 @@ android {
 }
 
 dependencies {
-    // Mise à jour pour utiliser une version Kotlin cohérente avec settings.gradle
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation "androidx.multidex:multidex:2.0.1"
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }

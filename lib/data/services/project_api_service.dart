@@ -561,7 +561,7 @@ class ProjectApiService {
   /// Récupérer les tags
   Future<List<TagModel>> getTags() async {
     try {
-      final response = await _apiService.get('/projects/tags/');
+      final response = await _apiService.get('/tags/');
 
       // Gérer le cas où l'API retourne directement une liste
       if (response.data is List) {

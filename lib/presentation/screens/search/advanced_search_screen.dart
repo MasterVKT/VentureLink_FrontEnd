@@ -372,7 +372,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
     Function(String?) onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      value: value.isEmpty ? null : value,
+      initialValue: value.isEmpty ? null : value,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),

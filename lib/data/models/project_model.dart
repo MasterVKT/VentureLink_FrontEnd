@@ -488,6 +488,10 @@ class ProjectModel {
   double get fundingGoal => fundingMax;
   double get fundingRaised =>
       fundingMax * (interestsCount / 100.0).clamp(0.0, 1.0);
+  double get progressPercentage {
+    if (fundingMax <= 0) return 0.0;
+    return ((fundingRaised / fundingMax) * 100).clamp(0.0, 100.0);
+  }
   List<String> get interestedInvestors =>
       List.generate(interestsCount, (i) => 'investor_$i');
   int get mediaCount => allMedia.length;

@@ -1,6 +1,6 @@
 class ConfigService {
   // API
-  static const String apiBaseUrl = 'https://api.venturelink.com/v1';
+  static const String apiBaseUrl = 'http://10.0.2.2:8001/api/v1';
   static const int apiTimeout = 15000;
 
   // Debug
