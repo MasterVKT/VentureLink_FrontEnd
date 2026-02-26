@@ -1,9 +1,8 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:auto_route/auto_route.dart';
-
+import 'package:venturelink/data/providers/project_provider.dart';
+import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/models/project_model.dart';
@@ -21,14 +20,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:venturelink/data/models/project_model.dart';
-import 'package:venturelink/data/models/project_filters.dart';
-import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/presentation/widgets/project_card.dart';
-import 'package:venturelink/presentation/widgets/filter_bottom_sheet.dart';
-import 'package:venturelink/core/router/app_router.dart';
+import 'package:venturelink/presentation/widgets/skeleton/project_card_skeleton.dart';
 
-@RoutePage()
 class ProjectListScreen extends StatefulWidget {
   const ProjectListScreen({super.key});
 
@@ -37,23 +31,16 @@ class ProjectListScreen extends StatefulWidget {
 }
 
 class _ProjectListScreenState extends State<ProjectListScreen> {
-  // ───────────────────────────────────────────────────────────────────────────
-  // SEARCH & FILTERS
-  // ───────────────────────────────────────────────────────────────────────────
+  final ScrollController _scrollController = ScrollController();
+  
+  // Search
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
-  Timer? _debounceTimer;
-  ProjectFilters _filters = const ProjectFilters();
+  Timer? _debounce;
 
-  // Pagination
-  int _currentPage = 1;
+  // Filtres
+  ProjectFilters _currentFilters = ProjectFilters();
   bool _isLoadingMore = false;
-  bool _hasMorePages = true;
-  final ScrollController _scrollController = ScrollController();
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // LIFECYCLE
-  // ───────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -61,582 +48,89 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
     _scrollController.addListener(_onScroll);
     // Charger les projets au démarrage
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProjects();
+      context.read<ProjectProvider>().loadProjects(forceRefresh: true);
     });
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    _searchController.dispose();
-    _debounceTimer?.cancel();
-    super.dispose();
+  void _onScroll() {
+    // Charger plus de projets quand on arrive en bas de la liste
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore) {
+      final provider = context.read<ProjectProvider>();
+      if (provider.hasMore && !provider.isLoadingMore) {
+        _isLoadingMore = true;
+        provider.loadMoreProjects().then((_) {
+          setState(() {
+            _isLoadingMore = false;
+          });
+        });
+      }
+    }
   }
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // BUILD
-  // ───────────────────────────────────────────────────────────────────────────
+  void _onSearchChanged(String query) {
+    // Debounce : attendre 300ms après la dernière frappe
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // AppBar avec recherche
-      appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Rechercher un projet...',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                  border: InputBorder.none,
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () {
-                      _clearSearch();
-                      setState(() {
-                        _isSearching = false;
-                      });
-                    },
-                  ),
-                ),
-                onChanged: (value) => _onSearchChanged(value),
-              )
-            : const Text('Projets'),
-        actions: [
-          if (!_isSearching)
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {
-                setState(() {
-                  _isSearching = true;
-                });
-              },
-            ),
-          IconButton(
-            icon: Badge(
-              isLabelVisible: _filters.hasActiveFilters,
-              label: Text('${_filters.activeFiltersCount}'),
-              child: const Icon(Icons.filter_list),
-            ),
-            onPressed: _showFilters,
-          ),
-        ],
-        bottom: _filters.hasActiveFilters || _filters.hasSearchQuery
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(60),
-                child: _buildActiveFiltersBar(),
-              )
-            : null,
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _currentFilters.search = query.isEmpty ? null : query;
+      });
+      context.read<ProjectProvider>().searchProjects(query);
+    });
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-
-      // Corps avec liste
-      body: Consumer<ProjectProvider>(
-        builder: (context, projectProvider, child) {
-          // État de chargement initial
-          if (projectProvider.isLoading && projectProvider.projects.isEmpty) {
-            return const ProjectCardSkeletonList();
-          }
-
-          // Erreur
-          if (projectProvider.error != null) {
-            return ErrorStateWidget(
-              message: _getErrorMessage(projectProvider.error),
-              onRetry: () {
-                projectProvider.clearError();
-                _loadProjects();
-              },
-              icon: _getErrorIcon(projectProvider.error),
-            );
-          }
-
-          // Liste vide
-          if (projectProvider.projects.isEmpty) {
-            return EmptyStateWidget(
-              title: _filters.hasActiveFilters || _filters.hasSearchQuery
-                  ? 'Aucun résultat'
-                  : 'Aucun projet trouvé',
-              message: _filters.hasActiveFilters || _filters.hasSearchQuery
-                  ? 'Essayez de modifier vos filtres ou votre recherche.'
-                  : 'Il n\'y a pas encore de projets disponibles. Revenez plus tard !',
-              onAction: _filters.hasActiveFilters
-                  ? () {
-                      _clearAllFilters();
-                      _loadProjects();
-                    }
-                  : null,
-              actionLabel: _filters.hasActiveFilters ? 'Effacer les filtres' : null,
-            );
-          }
-
-          // Liste avec pagination infinie
-          return RefreshIndicator(
-            onRefresh: () => _loadProjects(),
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: projectProvider.projects.length + 1,
-              itemBuilder: (context, index) {
-                if (index == projectProvider.projects.length) {
-                  // Indicateur de chargement pour la pagination
-                  if (_isLoadingMore) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }
-
-                final project = projectProvider.projects[index];
-                return ProjectCard(
-                  project: project,
-                  onTap: () => _navigateToProjectDetail(project.id),
-                  onFavoriteToggle: () => _toggleFavorite(project.id),
-                );
-              },
-            ),
+      builder: (context) => Consumer<ProjectProvider>(
+        builder: (context, provider, child) {
+          return _FilterBottomSheet(
+            currentFilters: _currentFilters,
+            categories: provider.categories,
+            onApply: (filters) {
+              setState(() {
+                _currentFilters = filters;
+              });
+              provider.applyFilters(filters);
+              Navigator.pop(context);
+            },
+            onClear: () {
+              setState(() {
+                _currentFilters = ProjectFilters();
+              });
+              provider.clearFilters();
+              Navigator.pop(context);
+            },
           );
         },
       ),
     );
   }
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // WIDGETS
-  // ───────────────────────────────────────────────────────────────────────────
-
-  Widget _buildActiveFiltersBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[300]!),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Chips filtres actifs
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // Chip recherche
-                  if (_filters.hasSearchQuery)
-                    _buildFilterChip(
-                      label: '🔍 "${_filters.searchQuery}"',
-                      onDismissed: _clearSearch,
-                    ),
-
-                  // Chip catégorie
-                  if (_filters.categoryId != null)
-                    _buildFilterChip(
-                      label: '📁 ${_getCategoryName(_filters.categoryId!)}',
-                      onDismissed: _clearCategoryFilter,
-                    ),
-
-                  // Chip stage
-                  if (_filters.stage != null)
-                    _buildFilterChip(
-                      label: '🚀 ${_getStageLabel(_filters.stage!)}',
-                      onDismissed: _clearStageFilter,
-                    ),
-
-                  // Chip budget
-                  if (_filters.fundingMin != null || _filters.fundingMax != null)
-                    _buildFilterChip(
-                      label: '💰 ${_formatBudgetRange()}',
-                      onDismissed: _clearBudgetFilter,
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-          // Bouton effacer tout
-          if (_filters.hasActiveFilters || _filters.hasSearchQuery)
-            TextButton(
-              onPressed: () {
-                _clearAllFilters();
-                _loadProjects();
-              },
-              child: const Text('Tout effacer'),
-            ),
-        ],
-      ),
-    );
+  void _navigateToDetails(ProjectModel project) {
+    context.router.push(ProjectDetailRoute(projectId: project.id));
   }
 
-  Widget _buildFilterChip({required String label, required VoidCallback onDismissed}) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-        ),
-        onDeleted: onDismissed,
-        onSelected: (selected) {},
-        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-        selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
-        labelStyle: TextStyle(
-          color: AppTheme.primaryColor,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // PAGINATION
-  // ───────────────────────────────────────────────────────────────────────────
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !_isLoadingMore &&
-        _hasMorePages) {
-      _loadMoreProjects();
-    }
-  }
-
-  Future<void> _loadProjects() async {
-    final projectProvider = context.read<ProjectProvider>();
-    await projectProvider.loadProjectsWithFilters(_filters);
-    setState(() {
-      _currentPage = 1;
-      _hasMorePages = true;
-      _isLoadingMore = false;
-    });
-  }
-
-  Future<void> _loadMoreProjects() async {
-    if (_isLoadingMore || !_hasMorePages) return;
-
-    setState(() {
-      _isLoadingMore = true;
-    });
-
-    try {
-      _currentPage++;
-      final projectProvider = context.read<ProjectProvider>();
-      final result = await projectProvider.getApiService().getProjects(
-            page: _currentPage,
-            pageSize: 20,
-            filters: _filters,
-          );
-
-      if (result.projects != null && result.projects!.isNotEmpty) {
-        projectProvider.appendProjects(result.projects!);
-      }
-
-      _hasMorePages = result.hasNext ?? false;
-    } catch (e) {
-      debugPrint('Erreur chargement page suivante: $e');
-    } finally {
-      setState(() {
-        _isLoadingMore = false;
-      });
-    }
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // SEARCH
-  // ───────────────────────────────────────────────────────────────────────────
-
-  void _onSearchChanged(String value) {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      setState(() {
-        _filters = _filters.copyWith(searchQuery: value.isNotEmpty ? value : null);
-      });
-      _loadProjects();
-    });
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() {
-      _filters = _filters.clearSearch();
-    });
-    _loadProjects();
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // FILTERS
-  // ───────────────────────────────────────────────────────────────────────────
-
-  Future<void> _showFilters() async {
-    final projectProvider = context.read<ProjectProvider>();
-    final categories = projectProvider.categories;
-
-    final result = await FilterBottomSheet.show(
-      context,
-      currentFilters: _filters,
-      categories: categories,
-    );
-
-    if (result != null && result != _filters) {
-      setState(() {
-        _filters = result;
-      });
-      _loadProjects();
-    }
-  }
-
-  void _clearCategoryFilter() {
-    setState(() {
-      _filters = _filters.copyWith(categoryId: null);
-    });
-    _loadProjects();
-  }
-
-  void _clearStageFilter() {
-    setState(() {
-      _filters = _filters.copyWith(stage: null);
-    });
-    _loadProjects();
-  }
-
-  void _clearBudgetFilter() {
-    setState(() {
-      _filters = _filters.copyWith(fundingMin: null, fundingMax: null);
-    });
-    _loadProjects();
-  }
-
-  void _clearAllFilters() {
-    _searchController.clear();
-    setState(() {
-      _filters = const ProjectFilters();
-      _isSearching = false;
-    });
-    _loadProjects();
-  }
-
-  String _getCategoryName(String categoryId) {
-    final projectProvider = context.read<ProjectProvider>();
-    final category = projectProvider.categories.firstWhere(
-      (c) => c.id == categoryId,
-      orElse: () => CategoryModel(
-        id: categoryId,
-        nameFr: 'Catégorie',
-        nameEn: 'Category',
-      ),
-    );
-    return category.nameFr;
-  }
-
-  String _getStageLabel(String stage) {
-    switch (stage) {
-      case 'IDEA':
-        return 'Idée';
-      case 'PROTOTYPE':
-        return 'Prototype';
-      case 'MVP':
-        return 'MVP';
-      case 'LAUNCHED':
-        return 'Lancé';
-      case 'GROWTH':
-        return 'Croissance';
-      default:
-        return stage;
-    }
-  }
-
-  String _formatBudgetRange() {
-    final min = _filters.fundingMin;
-    final max = _filters.fundingMax;
-
-    if (min != null && max != null) {
-      return '${_formatAmount(min)} - ${_formatAmount(max)}';
-    } else if (min != null) {
-      return '> ${_formatAmount(min)}';
-    } else if (max != null) {
-      return '< ${_formatAmount(max)}';
-    }
-    return '';
-  }
-
-  String _formatAmount(double amount) {
-    if (amount >= 1000000) {
-      return '${(amount / 1000000).toStringAsFixed(1)}M';
-    } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(0)}K';
-    } else {
-      return '${amount.toStringAsFixed(0)}';
-    }
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // ACTIONS
-  // ───────────────────────────────────────────────────────────────────────────
-
-  void _navigateToProjectDetail(String projectId) {
-    context.router.push(ProjectDetailRoute(projectId: projectId));
-  }
-
-  Future<void> _toggleFavorite(String projectId) async {
-    final projectProvider = context.read<ProjectProvider>();
-    final success = await projectProvider.toggleFavorite(projectId);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? 'Projet ajouté aux favoris ❤️' : 'Erreur lors de l\'ajout aux favoris',
-  // ============================================
-  // 📌 Variables
-  // ============================================
-  
-  final PagingController<int, ProjectModel> _pagingController =
-      PagingController(firstPageKey: 1);
-
-  late ProjectProvider _projectProvider;
-  static const int _pageSize = 20;
-
-  // Recherche
-  bool _isSearching = false;
-  final TextEditingController _searchController = TextEditingController();
-  Timer? _debounce;
-  String _currentSearch = '';
-
-  // Filtres
-  ProjectFilters _filters = ProjectFilters();
-
-  // ============================================
-  // 🔧 Initialisation
-  // ============================================
-  
-  @override
-  void initState() {
-    super.initState();
-    _projectProvider = Provider.of<ProjectProvider>(context, listen: false);
-    _pagingController.addPageRequestListener((pageKey) {
-      _fetchPage(pageKey);
-    });
-  }
-
-  // ============================================
-  // 📥 Récupérer les projets avec recherche et filtres
-  // ============================================
-  
-  Future<void> _fetchPage(int pageKey) async {
-    try {
-      await _projectProvider.loadProjects(forceRefresh: pageKey == 1);
-      var allProjects = _projectProvider.projects;
-      
-      // Appliquer la recherche
-      if (_currentSearch.isNotEmpty) {
-        allProjects = allProjects.where((project) {
-          final titleMatch = project.title
-              .toLowerCase()
-              .contains(_currentSearch.toLowerCase());
-          final descriptionMatch = project.shortDescription
-              .toLowerCase()
-              .contains(_currentSearch.toLowerCase());
-          return titleMatch || descriptionMatch;
-        }).toList();
-      }
-
-      // Appliquer les filtres
-      if (_filters.hasActiveFilters) {
-        allProjects = allProjects.where((project) {
-          bool matches = true;
-
-          if (_filters.category != null) {
-            matches = matches && project.category.id == _filters.category;
-          }
-
-          if (_filters.location != null) {
-            matches = matches && 
-                project.location.toLowerCase().contains(
-                  _filters.location!.toLowerCase()
-                );
-          }
-
-          if (_filters.minBudget != null) {
-            matches = matches && project.fundingMax >= _filters.minBudget!;
-          }
-
-          if (_filters.maxBudget != null) {
-            matches = matches && project.fundingMax <= _filters.maxBudget!;
-          }
-
-          if (_filters.status != null) {
-            matches = matches && project.status == _filters.status;
-          }
-
-          return matches;
-        }).toList();
-      }
-      
-      final startIndex = (pageKey - 1) * _pageSize;
-      final endIndex = startIndex + _pageSize;
-      final isLastPage = endIndex >= allProjects.length;
-
-      if (isLastPage) {
-        final pageProjects = allProjects.sublist(
-          startIndex,
-          allProjects.length,
-        );
-        _pagingController.appendLastPage(pageProjects);
-      } else {
-        final pageProjects = allProjects.sublist(startIndex, endIndex);
-        _pagingController.appendPage(pageProjects, pageKey + 1);
-      }
-    } catch (error) {
-      _pagingController.error = error;
-    }
-  }
-
-  // ============================================
-  // 🎨 Interface utilisateur
-  // ============================================
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          // Chips des filtres actifs
-          if (_filters.hasActiveFilters || _currentSearch.isNotEmpty)
-            _buildActiveFiltersChips(),
-
-          // Liste des projets
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => Future.sync(() => _pagingController.refresh()),
-              child: PagedListView<int, ProjectModel>(
-                pagingController: _pagingController,
-                padding: const EdgeInsets.all(16),
-                builderDelegate: PagedChildBuilderDelegate<ProjectModel>(
-                  itemBuilder: (context, project, index) => ProjectCard(
-                    project: project,
-                    onTap: () => _navigateToDetails(project),
-                    onFavoriteToggle: () => _toggleFavorite(project),
-                  ),
-                  firstPageErrorIndicatorBuilder: (context) => _buildErrorState(),
-                  firstPageProgressIndicatorBuilder: (context) => _buildSkeleton(),
-                  noItemsFoundIndicatorBuilder: (context) => _buildEmptyState(),
-                ),
-              ),
-            ),
-          ),
+          _buildActiveFilters(),
+          Expanded(child: _buildBody()),
         ],
       ),
     );
   }
 
-  // ============================================
-  // 🔨 AppBar avec recherche
-  // ============================================
-  
-  AppBar _buildAppBar() {
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       title: _isSearching
           ? TextField(
@@ -652,7 +146,6 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
             )
           : const Text('Projets'),
       actions: [
-        // Bouton Recherche
         IconButton(
           icon: Icon(_isSearching ? Icons.close : Icons.search),
           onPressed: () {
@@ -665,154 +158,145 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
             });
           },
         ),
-        
-        // Bouton Filtres avec badge
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.filter_list),
-              onPressed: _showFilterBottomSheet,
-            ),
-            if (_filters.activeFilterCount > 0)
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: Text(
-                    '${_filters.activeFilterCount}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-          ],
+        IconButton(
+          icon: const Icon(Icons.filter_list),
+          onPressed: _showFilterBottomSheet,
         ),
       ],
     );
   }
 
-  // ============================================
-  // 🏷️ Chips des filtres actifs
-  // ============================================
-  
-  Widget _buildActiveFiltersChips() {
+  Widget _buildActiveFilters() {
+    if (!_currentFilters.hasActiveFilters) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _getResultsText(),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border(
+          bottom: BorderSide(color: Colors.grey[300]!),
+        ),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            const Text(
+              'Filtres actifs :',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _buildFilterChips(),
                 ),
               ),
-              TextButton(
-                onPressed: _clearAllFilters,
-                child: const Text('Effacer tout'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _currentFilters = ProjectFilters();
+                  _searchController.clear();
+                  _isSearching = false;
+                });
+                context.read<ProjectProvider>().clearFilters();
+              },
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 32),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _buildFilterChipsList(),
-          ),
-        ],
+              child: const Text(
+                'Tout effacer',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  String _getResultsText() {
-    // Note: itemList peut être null pendant le chargement
-    final count = _pagingController.itemList?.length ?? 0;
-    return '$count résultat${count > 1 ? 's' : ''}';
-  }
-
-  List<Widget> _buildFilterChipsList() {
+  List<Widget> _buildFilterChips() {
     final chips = <Widget>[];
 
-    // Chip de recherche
-    if (_currentSearch.isNotEmpty) {
-      chips.add(_buildChip(
-        label: 'Recherche: "$_currentSearch"',
-        onDelete: () {
-          _searchController.clear();
-          _onSearchChanged('');
+    if (_currentFilters.search != null) {
+      chips.add(_buildFilterChip(
+        label: '🔍 ${_currentFilters.search!}',
+        onRemove: () {
+          setState(() {
+            _currentFilters.search = null;
+            _searchController.clear();
+          });
+          context.read<ProjectProvider>().searchProjects('');
         },
       ));
     }
 
-    // Chip catégorie
-    if (_filters.category != null) {
-      final category = _projectProvider.categories
-          .where((c) => c.id == _filters.category)
-          .firstOrNull;
-      chips.add(_buildChip(
-        label: category?.nameFr ?? 'Catégorie',
-        onDelete: () {
+    if (_currentFilters.category != null) {
+      final category = context
+          .read<ProjectProvider>()
+          .categories
+          .firstWhere(
+            (c) => c.id == _currentFilters.category,
+            orElse: () => CategoryModel(id: '', nameFr: 'Catégorie', nameEn: 'Category'),
+          );
+      chips.add(_buildFilterChip(
+        label: '📁 ${category.nameFr}',
+        onRemove: () {
           setState(() {
-            _filters.category = null;
+            _currentFilters.category = null;
           });
-          _pagingController.refresh();
+          context.read<ProjectProvider>().filterByCategory(null);
         },
       ));
     }
 
-    // Chip localisation
-    if (_filters.location != null) {
-      chips.add(_buildChip(
-        label: _filters.location!,
-        onDelete: () {
+    if (_currentFilters.stage != null) {
+      chips.add(_buildFilterChip(
+        label: '🚀 ${_currentFilters.stage!}',
+        onRemove: () {
           setState(() {
-            _filters.location = null;
+            _currentFilters.stage = null;
           });
-          _pagingController.refresh();
+          context.read<ProjectProvider>().filterByStage(null);
         },
       ));
     }
 
-    // Chip budget
-    if (_filters.minBudget != null || _filters.maxBudget != null) {
-      chips.add(_buildChip(
-        label: 'Budget filtré',
-        onDelete: () {
+    if (_currentFilters.location != null) {
+      chips.add(_buildFilterChip(
+        label: '📍 ${_currentFilters.location!}',
+        onRemove: () {
           setState(() {
-            _filters.minBudget = null;
-            _filters.maxBudget = null;
+            _currentFilters.location = null;
           });
-          _pagingController.refresh();
+          context.read<ProjectProvider>().filterByLocation(null);
         },
       ));
     }
 
-    // Chip statut
-    if (_filters.status != null) {
-      chips.add(_buildChip(
-        label: _filters.status!,
-        onDelete: () {
+    if (_currentFilters.fundingMin != null || _currentFilters.fundingMax != null) {
+      final min = _currentFilters.fundingMin != null
+          ? '€${_currentFilters.fundingMin!.toStringAsFixed(0)}'
+          : '0';
+      final max = _currentFilters.fundingMax != null
+          ? '€${_currentFilters.fundingMax!.toStringAsFixed(0)}'
+          : '∞';
+      chips.add(_buildFilterChip(
+        label: '💰 $min - $max',
+        onRemove: () {
           setState(() {
-            _filters.status = null;
+            _currentFilters.fundingMin = null;
+            _currentFilters.fundingMax = null;
           });
-          _pagingController.refresh();
+          context.read<ProjectProvider>().filterByBudget(null, null);
         },
       ));
     }
@@ -820,199 +304,484 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
     return chips;
   }
 
-  Widget _buildChip({required String label, required VoidCallback onDelete}) {
-    return Chip(
-      label: Text(label),
-      deleteIcon: const Icon(Icons.close, size: 18),
-      onDeleted: onDelete,
-      backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-    );
-  }
-
-  // ============================================
-  // 🔍 Gestion de la recherche
-  // ============================================
-  
-  void _onSearchChanged(String query) {
-    // Debounce : attendre 300ms après la dernière frappe
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      setState(() {
-        _currentSearch = query;
-      });
-      _pagingController.refresh();
-    });
-  }
-
-  // ============================================
-  // 🎛️ Gestion des filtres
-  // ============================================
-  
-  void _showFilterBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => FilterBottomSheet(
-        currentFilters: _filters,
-        categories: _projectProvider.categories,
-        onApply: (newFilters) {
-          setState(() {
-            _filters = newFilters;
-          });
-          _pagingController.refresh();
-        },
+  Widget _buildFilterChip({required String label, required VoidCallback onRemove}) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Chip(
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12),
+        ),
+        deleteIcon: const Icon(Icons.close, size: 16),
+        onDeleted: onRemove,
+        backgroundColor: Colors.blue[50],
+        deleteIconColor: Colors.grey[700],
       ),
     );
   }
 
-  void _clearAllFilters() {
-    setState(() {
-      _filters.clear();
-      _currentSearch = '';
-      _searchController.clear();
-      _isSearching = false;
-    });
-    _pagingController.refresh();
+  Widget _buildBody() {
+    return Consumer<ProjectProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading && provider.projects.isEmpty) {
+          return _buildSkeletonLoader();
+        }
+
+        if (provider.error != null) {
+          return _buildErrorIndicator(provider.error!);
+        }
+
+        if (provider.projects.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        return RefreshIndicator(
+          onRefresh: () => provider.loadProjects(forceRefresh: true),
+          child: ListView.builder(
+            controller: _scrollController,
+            itemCount: provider.projects.length + 1,
+            itemBuilder: (context, index) {
+              if (index == provider.projects.length) {
+                // Indicateur de chargement pour la pagination infinie
+                return _buildLoadingIndicator();
+              }
+              final project = provider.projects[index];
+              return ProjectCard(
+                project: project,
+                onTap: () => _navigateToDetails(project),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
-  // ============================================
-  // 🔨 Widgets Helper (skeleton, erreur, vide)
-  // ============================================
-  
-  Widget _buildSkeleton() {
+  Widget _buildSkeletonLoader() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
       itemCount: 5,
-      itemBuilder: (context, index) => Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12),
+      itemBuilder: (context, index) => const ProjectCardSkeleton(),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    if (!_isLoadingMore) {
+      return const SizedBox.shrink();
+    }
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _buildErrorIndicator(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context.read<ProjectProvider>().loadProjects(forceRefresh: true),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Réessayer'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
                 ),
               ),
-              const SizedBox(height: 12),
-              Container(height: 24, width: double.infinity, color: Colors.grey[300]),
-              const SizedBox(height: 8),
-              Container(height: 16, width: double.infinity, color: Colors.grey[300]),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          Text('Erreur : ${_pagingController.error}'),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => _pagingController.refresh(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Réessayer'),
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/empty_state.png',
+              width: 200,
+              height: 200,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.inbox, size: 100, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Aucun projet trouvé',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _currentFilters.hasActiveFilters
+                  ? 'Aucun projet ne correspond à vos filtres.\nEssayez de modifier votre recherche.'
+                  : 'Il n\'y a pas encore de projets disponibles.\nRevenez plus tard !',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+            ),
+            if (_currentFilters.hasActiveFilters) ...[
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _currentFilters = ProjectFilters();
+                    _searchController.clear();
+                    _isSearching = false;
+                  });
+                  context.read<ProjectProvider>().clearFilters();
+                },
+                child: const Text('Effacer les filtres'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// WIDGET DE FILTRES (BOTTOM SHEET)
+// ---------------------------------------------------------------------------
+
+class _FilterBottomSheet extends StatefulWidget {
+  final ProjectFilters currentFilters;
+  final List<CategoryModel> categories;
+  final Function(ProjectFilters) onApply;
+  final VoidCallback onClear;
+
+  const _FilterBottomSheet({
+    required this.currentFilters,
+    required this.categories,
+    required this.onApply,
+    required this.onClear,
+  });
+
+  @override
+  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+}
+
+class _FilterBottomSheetState extends State<_FilterBottomSheet> {
+  late ProjectFilters _filters;
+  final _minBudgetController = TextEditingController();
+  final _maxBudgetController = TextEditingController();
+  String? _selectedCategory;
+  String? _selectedStage;
+  String? _selectedLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _filters = widget.currentFilters.copyWith();
+    _selectedCategory = _filters.category;
+    _selectedStage = _filters.stage;
+    _selectedLocation = _filters.location;
+    if (_filters.fundingMin != null) {
+      _minBudgetController.text = _filters.fundingMin!.toString();
+    }
+    if (_filters.fundingMax != null) {
+      _maxBudgetController.text = _filters.fundingMax!.toString();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.inbox_outlined, size: 100, color: Colors.grey[400]),
-          const SizedBox(height: 24),
-          const Text(
-            'Aucun projet trouvé',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          // Header
+          _buildHeader(),
+
+          const SizedBox(height: 16),
+
+          // Filtres scrollables
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCategoryFilter(),
+                  const SizedBox(height: 16),
+                  _buildStageFilter(),
+                  const SizedBox(height: 16),
+                  _buildLocationFilter(),
+                  const SizedBox(height: 16),
+                  _buildBudgetFilter(),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _filters.hasActiveFilters || _currentSearch.isNotEmpty
-                ? 'Essayez de modifier vos critères de recherche'
-                : 'Il n\'y a pas encore de projets disponibles',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
-          ),
+
+          const SizedBox(height: 16),
+
+          // Boutons d'action
+          _buildActionButtons(),
         ],
       ),
     );
   }
 
-  // ============================================
-  // 🎯 Actions
-  // ============================================
-  
-  void _navigateToDetails(ProjectModel project) {
-    context.router.push(ProjectDetailRoute(projectId: project.id));
-  }
-
-  Future<void> _toggleFavorite(ProjectModel project) async {
-    final success = await _projectProvider.toggleFavorite(project.id);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            project.isFavorite ? '❤️ Retiré des favoris' : '❤️ Ajouté aux favoris',
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        const Text(
+          'Filtres',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
-          duration: const Duration(seconds: 2),
         ),
-      );
-    }
+        const Spacer(),
+        if (_hasActiveFilters())
+          TextButton(
+            onPressed: widget.onClear,
+            child: const Text('Tout effacer'),
+          ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ],
+    );
   }
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // HELPERS
-  // ───────────────────────────────────────────────────────────────────────────
-
-  String _getErrorMessage(dynamic error) {
-    final errorStr = error.toString().toLowerCase();
-
-    if (errorStr.contains('socket') || errorStr.contains('connect')) {
-      return 'Pas de connexion internet.\nVérifiez votre connexion et réessayez.';
-    } else if (errorStr.contains('timeout')) {
-      return 'Le serveur met trop de temps à répondre.\nRéessayez dans quelques instants.';
-    } else if (errorStr.contains('http')) {
-      return 'Erreur du serveur.\nNous travaillons à résoudre le problème.';
-    } else {
-      return 'Une erreur s\'est produite.\nVeuillez réessayer.';
-    }
+  Widget _buildCategoryFilter() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Catégorie',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: widget.categories.map((category) {
+            final isSelected = _selectedCategory == category.id;
+            return FilterChip(
+              label: Text(category.nameFr),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedCategory = selected ? category.id : null;
+                  _filters.category = _selectedCategory;
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 
-  IconData _getErrorIcon(dynamic error) {
-    final errorStr = error.toString().toLowerCase();
+  Widget _buildStageFilter() {
+    final stages = [
+      {'id': 'IDEA', 'label': 'Idée'},
+      {'id': 'STARTED', 'label': 'Démarré'},
+      {'id': 'LAUNCHED', 'label': 'Lancé'},
+      {'id': 'GROWING', 'label': 'En croissance'},
+    ];
 
-    if (errorStr.contains('socket') || errorStr.contains('connect')) {
-      return Icons.wifi_off;
-    } else if (errorStr.contains('timeout')) {
-      return Icons.timer_off;
-    } else {
-      return Icons.error_outline;
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Stade de développement',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: stages.map((stage) {
+            final isSelected = _selectedStage == stage['id'];
+            return FilterChip(
+              label: Text(stage['label']!),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedStage = selected ? stage['id'] as String : null;
+                  _filters.stage = _selectedStage;
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
-}
-  // ============================================
-  // 🧹 Nettoyage
-  // ============================================
-  
+
+  Widget _buildLocationFilter() {
+    final locations = ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Autre'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Localisation',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: locations.map((location) {
+            final isSelected = _selectedLocation == location;
+            return FilterChip(
+              label: Text(location),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedLocation = selected ? location : null;
+                  _filters.location = _selectedLocation;
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBudgetFilter() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Budget (en €)',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _minBudgetController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Min',
+                  border: OutlineInputBorder(),
+                  prefixText: '€ ',
+                ),
+                onChanged: (value) {
+                  _filters.fundingMin =
+                      double.tryParse(value);
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: TextField(
+                controller: _maxBudgetController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Max',
+                  border: OutlineInputBorder(),
+                  prefixText: '€ ',
+                ),
+                onChanged: (value) {
+                  _filters.fundingMax =
+                      double.tryParse(value);
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: widget.onClear,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            child: const Text('Réinitialiser'),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => widget.onApply(_filters),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            child: const Text('Appliquer'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _hasActiveFilters() {
+    return _selectedCategory != null ||
+        _selectedStage != null ||
+        _selectedLocation != null ||
+        _filters.fundingMin != null ||
+        _filters.fundingMax != null;
+  }
+
   @override
   void dispose() {
-    _pagingController.dispose();
-    _searchController.dispose();
-    _debounce?.cancel();
+    _minBudgetController.dispose();
+    _maxBudgetController.dispose();
     super.dispose();
   }
 }
