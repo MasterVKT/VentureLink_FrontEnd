@@ -354,7 +354,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
-          color: isSelected ? AppTheme.premiumGold.withOpacity(0.1) : null,
+          color: isSelected ? AppTheme.premiumGold.withValues(alpha: 0.1) : null,
         ),
         child: Stack(
           children: [
@@ -386,6 +386,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
+                  // ignore: deprecated_member_use
                   Radio<String>(
                     value: plan.id,
                     groupValue: _selectedPlan?.id,
@@ -519,7 +520,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(

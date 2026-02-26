@@ -242,7 +242,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(16.0),
           ),
           child: Text(
@@ -294,7 +294,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
               style: TextStyle(
                 fontSize: 10,
                 color: isMe
-                    ? Colors.white.withOpacity(0.7)
+                    ? Colors.white.withValues(alpha: 0.7)
                     : theme.textSecondaryColor,
               ),
               textAlign: TextAlign.right,
@@ -313,7 +313,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
             Theme.of(context).extension<AppThemeExtension>()!.backgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),

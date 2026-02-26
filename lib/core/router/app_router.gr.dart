@@ -44,6 +44,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DashboardScreen(),
       );
     },
+    FavoritesRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const FavoritesScreen(),
+      );
+    },
     ForgotPasswordRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -194,6 +200,12 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    ProjectListRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const ProjectListScreen(),
+      );
+    },
     PublicProfileRoute.name: (routeData) {
       final args = routeData.argsAs<PublicProfileRouteArgs>();
       return AutoRoutePage<dynamic>(
@@ -340,6 +352,20 @@ class DashboardRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'DashboardRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [FavoritesScreen]
+class FavoritesRoute extends PageRouteInfo<void> {
+  const FavoritesRoute({List<PageRouteInfo>? children})
+      : super(
+          FavoritesRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'FavoritesRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -776,6 +802,20 @@ class ProjectDetailRouteArgs {
   String toString() {
     return 'ProjectDetailRouteArgs{key: $key, projectId: $projectId}';
   }
+}
+
+/// generated route for
+/// [ProjectListScreen]
+class ProjectListRoute extends PageRouteInfo<void> {
+  const ProjectListRoute({List<PageRouteInfo>? children})
+      : super(
+          ProjectListRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'ProjectListRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for

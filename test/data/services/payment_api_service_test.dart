@@ -110,10 +110,10 @@ void main() {
       expect(json['methods'].length, equals(2));
       expect(json['supported_currencies'].length, equals(3));
 
-      // Les objets sérialisés sont des Maps, donc nous pouvons accéder à leurs propriétés
-      final methodsJson = json['methods'] as List;
-      expect(methodsJson[0]['id'], equals('mobile_money'));
-      expect(methodsJson[1]['id'], equals('bank_card'));
+      // Accéder aux propriétés via les objets typés
+      final methodsList = response.methods;
+      expect(methodsList[0].id, equals('mobile_money'));
+      expect(methodsList[1].id, equals('bank_card'));
     });
 
     test('RefundResponse should have correct properties', () {

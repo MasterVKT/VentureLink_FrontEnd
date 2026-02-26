@@ -7,7 +7,7 @@ part 'base_api_service.g.dart';
 /// Service API de base utilisant Retrofit
 @RestApi(baseUrl: "http://localhost:8000/api/v1/")
 abstract class BaseApiService {
-  factory BaseApiService(Dio dio, {String baseUrl}) = _BaseApiService;
+  factory BaseApiService(Dio dio, {String baseUrl, ParseErrorLogger? errorLogger}) = _BaseApiService;
 
   static Dio createDio() {
     final dio = Dio();

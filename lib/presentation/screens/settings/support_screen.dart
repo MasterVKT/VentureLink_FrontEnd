@@ -47,7 +47,7 @@ class SupportScreen extends StatelessWidget {
                             'Trouvez des réponses à vos questions ou contactez notre équipe',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color:
-                                  theme.colorScheme.onSurface.withOpacity(0.7),
+                                  theme.colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -229,7 +229,7 @@ class SupportScreen extends StatelessWidget {
                         Text(
                           '1.0.0',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                       ],
@@ -242,7 +242,7 @@ class SupportScreen extends StatelessWidget {
                         Text(
                           '15 décembre 2024',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                       ],

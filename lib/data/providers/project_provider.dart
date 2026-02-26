@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:venturelink/data/models/project_model.dart';
+import 'package:venturelink/data/models/project_filters.dart';
 import 'package:venturelink/data/services/project_api_service.dart';
 import 'package:venturelink/data/services/api_service.dart';
 
@@ -231,6 +232,34 @@ class ProjectProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+  /// Charger les projets avec pagination
+Future<List<ProjectModel>> fetchProjectsPage({
+  required int page,
+  int pageSize = 20,
+}) async {
+  try {
+    debugPrint('[ProjectProvider] 📥 Chargement page $page ($pageSize projets)');
+    
+    // Charger tous les projets (pour l'instant)
+    await loadProjects();
+    
+    // Calculer les index de début et fin
+    final startIndex = (page - 1) * pageSize;
+    final endIndex = startIndex + pageSize;
+    
+    // Retourner les projets de cette page
+    if (startIndex >= _projects.length) {
+      return []; // Pas de projets pour cette page
+    }
+    
+    final end = endIndex > _projects.length ? _projects.length : endIndex;
+    return _projects.sublist(startIndex, end);
+    
+  } catch (e) {
+    debugPrint('[ProjectProvider] ❌ Erreur chargement page: $e');
+    rethrow;
+  }
+}
 
   /// Créer un nouveau projet
   Future<bool> createProject({
@@ -357,12 +386,20 @@ class ProjectProvider extends ChangeNotifier {
     try {
       final success = await _projectApiService.toggleFavorite(projectId);
       if (success) {
-        // Mettre à jour localement (on pourrait aussi recharger le projet)
+        // Mettre à jour localement avec copyWith pour refléter le changement dans l'UI
         final index = _projects.indexWhere((p) => p.id == projectId);
         if (index != -1) {
-          // Note: Il faudrait ajouter un champ isFavorite au modèle
-          notifyListeners();
+          _projects[index] = _projects[index].copyWith(
+            isFavorite: !_projects[index].isFavorite,
+          );
         }
+        // Mettre à jour aussi le projet courant si c'est le même
+        if (_currentProject?.id == projectId) {
+          _currentProject = _currentProject!.copyWith(
+            isFavorite: !_currentProject!.isFavorite,
+          );
+        }
+        notifyListeners();
       }
       return success;
     } catch (e) {
@@ -699,6 +736,9 @@ class ProjectProvider extends ChangeNotifier {
   /// Getter pour les brouillons de l'utilisateur
   List<ProjectModel> get userDrafts =>
       _projects.where((p) => p.isDraft).toList();
+
+  /// Getter pour accéder à l'API service (utilisé par PagingController)
+  ProjectApiService getApiService() => _projectApiService;
 
   /// Tri des projets pour mettre les premium en premier
   void _sortProjectsWithPremiumFirst() {

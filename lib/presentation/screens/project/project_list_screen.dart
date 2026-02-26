@@ -4,6 +4,21 @@ import 'package:provider/provider.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/core/router/app_router.dart';
+import 'package:venturelink/data/providers/project_provider.dart';
+import 'package:venturelink/data/models/project_model.dart';
+import 'package:venturelink/data/models/project_filters.dart';
+import 'package:venturelink/presentation/widgets/project_card.dart';
+import 'package:venturelink/presentation/widgets/skeleton/project_card_skeleton.dart';
+import 'package:venturelink/presentation/widgets/states/error_state_widget.dart';
+import 'package:venturelink/presentation/widgets/states/empty_state_widget.dart';
+import 'package:venturelink/presentation/widgets/filter_bottom_sheet.dart';
+import 'package:venturelink/core/theme/app_theme.dart';
+
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:venturelink/presentation/widgets/project_card.dart';
 import 'package:venturelink/presentation/widgets/skeleton/project_card_skeleton.dart';

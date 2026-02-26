@@ -63,7 +63,7 @@ class _InterestExpressionWidgetState extends State<InterestExpressionWidget> {
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -86,7 +86,7 @@ class _InterestExpressionWidgetState extends State<InterestExpressionWidget> {
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.7),
+                          .withValues(alpha: 0.7),
                     ),
                 textAlign: TextAlign.center,
               ),

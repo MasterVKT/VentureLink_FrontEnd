@@ -8,7 +8,7 @@ part 'user_api_service.g.dart';
 /// Service API pour les utilisateurs avec Retrofit
 @RestApi(baseUrl: "http://localhost:8000/api/v1/")
 abstract class UserApiService {
-  factory UserApiService(Dio dio, {String baseUrl}) = _UserApiService;
+  factory UserApiService(Dio dio, {String baseUrl, ParseErrorLogger? errorLogger}) = _UserApiService;
 
   /// Récupérer le profil de l'utilisateur connecté
   @GET('/users/me/')

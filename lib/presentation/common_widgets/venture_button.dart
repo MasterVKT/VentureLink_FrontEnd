@@ -52,29 +52,29 @@ class VentureButton extends StatelessWidget {
         return ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryBlue,
           foregroundColor: AppTheme.white,
-          disabledBackgroundColor: AppTheme.primaryBlue.withOpacity(0.5),
-          disabledForegroundColor: AppTheme.white.withOpacity(0.5),
+          disabledBackgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.5),
+          disabledForegroundColor: AppTheme.white.withValues(alpha: 0.5),
         );
       case VentureButtonType.secondary:
         return ElevatedButton.styleFrom(
           backgroundColor: AppTheme.mediumGrey,
           foregroundColor: AppTheme.black,
-          disabledBackgroundColor: AppTheme.mediumGrey.withOpacity(0.5),
-          disabledForegroundColor: AppTheme.black.withOpacity(0.5),
+          disabledBackgroundColor: AppTheme.mediumGrey.withValues(alpha: 0.5),
+          disabledForegroundColor: AppTheme.black.withValues(alpha: 0.5),
         );
       case VentureButtonType.tertiary:
         return ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           foregroundColor: AppTheme.primaryBlue,
-          disabledForegroundColor: AppTheme.primaryBlue.withOpacity(0.5),
+          disabledForegroundColor: AppTheme.primaryBlue.withValues(alpha: 0.5),
           side: const BorderSide(color: AppTheme.primaryBlue),
         );
       case VentureButtonType.premium:
         return ElevatedButton.styleFrom(
           backgroundColor: AppTheme.premiumGold,
           foregroundColor: AppTheme.white,
-          disabledBackgroundColor: AppTheme.premiumGold.withOpacity(0.5),
-          disabledForegroundColor: AppTheme.white.withOpacity(0.5),
+          disabledBackgroundColor: AppTheme.premiumGold.withValues(alpha: 0.5),
+          disabledForegroundColor: AppTheme.white.withValues(alpha: 0.5),
         );
     }
   }

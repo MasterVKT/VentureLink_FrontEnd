@@ -441,12 +441,12 @@ class _MessagingScreenState extends State<MessagingScreen>
               EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 16 : 12),
           decoration: BoxDecoration(
             color: isUnread
-                ? AppTheme.primaryColor.withOpacity(0.05)
+                ? AppTheme.primaryColor.withValues(alpha: 0.05)
                 : Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),

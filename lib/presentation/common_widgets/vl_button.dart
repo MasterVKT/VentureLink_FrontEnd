@@ -49,13 +49,13 @@ class VLButton extends StatelessWidget {
         backgroundColor = AppTheme.primaryBlue;
         textColor = Colors.white;
         borderColor = Colors.transparent;
-        overlayColor = Colors.white.withOpacity(0.1);
+        overlayColor = Colors.white.withValues(alpha: 0.1);
         decoration = BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryBlue.withOpacity(0.3),
+              color: AppTheme.primaryBlue.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -63,10 +63,10 @@ class VLButton extends StatelessWidget {
         );
         break;
       case VLButtonType.secondary:
-        backgroundColor = DesignConstants.mediumGrey.withOpacity(0.1);
+        backgroundColor = DesignConstants.mediumGrey.withValues(alpha: 0.1);
         textColor = DesignConstants.darkGrey;
-        borderColor = DesignConstants.mediumGrey.withOpacity(0.3);
-        overlayColor = DesignConstants.mediumGrey.withOpacity(0.2);
+        borderColor = DesignConstants.mediumGrey.withValues(alpha: 0.3);
+        overlayColor = DesignConstants.mediumGrey.withValues(alpha: 0.2);
         decoration = BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(12),
@@ -77,13 +77,13 @@ class VLButton extends StatelessWidget {
         backgroundColor = Colors.transparent;
         textColor = AppTheme.primaryBlue;
         borderColor = Colors.transparent;
-        overlayColor = AppTheme.primaryBlue.withOpacity(0.1);
+        overlayColor = AppTheme.primaryBlue.withValues(alpha: 0.1);
         break;
       case VLButtonType.premium:
         backgroundColor = Colors.transparent;
         textColor = AppTheme.premiumGold;
         borderColor = AppTheme.premiumGold;
-        overlayColor = AppTheme.premiumGold.withOpacity(0.1);
+        overlayColor = AppTheme.premiumGold.withValues(alpha: 0.1);
         decoration = BoxDecoration(
           gradient: const LinearGradient(
             colors: [AppTheme.premiumGold, AppTheme.premiumOrange],
@@ -93,7 +93,7 @@ class VLButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.premiumGold.withOpacity(0.3),
+              color: AppTheme.premiumGold.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
