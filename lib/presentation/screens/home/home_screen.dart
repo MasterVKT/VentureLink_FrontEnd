@@ -34,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedCategory;
   String? _selectedStage;
   String? _selectedLocation;
-  String? _searchQuery;
 
   @override
   void initState() {
@@ -99,13 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onSearch(String query) {
-    setState(() {
-      _searchQuery = query.isEmpty ? null : query;
-    });
-    _applyFilters();
-  }
-
   void _applyFilters() {
     final projectProvider = context.read<ProjectProvider>();
     projectProvider.loadProjects(forceRefresh: true);
@@ -116,7 +108,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedCategory = null;
       _selectedStage = null;
       _selectedLocation = null;
-      _searchQuery = null;
     });
     context.read<ProjectProvider>().loadProjects(forceRefresh: true);
   }
@@ -640,50 +631,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController(text: _searchQuery ?? '');
-        return AlertDialog(
-          title: const Text('Rechercher des projets'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'Entrez votre recherche...',
-              prefixIcon: Icon(Icons.search),
-            ),
-            autofocus: true,
-            onSubmitted: (value) {
-              _onSearch(value);
-              Navigator.pop(context);
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _onSearch('');
-                Navigator.pop(context);
-              },
-              child: const Text('Effacer'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            TextButton(
-              onPressed: () {
-                _onSearch(controller.text);
-                Navigator.pop(context);
-              },
-              child: const Text('Rechercher'),
-            ),
-          ],
-        );
-      },
     );
   }
 

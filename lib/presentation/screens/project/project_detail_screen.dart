@@ -64,10 +64,23 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     // Optimisation : vérifier si le projet est déjà en cache
     if (projectProvider.currentProject?.id == widget.projectId) {
-      return; // Projet déjà chargé
+      // Synchroniser l'état favori depuis le modèle
+      if (mounted) {
+        setState(() {
+          _isFavorited = projectProvider.currentProject!.isFavorite;
+        });
+      }
+      return;
     }
 
     await projectProvider.loadProject(widget.projectId);
+
+    // Initialiser l'état favori depuis le modèle chargé
+    if (mounted && projectProvider.currentProject != null) {
+      setState(() {
+        _isFavorited = projectProvider.currentProject!.isFavorite;
+      });
+    }
   }
 
   @override

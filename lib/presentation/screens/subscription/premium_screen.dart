@@ -386,6 +386,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
+                  // ignore: deprecated_member_use
                   Radio<String>(
                     value: plan.id,
                     groupValue: _selectedPlan?.id,

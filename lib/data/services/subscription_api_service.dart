@@ -9,7 +9,7 @@ part 'subscription_api_service.g.dart';
 /// Service API pour les abonnements avec Retrofit
 @RestApi(baseUrl: "http://localhost:8000/api/v1/")
 abstract class SubscriptionApiService {
-  factory SubscriptionApiService(Dio dio, {String baseUrl}) =
+  factory SubscriptionApiService(Dio dio, {String baseUrl, ParseErrorLogger? errorLogger}) =
       _SubscriptionApiService;
 
   /// Obtenir tous les plans d'abonnement disponibles

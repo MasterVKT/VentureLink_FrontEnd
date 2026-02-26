@@ -12,6 +12,7 @@ class ApiTestScreen extends StatefulWidget {
   const ApiTestScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _ApiTestScreenState createState() => _ApiTestScreenState();
 }
 
@@ -323,11 +324,12 @@ class _ApiTestScreenState extends State<ApiTestScreen> {
         _addResult('❌ Content API error: $e');
       }
 
-      // Test Project API
-      final projectProvider =
-          Provider.of<ProjectProvider>(context, listen: false);
+      // Test Project API - Capture context before async gap
+      final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
       try {
         await projectProvider.loadFeaturedProjects();
+        // ignore: use_build_context_synchronously
+        if (!mounted) return;
         final featuredProjects = projectProvider.featuredProjects;
         _addResult(
             '✅ Project API: ${featuredProjects.length} projets featured');

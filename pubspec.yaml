@@ -98,9 +98,10 @@ dev_dependencies:
   mockito: ^5.4.4
   flutter_launcher_icons: ^0.13.1
   json_serializable: ^6.7.1
-  retrofit_generator: ^8.0.4         # Code generation pour Retrofit OBLIGATOIRE
+  retrofit_generator: ^8.0.4
   http_mock_adapter: ^0.6.1
   
+  # ← Supprimer tout le bloc "dependencies:" qui était ici
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

@@ -23,15 +23,15 @@ class ProjectMedia {
   });
 
   factory ProjectMedia.fromJson(Map<String, dynamic> json) {
-      return ProjectMedia(
-        id: json['id']?.toString() ?? '',
-        url: json['url']?.toString() ?? '',
-        type: json['type']?.toString() ?? 'IMAGE',
-        title: json['title']?.toString(),
-        description: json['description']?.toString(),
-        isPrimary: json['is_primary'] == true,
-        order: (json['order'] as num?)?.toInt() ?? 0,
-      );
+    return ProjectMedia(
+      id: json['id']?.toString() ?? '',
+      url: json['url']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'IMAGE',
+      title: json['title']?.toString(),
+      description: json['description']?.toString(),
+      isPrimary: json['is_primary'] == true,
+      order: (json['order'] as num?)?.toInt() ?? 0,
+    );
   }
 
   Map<String, dynamic> toJson() => {
@@ -73,6 +73,7 @@ class ProjectModel {
   final bool isPremium;
   final bool isFeatured;
   final bool isDraft;
+  final bool isFavorite;
   final int viewsCount;
   final int interestsCount;
   final int favoritesCount;
@@ -109,6 +110,7 @@ class ProjectModel {
     this.isPremium = false,
     this.isFeatured = false,
     this.isDraft = false,
+    this.isFavorite = false,
     this.viewsCount = 0,
     this.interestsCount = 0,
     this.isFavorite = false,
@@ -150,6 +152,7 @@ class ProjectModel {
       isPremium: json['is_premium'] == true,
       isFeatured: json['is_featured'] == true,
       isDraft: json['is_draft'] == true,
+      isFavorite: json['is_favorite'] == true,
       viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
       interestsCount: (json['interests_count'] as num?)?.toInt() ?? 0,
       favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
@@ -187,6 +190,7 @@ class ProjectModel {
         'is_premium': isPremium,
         'is_featured': isFeatured,
         'is_draft': isDraft,
+        'is_favorite': isFavorite,
         'views_count': viewsCount,
         'interests_count': interestsCount,
         'favorites_count': favoritesCount,
@@ -305,7 +309,7 @@ class ProjectModel {
               return ProjectNeedModel.fromJson(item);
             }
             return null;
-      } catch (e) {
+          } catch (e) {
             debugPrint('Erreur parsing ProjectNeedModel: $e');
             return null;
           }
@@ -537,6 +541,82 @@ class ProjectModel {
     }
     return null;
   }
+
+  /// Crée une copie du projet avec les champs modifiés
+  ProjectModel copyWith({
+    String? id,
+    UserModel? creator,
+    String? creatorName,
+    String? creatorId,
+    String? creatorProfilePicture,
+    String? title,
+    String? shortDescription,
+    String? fullDescription,
+    CategoryModel? category,
+    String? stage,
+    String? status,
+    double? fundingMin,
+    double? fundingMax,
+    String? fundingCurrency,
+    String? locationCountry,
+    String? locationCity,
+    String? businessPlan,
+    String? videoUrl,
+    bool? isPremium,
+    bool? isFeatured,
+    bool? isDraft,
+    bool? isFavorite,
+    int? viewsCount,
+    int? interestsCount,
+    int? favoritesCount,
+    DateTime? publishedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<TagModel>? tags,
+    List<ProjectMedia>? mediaList,
+    String? primaryImageUrl,
+    List<ProjectMediaModel>? media,
+    List<ProjectNeedModel>? needs,
+    List<SkillModel>? skillsNeeded,
+  }) {
+    return ProjectModel(
+      id: id ?? this.id,
+      creator: creator ?? this.creator,
+      creatorName: creatorName ?? this.creatorName,
+      creatorId: creatorId ?? this.creatorId,
+      creatorProfilePicture:
+          creatorProfilePicture ?? this.creatorProfilePicture,
+      title: title ?? this.title,
+      shortDescription: shortDescription ?? this.shortDescription,
+      fullDescription: fullDescription ?? this.fullDescription,
+      category: category ?? this.category,
+      stage: stage ?? this.stage,
+      status: status ?? this.status,
+      fundingMin: fundingMin ?? this.fundingMin,
+      fundingMax: fundingMax ?? this.fundingMax,
+      fundingCurrency: fundingCurrency ?? this.fundingCurrency,
+      locationCountry: locationCountry ?? this.locationCountry,
+      locationCity: locationCity ?? this.locationCity,
+      businessPlan: businessPlan ?? this.businessPlan,
+      videoUrl: videoUrl ?? this.videoUrl,
+      isPremium: isPremium ?? this.isPremium,
+      isFeatured: isFeatured ?? this.isFeatured,
+      isDraft: isDraft ?? this.isDraft,
+      isFavorite: isFavorite ?? this.isFavorite,
+      viewsCount: viewsCount ?? this.viewsCount,
+      interestsCount: interestsCount ?? this.interestsCount,
+      favoritesCount: favoritesCount ?? this.favoritesCount,
+      publishedAt: publishedAt ?? this.publishedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      tags: tags ?? this.tags,
+      mediaList: mediaList ?? this.mediaList,
+      primaryImageUrl: primaryImageUrl ?? this.primaryImageUrl,
+      media: media ?? this.media,
+      needs: needs ?? this.needs,
+      skillsNeeded: skillsNeeded ?? this.skillsNeeded,
+    );
+  }
 }
 
 class CategoryModel {
@@ -596,7 +676,7 @@ class TagModel {
   });
 
   factory TagModel.fromJson(Map<String, dynamic> json) {
-        return TagModel(
+    return TagModel(
       id: json['id']?.toString() ?? '',
       nameFr: json['name_fr']?.toString() ?? 'Tag',
       nameEn: json['name_en']?.toString() ?? 'Tag',
@@ -722,7 +802,7 @@ class ProjectNeedModel {
     if (value is String) {
       try {
         return double.parse(value);
-    } catch (e) {
+      } catch (e) {
         return null;
       }
     }

@@ -208,7 +208,7 @@ Map<String, dynamic> _$PaginatedResponseToJson<T>(
 // RetrofitGenerator
 // **************************************************************************
 
-// ignore_for_file: unnecessary_brace_in_string_interps,no_leading_underscores_for_local_identifiers,unused_element
+// ignore_for_file: unnecessary_brace_in_string_interps,no_leading_underscores_for_local_identifiers,unused_element,unused_element_parameter
 
 class _PaymentApiService implements PaymentApiService {
   _PaymentApiService(

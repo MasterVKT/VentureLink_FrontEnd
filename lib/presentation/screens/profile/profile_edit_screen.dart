@@ -427,7 +427,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     required String Function(String) itemBuilder,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(

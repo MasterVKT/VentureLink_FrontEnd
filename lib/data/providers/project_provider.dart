@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:venturelink/data/models/project_model.dart';
+import 'package:venturelink/data/models/project_filters.dart';
 import 'package:venturelink/data/services/project_api_service.dart';
 import 'package:venturelink/data/services/api_service.dart';
 
@@ -67,9 +68,20 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Charger les projets recommandés
-      final recommendedResult =
-          await _projectApiService.getRecommendedProjects();
+      // Charger tous les projets en parallèle pour améliorer les performances
+      final results = await Future.wait([
+        _projectApiService.getRecommendedProjects(),
+        _projectApiService.getFeaturedProjects(),
+        _projectApiService.getTrendingProjects(),
+        _projectApiService.getProjects(),
+      ]);
+
+      final recommendedResult = results[0] as ProjectListResult;
+      final featuredResult = results[1] as ProjectListResult;
+      final trendingResult = results[2] as ProjectListResult;
+      final allProjectsResult = results[3] as ProjectListResult;
+
+      // Traiter les projets recommandés
       if (recommendedResult.isSuccess && recommendedResult.projects != null) {
         _recommendedProjects = recommendedResult.projects!;
         debugPrint(
@@ -80,8 +92,7 @@ class ProjectProvider extends ChangeNotifier {
         _recommendedProjects = [];
       }
 
-      // Charger les projets en vedette
-      final featuredResult = await _projectApiService.getFeaturedProjects();
+      // Traiter les projets en vedette
       if (featuredResult.isSuccess && featuredResult.projects != null) {
         _featuredProjects = featuredResult.projects!;
         debugPrint(
@@ -92,8 +103,7 @@ class ProjectProvider extends ChangeNotifier {
         _featuredProjects = [];
       }
 
-      // Charger les projets tendance
-      final trendingResult = await _projectApiService.getTrendingProjects();
+      // Traiter les projets tendance
       if (trendingResult.isSuccess && trendingResult.projects != null) {
         _trendingProjects = trendingResult.projects!;
         debugPrint(
@@ -104,8 +114,7 @@ class ProjectProvider extends ChangeNotifier {
         _trendingProjects = [];
       }
 
-      // Charger tous les projets
-      final allProjectsResult = await _projectApiService.getProjects();
+      // Traiter tous les projets
       if (allProjectsResult.isSuccess && allProjectsResult.projects != null) {
         _projects = allProjectsResult.projects!;
         debugPrint(
@@ -115,6 +124,7 @@ class ProjectProvider extends ChangeNotifier {
             '[ProjectProvider] Erreur lors du chargement de tous les projets: ${allProjectsResult.error}');
         _projects = [];
       }
+
     } catch (e) {
       debugPrint('Erreur lors du chargement des projets: $e');
       // En cas d'erreur, initialiser avec des listes vides pour éviter les erreurs null
@@ -300,12 +310,20 @@ Future<List<ProjectModel>> fetchProjectsPage({
     try {
       final success = await _projectApiService.toggleFavorite(projectId);
       if (success) {
-        // Mettre à jour localement (on pourrait aussi recharger le projet)
+        // Mettre à jour localement avec copyWith pour refléter le changement dans l'UI
         final index = _projects.indexWhere((p) => p.id == projectId);
         if (index != -1) {
-          // Note: Il faudrait ajouter un champ isFavorite au modèle
-          notifyListeners();
+          _projects[index] = _projects[index].copyWith(
+            isFavorite: !_projects[index].isFavorite,
+          );
         }
+        // Mettre à jour aussi le projet courant si c'est le même
+        if (_currentProject?.id == projectId) {
+          _currentProject = _currentProject!.copyWith(
+            isFavorite: !_currentProject!.isFavorite,
+          );
+        }
+        notifyListeners();
       }
       return success;
     } catch (e) {
@@ -383,17 +401,84 @@ Future<List<ProjectModel>> fetchProjectsPage({
 
   /// Rechercher des projets
   Future<void> searchProjects(String query) async {
-    await loadProjects(forceRefresh: true);
+    final filters = ProjectFilters(searchQuery: query.isNotEmpty ? query : null);
+    await _loadProjectsWithFilters(filters);
   }
 
   /// Filtrer par catégorie
   Future<void> filterByCategory(String categoryId) async {
-    await loadProjects(forceRefresh: true);
+    final filters = ProjectFilters(categoryId: categoryId.isNotEmpty ? categoryId : null);
+    await _loadProjectsWithFilters(filters);
   }
 
   /// Filtrer par stage
   Future<void> filterByStage(String stage) async {
-    await loadProjects(forceRefresh: true);
+    final filters = ProjectFilters(stage: stage.isNotEmpty ? stage : null);
+    await _loadProjectsWithFilters(filters);
+  }
+
+  /// Charger les projets avec filtres (pour ProjectListScreen)
+  Future<void> loadProjectsWithFilters(ProjectFilters filters) async {
+    if (_isLoadingProjects) return;
+
+    _isLoadingProjects = true;
+    notifyListeners();
+
+    try {
+      final result = await _projectApiService.getProjects(
+        page: 1,
+        pageSize: 20,
+        filters: filters,
+      );
+
+      if (result.isSuccess && result.projects != null) {
+        _projects = result.projects!;
+        debugPrint('[ProjectProvider] ${_projects.length} projets chargés avec filtres');
+      } else {
+        debugPrint('[ProjectProvider] Erreur lors du chargement avec filtres: ${result.error}');
+        _projects = [];
+      }
+    } catch (e) {
+      debugPrint('Erreur lors du chargement avec filtres: $e');
+      _projects = [];
+    } finally {
+      _isLoadingProjects = false;
+      notifyListeners();
+    }
+  }
+
+  /// Ajouter des projets à la liste (pour pagination)
+  void appendProjects(List<ProjectModel> newProjects) {
+    _projects.addAll(newProjects);
+    notifyListeners();
+  }
+
+  /// Charger les projets avec filtres
+  Future<void> _loadProjectsWithFilters(ProjectFilters filters) async {
+    if (_isLoadingProjects) return;
+
+    _isLoadingProjects = true;
+    notifyListeners();
+
+    try {
+      final result = await _projectApiService.getProjects(
+        filters: filters,
+      );
+
+      if (result.isSuccess && result.projects != null) {
+        _projects = result.projects!;
+        debugPrint('[ProjectProvider] ${_projects.length} projets chargés avec filtres');
+      } else {
+        debugPrint('[ProjectProvider] Erreur lors du chargement avec filtres: ${result.error}');
+        _projects = [];
+      }
+    } catch (e) {
+      debugPrint('Erreur lors du chargement avec filtres: $e');
+      _projects = [];
+    } finally {
+      _isLoadingProjects = false;
+      notifyListeners();
+    }
   }
 
   /// Réinitialiser les filtres
@@ -621,6 +706,9 @@ Future<List<ProjectModel>> fetchProjectsPage({
   /// Getter pour les brouillons de l'utilisateur
   List<ProjectModel> get userDrafts =>
       _projects.where((p) => p.isDraft).toList();
+
+  /// Getter pour accéder à l'API service (utilisé par PagingController)
+  ProjectApiService getApiService() => _projectApiService;
 
   /// Tri des projets pour mettre les premium en premier
   void _sortProjectsWithPremiumFirst() {

@@ -60,7 +60,9 @@ class VentureTimePicker extends StatelessWidget {
               surface: AppTheme.white,
               onSurface: AppTheme.black,
             ),
-            dialogBackgroundColor: AppTheme.white,
+            dialogTheme: const DialogThemeData(
+              surfaceTintColor: AppTheme.white,
+            ),
           ),
           child: child!,
         );

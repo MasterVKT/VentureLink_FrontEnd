@@ -311,7 +311,7 @@ class PremiumUpgradePrompt extends StatelessWidget {
     }
 
     return Card(
-      color: Colors.amber.withOpacity(0.1),
+      color: Colors.amber.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

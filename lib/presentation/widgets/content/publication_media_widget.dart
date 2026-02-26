@@ -332,7 +332,6 @@ class PublicationMediaWidget extends StatelessWidget {
 
   String _formatFileSize(int bytes) {
     if (bytes == 0) return '0 Bytes';
-    const k = 1024;
     final sizes = ['Bytes', 'KB', 'MB', 'GB'];
     final i = (bytes > 0 ? (bytes.bitLength - 1) ~/ 10 : 0)
         .clamp(0, sizes.length - 1);

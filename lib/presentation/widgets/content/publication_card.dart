@@ -340,17 +340,6 @@ class PublicationCard extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  Widget _buildImageGallery(
-      BuildContext context, List<PublicationMedia> images) {
-    if (images.length == 1) {
-      return _buildSingleImage(context, images.first);
-    } else if (images.length == 2) {
-      return _buildTwoImages(context, images);
-    } else {
-      return _buildMultipleImages(context, images);
-    }
-  }
-
   Widget _buildSingleImage(BuildContext context, PublicationMedia image) {
     return AspectRatio(
       aspectRatio: 16 / 9,
@@ -365,93 +354,6 @@ class PublicationCard extends StatelessWidget {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Icon(Icons.image_not_supported),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTwoImages(BuildContext context, List<PublicationMedia> images) {
-    return SizedBox(
-      height: 200,
-      child: Row(
-        children: [
-          Expanded(
-            child: CachedNetworkImage(
-              imageUrl: images[0].fullUrl,
-              fit: BoxFit.cover,
-              height: 200,
-            ),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            child: CachedNetworkImage(
-              imageUrl: images[1].fullUrl,
-              fit: BoxFit.cover,
-              height: 200,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMultipleImages(
-      BuildContext context, List<PublicationMedia> images) {
-    return SizedBox(
-      height: 200,
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: CachedNetworkImage(
-              imageUrl: images[0].fullUrl,
-              fit: BoxFit.cover,
-              height: 200,
-            ),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: CachedNetworkImage(
-                    imageUrl: images[1].fullUrl,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                if (images.length > 2) ...[
-                  const SizedBox(height: 2),
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: images[2].fullUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
-                        if (images.length > 3)
-                          Container(
-                            color: Colors.black54,
-                            child: Center(
-                              child: Text(
-                                '+${images.length - 3}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
