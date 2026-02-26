@@ -8,11 +8,14 @@ class LoadingStateWidget extends StatelessWidget {
   /// true = chargement initial (gros spinner centré)
   /// false = chargement page suivante (petit spinner en bas de liste)
   final bool isInitialLoading;
+/// Widget de chargement centralisé réutilisable
+  final bool showSpinner;
 
   const LoadingStateWidget({
     super.key,
     this.message,
     this.isInitialLoading = true,
+    this.showSpinner = true,
   });
 
   @override
@@ -53,6 +56,26 @@ class LoadingStateWidget extends StatelessWidget {
           height: 28,
           child: CircularProgressIndicator(strokeWidth: 3),
         ),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (showSpinner)
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          if (message != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              message!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -895,6 +895,8 @@ class ProjectListResult {
         if (item != null && item is Map<String, dynamic>) {
           try {
             // Compter les champs manquants sans les logger individuellement
+            int missingFieldsCount = 0;
+
             if (item['updated_at'] == null ||
                 item['created_at'] == null ||
                 item['category'] == null ||

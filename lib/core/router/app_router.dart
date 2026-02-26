@@ -21,6 +21,8 @@ import 'package:venturelink/presentation/screens/search/search_screen.dart';
 import 'package:venturelink/presentation/screens/project/project_create_screen.dart';
 import 'package:venturelink/presentation/screens/project/project_create_screen_enhanced.dart';
 import 'package:venturelink/presentation/screens/project/project_detail_screen.dart';
+import 'package:venturelink/presentation/screens/project/project_list_screen.dart';
+import 'package:venturelink/presentation/screens/project/favorites_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_list_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_create_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_detail_screen.dart';
@@ -42,6 +44,8 @@ part 'app_router.gr.dart';
 
 @AutoRouterConfig()
 class AppRouter extends _$AppRouter {
+  AppRouter() : super(navigatorKey: GlobalKey<NavigatorState>());
+
   @override
   List<AutoRoute> get routes => [
         AutoRoute(
@@ -124,12 +128,20 @@ class AppRouter extends _$AppRouter {
           page: ProjectCreateRoute.page,
         ),
         AutoRoute(
+          path: '/project-list',
+          page: ProjectListRoute.page,
+        ),
+        AutoRoute(
           path: '/search',
           page: SearchRoute.page,
         ),
         AutoRoute(
           path: '/project-detail',
           page: ProjectDetailRoute.page,
+        ),
+        AutoRoute(
+          path: '/favorites',
+          page: FavoritesRoute.page,
         ),
         AutoRoute(
           path: '/investment-create/:projectId',

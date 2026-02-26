@@ -156,6 +156,34 @@ class ProjectProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+  /// Charger les projets avec pagination
+Future<List<ProjectModel>> fetchProjectsPage({
+  required int page,
+  int pageSize = 20,
+}) async {
+  try {
+    debugPrint('[ProjectProvider] 📥 Chargement page $page ($pageSize projets)');
+    
+    // Charger tous les projets (pour l'instant)
+    await loadProjects();
+    
+    // Calculer les index de début et fin
+    final startIndex = (page - 1) * pageSize;
+    final endIndex = startIndex + pageSize;
+    
+    // Retourner les projets de cette page
+    if (startIndex >= _projects.length) {
+      return []; // Pas de projets pour cette page
+    }
+    
+    final end = endIndex > _projects.length ? _projects.length : endIndex;
+    return _projects.sublist(startIndex, end);
+    
+  } catch (e) {
+    debugPrint('[ProjectProvider] ❌ Erreur chargement page: $e');
+    rethrow;
+  }
+}
 
   /// Créer un nouveau projet
   Future<bool> createProject({

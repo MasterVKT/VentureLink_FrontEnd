@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/core/theme/app_theme.dart';
@@ -8,7 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 class ProjectCard extends StatelessWidget {
   final ProjectModel project;
   final VoidCallback? onTap;
-  final VoidCallback? onFavoriteToggle;
+  final VoidCallback? onFavoriteToggle; //  Action quand on clique sur le cœur
   final bool showStats;
 
   const ProjectCard({
@@ -46,6 +47,83 @@ class ProjectCard extends StatelessWidget {
             ),
 
             // Contenu principal
+            // 
+            //  MODIFIÉ : Image + Bouton Favori superposé
+            // 
+            Stack(
+              children: [
+                // Image du projet (code existant)
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: SizedBox(
+                    height: 180,
+                    width: double.infinity,
+                    child: project.images.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: project.images.first,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[200],
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: const Icon(
+                              Icons.business_center,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
+                          ),
+                  ),
+                ),
+
+                //  NOUVEAU : Bouton Favori en haut à droite
+                if (onFavoriteToggle != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: onFavoriteToggle,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          // Cœur plein si favori, vide sinon
+                          project.isFavorite 
+                              ? Icons.favorite 
+                              : Icons.favorite_border,
+                          color: const Color(0xFFE74C3C), // Rouge selon Sprint
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            // Contenu de la carte (code existant - inchangé)
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -148,6 +226,47 @@ class ProjectCard extends StatelessWidget {
                     fontSize: 10,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          project.category.toString(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (project.location.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            project.location,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
