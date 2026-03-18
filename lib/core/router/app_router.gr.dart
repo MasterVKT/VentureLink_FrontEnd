@@ -391,6 +391,43 @@ class FavoritesRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [InvestmentFormScreen]
+class InvestmentFormRoute extends PageRouteInfo<InvestmentFormRouteArgs> {
+  InvestmentFormRoute({
+    Key? key,
+    required ProjectModel project,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InvestmentFormRoute.name,
+          args: InvestmentFormRouteArgs(
+            key: key,
+            project: project,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InvestmentFormRoute';
+
+  static const PageInfo<InvestmentFormRouteArgs> page =
+      PageInfo<InvestmentFormRouteArgs>(name);
+}
+
+class InvestmentFormRouteArgs {
+  const InvestmentFormRouteArgs({
+    this.key,
+    required this.project,
+  });
+
+  final Key? key;
+  final ProjectModel project;
+
+  @override
+  String toString() {
+    return 'InvestmentFormRouteArgs{key: $key, project: $project}';
+  }
+}
+
+/// generated route for
 /// [ForgotPasswordScreen]
 class ForgotPasswordRoute extends PageRouteInfo<void> {
   const ForgotPasswordRoute({List<PageRouteInfo>? children})
