@@ -7,6 +7,7 @@ import 'package:venturelink/presentation/screens/auth/forgot_password_screen.dar
 import 'package:venturelink/presentation/screens/main/main_screen.dart';
 import 'package:venturelink/presentation/screens/home/home_screen.dart';
 import 'package:venturelink/presentation/screens/home/home_screen_enhanced.dart';
+import 'package:venturelink/presentation/screens/discover/discover_screen.dart';
 import 'package:venturelink/presentation/screens/content/content_screen.dart';
 import 'package:venturelink/presentation/screens/content/publication_detail_screen.dart';
 import 'package:venturelink/presentation/screens/messaging/messaging_screen.dart';
@@ -72,6 +73,10 @@ class AppRouter extends _$AppRouter {
             AutoRoute(
               path: 'home',
               page: HomeRoute.page,
+            ),
+            AutoRoute(
+              path: 'discover',
+              page: DiscoverRoute.page,
             ),
             AutoRoute(
               path: 'content',
