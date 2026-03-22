@@ -771,6 +771,8 @@ class ProjectApiService {
       debugPrint('   3. Vérifier les CORS si nécessaire');
     }
   }
+
+  Future<Object?> getFavorites() async {}
 }
 
 class ProjectListResult {

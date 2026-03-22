@@ -10,6 +10,7 @@ import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/core/config/app_config.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/presentation/widgets/project/interest_expression_widget.dart';
+import 'package:venturelink/presentation/widgets/skeleton/project_detail_skeleton.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
@@ -172,16 +173,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   }
 
   Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text('Chargement du projet...'),
-        ],
-      ),
-    );
+    return const ProjectDetailSkeleton();
   }
 
   Widget _buildErrorState(String error) {
@@ -364,7 +356,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         Text(
           project.shortDescription,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.7),
               ),
         ),
 
@@ -417,7 +412,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         Text(
           'Publié le ${DateFormat('dd/MM/yyyy').format(project.publishedAt ?? project.createdAt ?? DateTime.now())}',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
               ),
         ),
       ],
@@ -444,7 +442,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   minimumSize: const Size(0, 48), // Accessibilité
                   backgroundColor: _hasInterest
-                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                      ? Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.1)
                       : null,
                 ),
               ),
@@ -724,7 +725,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         Text(
           count,
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
