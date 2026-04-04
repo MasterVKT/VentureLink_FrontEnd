@@ -18,6 +18,10 @@ class ProjectProvider extends ChangeNotifier {
   String? _error;
   bool _isLoadingProjects = false;
 
+// Favoris
+List<ProjectModel> _favoriteProjects = [];
+bool _isLoadingFavorites = false;
+
   // Pagination
   int _currentPage = 1;
   bool _hasMore = true;
@@ -41,6 +45,9 @@ class ProjectProvider extends ChangeNotifier {
   int get currentPage => _currentPage;
   ProjectFilters get filters => _filters;
   bool get isLoadingMore => _isLoadingMore;
+
+List<ProjectModel> get favoriteProjects => _favoriteProjects;
+bool get isLoadingFavorites => _isLoadingFavorites;
 
   // Getter pour les projets de l'utilisateur actuel
   List<ProjectModel> get userProjects =>
@@ -694,4 +701,79 @@ Future<List<ProjectModel>> fetchProjectsPage({
           .compareTo(a.createdAt ?? DateTime.now());
     });
   }
+
+Future<void> loadFavoriteProjects() async {
+  _isLoadingFavorites = true;
+  notifyListeners();
+
+  try {
+    final result = await _projectApiService.getFavorites();
+
+    if (result?.isSuccess == true && result?.projects != null) {
+      _favoriteProjects = result!.projects!;
+    } else {
+      _favoriteProjects = [];
+    }
+  } catch (e) {
+    debugPrint('[ProjectProvider] Erreur chargement favoris: $e');
+    _favoriteProjects = [];
+  } finally {
+    _isLoadingFavorites = false;
+    notifyListeners();
+  }
+}
+
+Future<void> addToFavorites(String projectId) async {
+  // Le projet n'est pas encore favori → on appelle toggleFavorite
+  final success = await _projectApiService.toggleFavorite(projectId);
+
+  if (success) {
+    // Mettre à jour dans la liste principale
+    final index = _projects.indexWhere((p) => p.id == projectId);
+    if (index != -1) {
+      _projects[index] = _projects[index].copyWith(isFavorite: true);
+    }
+
+    // Mettre à jour le projet courant si c'est le même
+    if (_currentProject?.id == projectId) {
+      _currentProject = _currentProject!.copyWith(isFavorite: true);
+    }
+
+    notifyListeners();
+  } else {
+    // Si l'API échoue, on remonte l'erreur pour que ProjectCard fasse le rollback
+    throw Exception('Impossible d\'ajouter aux favoris');
+  }
+}
+
+Future<void> removeFromFavorites(String projectId) async {
+  // Le projet est déjà favori → on appelle toggleFavorite pour l'enlever
+  final success = await _projectApiService.toggleFavorite(projectId);
+
+  if (success) {
+    // Mettre à jour dans la liste principale
+    final index = _projects.indexWhere((p) => p.id == projectId);
+    if (index != -1) {
+      _projects[index] = _projects[index].copyWith(isFavorite: false);
+    }
+
+    // Mettre à jour le projet courant si c'est le même
+    if (_currentProject?.id == projectId) {
+      _currentProject = _currentProject!.copyWith(isFavorite: false);
+    }
+
+    // Retirer aussi de la liste favoris si elle est chargée
+    _favoriteProjects.removeWhere((p) => p.id == projectId);
+
+    notifyListeners();
+  } else {
+    throw Exception('Impossible de retirer des favoris');
+  }
+}
+}
+
+extension on Object? {
+  get isSuccess => null;
+  
+  get projects => null;
 }

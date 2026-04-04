@@ -1,31 +1,53 @@
+// lib/presentation/widgets/project/interest_expression_widget.dart
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:venturelink/data/providers/project_provider.dart';
-import 'package:venturelink/data/providers/auth_provider.dart';
 import 'package:venturelink/data/models/project_model.dart';
+import 'package:venturelink/data/providers/project_provider.dart';
 
-class InterestExpressionWidget extends StatefulWidget {
+/// Helper pour afficher le bottom sheet d'expression d'intérêt
+/// Utilisé dans ProjectDetailScreen via InterestExpressionHelper.show()
+class InterestExpressionHelper {
+  /// Affiche le bottom sheet et retourne quand l'utilisateur a terminé
+  static Future<void> show(
+    BuildContext context,
+    ProjectModel project, {
+    required VoidCallback onSuccess,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // S'adapte au clavier
+      backgroundColor: Colors.transparent,
+      builder: (context) => _InterestExpressionSheet(
+        project: project,
+        onSuccess: onSuccess,
+      ),
+    );
+  }
+}
+
+/// Le bottom sheet d'expression d'intérêt
+class _InterestExpressionSheet extends StatefulWidget {
   final ProjectModel project;
-  final VoidCallback? onSuccess;
+  final VoidCallback onSuccess;
 
-  const InterestExpressionWidget({
-    super.key,
+  const _InterestExpressionSheet({
     required this.project,
-    this.onSuccess,
+    required this.onSuccess,
   });
 
   @override
-  State<InterestExpressionWidget> createState() =>
-      _InterestExpressionWidgetState();
+  State<_InterestExpressionSheet> createState() =>
+      _InterestExpressionSheetState();
 }
 
-class _InterestExpressionWidgetState extends State<InterestExpressionWidget> {
+class _InterestExpressionSheetState extends State<_InterestExpressionSheet> {
   final _formKey = GlobalKey<FormState>();
   final _messageController = TextEditingController();
   final _amountController = TextEditingController();
+
   bool _isAnonymous = false;
-  bool _isLoading = false;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -36,268 +58,287 @@ class _InterestExpressionWidgetState extends State<InterestExpressionWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Padding pour éviter que le clavier cache le contenu
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Poignée
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Titre
-              Text(
-                'Manifester votre intérêt',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-
-              Text(
-                'Exprimez votre intérêt pour "${widget.project.title}"',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.7),
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-
-              // Message
-              TextFormField(
-                controller: _messageController,
-                decoration: const InputDecoration(
-                  labelText: 'Message au créateur',
-                  helperText: 'Expliquez votre intérêt pour ce projet',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.message_outlined),
-                ),
-                maxLines: 4,
-                textInputAction: TextInputAction.next,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Veuillez saisir un message';
-                  }
-                  if (value.trim().length < 10) {
-                    return 'Le message doit contenir au moins 10 caractères';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Montant d'investissement potentiel
-              TextFormField(
-                controller: _amountController,
-                decoration: const InputDecoration(
-                  labelText: 'Montant d\'investissement potentiel',
-                  helperText:
-                      'Montant que vous seriez prêt à investir (optionnel)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.euro),
-                  suffixText: 'EUR',
-                ),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    final amount = int.tryParse(value);
-                    if (amount == null || amount <= 0) {
-                      return 'Veuillez saisir un montant valide';
-                    }
-                    if (amount < 100) {
-                      return 'Le montant minimum est de 100 EUR';
-                    }
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Option anonyme
-              Row(
-                children: [
-                  Checkbox(
-                    value: _isAnonymous,
-                    onChanged: (value) {
-                      setState(() {
-                        _isAnonymous = value ?? false;
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Exprimer mon intérêt de manière anonyme',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              // Boutons d'action
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed:
-                          _isLoading ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Annuler'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleSubmit,
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Manifester mon intérêt'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHandle(),
+            const SizedBox(height: 16),
+            _buildHeader(),
+            const SizedBox(height: 24),
+            _buildMessageField(),
+            const SizedBox(height: 16),
+            _buildAmountField(),
+            const SizedBox(height: 16),
+            _buildAnonymousToggle(),
+            const SizedBox(height: 24),
+            _buildButtons(),
+          ],
         ),
       ),
     );
   }
 
-  Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  // ── WIDGETS ───────────────────────────────────────────────────────────────
 
-    // Feedback haptique
-    HapticFeedback.selectionClick();
+  /// Barre de "drag" en haut du bottom sheet
+  Widget _buildHandle() {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Manifester mon intérêt',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Pour "${widget.project.title}"',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[600],
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Le créateur sera notifié de votre intérêt.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[500],
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMessageField() {
+    return TextFormField(
+      controller: _messageController,
+      maxLines: 3,
+      maxLength: 300,
+      decoration: InputDecoration(
+        labelText: 'Message (optionnel)',
+        hintText: 'Dites au créateur pourquoi ce projet vous intéresse...',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignLabelWithHint: true,
+      ),
+    );
+  }
+
+  Widget _buildAmountField() {
+    return TextFormField(
+      controller: _amountController,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: 'Montant envisagé (optionnel)',
+        hintText: 'Ex: 500000',
+        suffixText: 'FCFA',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        helperText: 'Cela aide le créateur à estimer les investissements',
+      ),
+      validator: (value) {
+        if (value != null && value.isNotEmpty) {
+          final amount = double.tryParse(value);
+          if (amount == null || amount <= 0) {
+            return 'Veuillez entrer un montant valide';
+          }
+        }
+        return null; // Champ optionnel
+      },
+    );
+  }
+
+  Widget _buildAnonymousToggle() {
+    return Row(
+      children: [
+        Switch(
+          value: _isAnonymous,
+          onChanged: (value) {
+            setState(() {
+              _isAnonymous = value;
+            });
+          },
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Rester anonyme',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                'Le créateur ne verra pas votre nom',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildButtons() {
+    return Row(
+      children: [
+        // Bouton Annuler
+        Expanded(
+          child: OutlinedButton(
+            onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Annuler'),
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        // Bouton Confirmer
+        Expanded(
+          flex: 2,
+          child: ElevatedButton(
+            onPressed: _isSubmitting ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Confirmer mon intérêt'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── LOGIQUE ───────────────────────────────────────────────────────────────
+
+  Future<void> _submit() async {
+    // Valider le formulaire
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
-      _isLoading = true;
+      _isSubmitting = true;
     });
 
     try {
-      final projectProvider = context.read<ProjectProvider>();
-      final authProvider = context.read<AuthProvider>();
+      final provider = context.read<ProjectProvider>();
 
-      if (authProvider.currentUser == null) {
-        throw Exception(
-            'Vous devez être connecté pour manifester votre intérêt');
-      }
-
-      final amount = _amountController.text.isNotEmpty
-          ? double.tryParse(_amountController.text)
-          : null;
-
-      final success = await projectProvider.expressInterest(
+      final success = await provider.expressInterest(
         widget.project.id,
-        message: _messageController.text.trim(),
-        amount: amount,
+        message: _messageController.text.trim().isEmpty
+            ? null
+            : _messageController.text.trim(),
+        amount: _amountController.text.trim().isEmpty
+            ? null
+            : double.tryParse(_amountController.text.trim()),
         isAnonymous: _isAnonymous,
       );
 
       if (success && mounted) {
-        Navigator.of(context).pop();
+        // Fermer le bottom sheet
+        Navigator.pop(context);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isAnonymous
-                ? 'Intérêt manifesté de manière anonyme'
-                : 'Intérêt manifesté avec succès'),
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'Voir',
-              onPressed: () {
-                // Optionnel: naviguer vers les intérêts
-              },
-            ),
-          ),
-        );
+        // Appeler le callback de succès → met à jour _hasInterest dans DetailScreen
+        widget.onSuccess();
 
-        widget.onSuccess?.call();
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur lors de l\'expression d\'intérêt'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        // Afficher le dialog de confirmation
+        _showSuccessDialog();
+      } else if (mounted) {
+        _showErrorSnackBar('Erreur lors de l\'envoi. Réessaie plus tard.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showErrorSnackBar('Erreur de connexion.');
       }
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isSubmitting = false;
         });
       }
     }
   }
-}
 
-// Helper pour afficher le bottom sheet
-class InterestExpressionHelper {
-  static Future<void> show(
-    BuildContext context,
-    ProjectModel project, {
-    VoidCallback? onSuccess,
-  }) async {
-    await showModalBottomSheet<void>(
+  void _showSuccessDialog() {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => InterestExpressionWidget(
-        project: project,
-        onSuccess: onSuccess,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 12),
+            Text('Intérêt envoyé !'),
+          ],
+        ),
+        content: Text(
+          'Le créateur de "${widget.project.title}" a été notifié '
+          'de votre intérêt. Il pourra vous contacter pour discuter '
+          'des opportunités d\'investissement.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Super !'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red,
       ),
     );
   }
