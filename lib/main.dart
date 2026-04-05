@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:venturelink/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:venturelink/core/config/config_service.dart';
@@ -28,10 +27,13 @@ import 'package:venturelink/data/providers/investment_provider.dart';
 import 'package:venturelink/data/providers/profile_provider.dart';
 import 'package:venturelink/data/providers/matching_provider.dart';
 import 'package:venturelink/data/providers/user_stats_provider.dart';
+import 'package:venturelink/data/providers/discover_provider.dart';
 import 'package:venturelink/data/services/api_service.dart';
 import 'package:venturelink/data/services/auth_service.dart';
 import 'package:venturelink/data/services/messaging_api_service.dart';
 import 'package:venturelink/data/services/websocket_service.dart';
+import 'package:venturelink/data/services/discover_api_service.dart';
+import 'package:venturelink/domain/services/i_api_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -142,6 +144,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => ContentProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DiscoverProvider(DiscoverApiService(apiService as IApiService)),
         ),
       ],
       child: MyApp(
