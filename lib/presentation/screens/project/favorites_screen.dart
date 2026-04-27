@@ -70,7 +70,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   project: project,
                   onTap: () => _navigateToDetail(project.id),
                   showStats: true,
-                  onFavoriteToggle: () => _toggleFavorite(project.id),
                 );
               },
             ),

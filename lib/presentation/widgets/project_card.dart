@@ -13,14 +13,12 @@ class ProjectCard extends StatefulWidget {
   final ProjectModel project;
   final VoidCallback? onTap;
   final bool showStats;
-  final Future<dynamic> Function() onFavoriteToggle;
 
   const ProjectCard({
     super.key,
     required this.project,
     this.onTap,
     this.showStats = true,
-    required this.onFavoriteToggle,
   });
 
   @override
@@ -173,7 +171,7 @@ class _ProjectCardState extends State<ProjectCard>
     try {
       if (_isFavorite) {
         await provider.addToFavorites(widget.project.id);
-        _showSnackBar('coeur Ajouté aux favoris');
+        _showSnackBar('❤️ Ajouté aux favoris');
       } else {
         await provider.removeFromFavorites(widget.project.id);
         _showSnackBar('Retiré des favoris');
@@ -201,8 +199,8 @@ class _ProjectCardState extends State<ProjectCard>
   // ── BUILD METHODS (identiques au Sprint 1) ────────────────────────────────
 
   Widget _buildCoverImage() {
-    final imageUrl =
-        widget.project.primaryImageFullUrl ?? widget.project.primaryImageUrl;
+    final imageUrl = widget.project.primaryImageFullUrl ??
+        widget.project.primaryImageUrl;
 
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return CachedNetworkImage(
@@ -397,7 +395,8 @@ class _ProjectCardState extends State<ProjectCard>
           value: fundingProgress,
           minHeight: 6,
           backgroundColor: Colors.grey[300],
-          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF27AE60)),
+          valueColor:
+              const AlwaysStoppedAnimation<Color>(Color(0xFF27AE60)),
           borderRadius: BorderRadius.circular(3),
         ),
       ],

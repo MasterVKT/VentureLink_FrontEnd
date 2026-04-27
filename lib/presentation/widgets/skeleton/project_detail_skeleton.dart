@@ -12,15 +12,19 @@ class ProjectDetailSkeleton extends StatelessWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // App Bar skeleton
-          SliverToBoxAdapter(
-            child: Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Container(
-                height: 280,
-                width: double.infinity,
-                color: Colors.grey[300],
+          // SliverAppBar skeleton — mime l'AppBar expandée de ProjectDetailScreen
+          SliverAppBar(
+            expandedHeight: 280,
+            pinned: true,
+            automaticallyImplyLeading: false,
+            backgroundColor: Colors.grey[300],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  color: Colors.grey[300],
+                ),
               ),
             ),
           ),
