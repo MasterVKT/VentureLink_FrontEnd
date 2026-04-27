@@ -10,7 +10,6 @@ import 'package:venturelink/core/navigation/navigation_service.dart';
 import 'package:venturelink/core/router/app_router.dart';
 import 'package:venturelink/core/theme/app_theme.dart';
 import 'package:venturelink/core/utils/logger.dart';
-import 'package:venturelink/l10n/app_localizations.dart';
 import 'package:venturelink/data/providers/content_provider.dart';
 import 'package:venturelink/data/providers/auth_provider.dart';
 import 'package:venturelink/data/providers/notification_provider.dart';
