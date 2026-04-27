@@ -4,7 +4,7 @@ import 'dart:io'
 
 class AppConfig {
   // Configuration API
-  static const String baseUrl = 'http:// 192.168.26.1:8000/api/v1';
+  static const String baseUrl = 'http:// 192.168.56.1:8000/api/v1';
   static String get _devApiBaseUrl {
     // Vérifier si nous sommes sur le web
     if (kIsWeb) {
@@ -33,17 +33,17 @@ class AppConfig {
   static String get _devWebsocketBaseUrl {
     // Vérifier si nous sommes sur le web
     if (kIsWeb) {
-      return 'ws:// 192.168.26.1:8000';
+      return 'ws:// 192.168.56.1:8000';
     }
 
     try {
       if (Platform.isAndroid) {
-        return 'ws:// 192.168.26.1:8000';
+        return 'ws:// 192.168.56.1:8000';
       }
     } catch (e) {
       // Ignorer les erreurs de plateforme non supportée
     }
-    return 'ws:// 192.168.26.1:8000';
+    return 'ws:// 192.168.56.1:8000';
   }
 
   static const String _prodWebsocketBaseUrl = 'wss://api.venturelink.com';

@@ -7,6 +7,7 @@ import 'package:venturelink/presentation/screens/auth/forgot_password_screen.dar
 import 'package:venturelink/presentation/screens/main/main_screen.dart';
 import 'package:venturelink/presentation/screens/home/home_screen.dart';
 import 'package:venturelink/presentation/screens/home/home_screen_enhanced.dart';
+import 'package:venturelink/presentation/screens/discover/discover_screen.dart';
 import 'package:venturelink/presentation/screens/content/content_screen.dart';
 import 'package:venturelink/presentation/screens/content/publication_detail_screen.dart';
 import 'package:venturelink/presentation/screens/messaging/messaging_screen.dart';
@@ -26,6 +27,7 @@ import 'package:venturelink/presentation/screens/project/favorites_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_list_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_create_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_detail_screen.dart';
+import 'package:venturelink/presentation/screens/investment/investment_form_screen.dart';
 import 'package:venturelink/presentation/screens/onboarding/onboarding_screen.dart';
 import 'package:venturelink/presentation/screens/subscription/premium_screen.dart';
 import 'package:venturelink/presentation/screens/subscription/payment_webview_screen.dart';
@@ -37,6 +39,7 @@ import 'package:venturelink/presentation/screens/search/advanced_search_screen.d
 import 'package:venturelink/presentation/screens/settings/privacy_screen.dart';
 import 'package:venturelink/presentation/screens/settings/support_screen.dart';
 import 'package:venturelink/data/models/subscription_plan_model.dart';
+import 'package:venturelink/data/models/project_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:venturelink/data/models/user_model.dart';
 
@@ -72,6 +75,10 @@ class AppRouter extends _$AppRouter {
             AutoRoute(
               path: 'home',
               page: HomeRoute.page,
+            ),
+            AutoRoute(
+              path: 'discover',
+              page: DiscoverRoute.page,
             ),
             AutoRoute(
               path: 'content',
@@ -146,6 +153,10 @@ class AppRouter extends _$AppRouter {
         AutoRoute(
           path: '/investment-create/:projectId',
           page: InvestmentCreateRoute.page,
+        ),
+        AutoRoute(
+          path: '/investment-form',
+          page: InvestmentFormRoute.page,
         ),
         AutoRoute(
           path: '/investment-detail/:investmentId',

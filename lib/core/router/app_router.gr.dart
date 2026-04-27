@@ -44,6 +44,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DashboardScreen(),
       );
     },
+    DiscoverRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const DiscoverScreen(),
+      );
+    },
     FavoritesRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -357,6 +363,20 @@ class DashboardRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [DiscoverScreen]
+class DiscoverRoute extends PageRouteInfo<void> {
+  const DiscoverRoute({List<PageRouteInfo>? children})
+      : super(
+          DiscoverRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'DiscoverRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [FavoritesScreen]
 class FavoritesRoute extends PageRouteInfo<void> {
   const FavoritesRoute({List<PageRouteInfo>? children})
@@ -368,6 +388,43 @@ class FavoritesRoute extends PageRouteInfo<void> {
   static const String name = 'FavoritesRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [InvestmentFormScreen]
+class InvestmentFormRoute extends PageRouteInfo<InvestmentFormRouteArgs> {
+  InvestmentFormRoute({
+    Key? key,
+    required ProjectModel project,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InvestmentFormRoute.name,
+          args: InvestmentFormRouteArgs(
+            key: key,
+            project: project,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InvestmentFormRoute';
+
+  static const PageInfo<InvestmentFormRouteArgs> page =
+      PageInfo<InvestmentFormRouteArgs>(name);
+}
+
+class InvestmentFormRouteArgs {
+  const InvestmentFormRouteArgs({
+    this.key,
+    required this.project,
+  });
+
+  final Key? key;
+  final ProjectModel project;
+
+  @override
+  String toString() {
+    return 'InvestmentFormRouteArgs{key: $key, project: $project}';
+  }
 }
 
 /// generated route for
