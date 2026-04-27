@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:venturelink/core/services/haptic_service.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
@@ -762,7 +762,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   // Actions avec feedback visuel et haptique
   Future<void> _handleToggleFavorite(ProjectModel project) async {
     // Feedback haptique
-    HapticFeedback.lightImpact();
+    await HapticService.lightTap();
 
     // Animation
     if (!_isFavorited) {
@@ -827,7 +827,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
   Future<void> _handleToggleInterest(ProjectModel project) async {
     // Feedback haptique
-    HapticFeedback.selectionClick();
+    await HapticService.selection();
 
     if (_hasInterest) {
       // Si l'utilisateur a déjà manifesté son intérêt, le retirer directement
@@ -897,7 +897,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
   Future<void> _handleShare(ProjectModel project) async {
     // Feedback haptique
-    HapticFeedback.selectionClick();
+    await HapticService.selection();
 
     try {
       final shareUrl = 'https://venturelink.com/projects/${project.id}';
@@ -925,7 +925,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
   Future<void> _handleContact(ProjectModel project) async {
     // Feedback haptique
-    HapticFeedback.selectionClick();
+    await HapticService.selection();
 
     try {
       final messagingProvider = context.read<MessagingProvider>();
