@@ -40,19 +40,27 @@ class ProjectApiService {
       final effectiveStage = stage ?? filters?.stage;
       final effectiveFundingMin = fundingMin ?? filters?.fundingMin;
       final effectiveFundingMax = fundingMax ?? filters?.fundingMax;
-      final effectiveTags = tags ?? (filters?.tagIds.isNotEmpty == true ? filters?.tagIds : null);
+      final effectiveTags =
+          tags ?? (filters?.tagIds.isNotEmpty == true ? filters?.tagIds : null);
       final effectiveSortBy = sortBy ?? filters?.sortBy;
 
       if (effectiveSearch != null) queryParams['search'] = effectiveSearch;
-      if (effectiveCategory != null) queryParams['category'] = effectiveCategory;
+      if (effectiveCategory != null)
+        queryParams['category'] = effectiveCategory;
       if (effectiveStage != null) queryParams['stage'] = effectiveStage;
-      if (filters?.locationCountry != null) queryParams['location_country'] = filters!.locationCountry;
-      if (filters?.locationCity != null) queryParams['location_city'] = filters!.locationCity;
-      if (effectiveFundingMin != null) queryParams['funding_min'] = effectiveFundingMin;
-      if (effectiveFundingMax != null) queryParams['funding_max'] = effectiveFundingMax;
-      if (effectiveTags != null && effectiveTags.isNotEmpty) queryParams['tags'] = effectiveTags.join(',');
+      if (filters?.locationCountry != null)
+        queryParams['location_country'] = filters!.locationCountry;
+      if (filters?.locationCity != null)
+        queryParams['location_city'] = filters!.locationCity;
+      if (effectiveFundingMin != null)
+        queryParams['funding_min'] = effectiveFundingMin;
+      if (effectiveFundingMax != null)
+        queryParams['funding_max'] = effectiveFundingMax;
+      if (effectiveTags != null && effectiveTags.isNotEmpty)
+        queryParams['tags'] = effectiveTags.join(',');
       if (effectiveSortBy != null) {
-        queryParams['ordering'] = sortOrder == 'desc' ? '-$effectiveSortBy' : effectiveSortBy;
+        queryParams['ordering'] =
+            sortOrder == 'desc' ? '-$effectiveSortBy' : effectiveSortBy;
       }
       if (filters?.isFeatured == true) queryParams['is_featured'] = 'true';
       if (filters?.isPremium == true) queryParams['is_premium'] = 'true';
@@ -772,7 +780,37 @@ class ProjectApiService {
     }
   }
 
-  Future<Object?> getFavorites() async {}
+  Future<ProjectListResult> getFavorites() async {
+    try {
+      final response = await _apiService.get('/favorites/');
+
+      if (response.data is List) {
+        final list = response.data as List;
+        final projects = <ProjectModel>[];
+
+        for (final item in list) {
+          if (item is Map<String, dynamic>) {
+            try {
+              projects.add(ProjectModel.fromJson(item));
+            } catch (e) {
+              debugPrint('[API] Erreur parsing favori: $e');
+            }
+          }
+        }
+
+        return ProjectListResult.success(
+          projects: projects,
+          totalCount: projects.length,
+          hasNext: false,
+          hasPrevious: false,
+        );
+      }
+
+      return ProjectListResult.empty();
+    } catch (e) {
+      return ProjectListResult.failure(e.toString());
+    }
+  }
 }
 
 class ProjectListResult {
@@ -897,8 +935,6 @@ class ProjectListResult {
         if (item != null && item is Map<String, dynamic>) {
           try {
             // Compter les champs manquants sans les logger individuellement
-            int missingFieldsCount = 0;
-
             if (item['updated_at'] == null ||
                 item['created_at'] == null ||
                 item['category'] == null ||

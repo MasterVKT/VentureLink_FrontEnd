@@ -129,7 +129,10 @@ Future<void> setupServiceLocator() async {
   );
 
   serviceLocator.registerFactory<PaymentProvider>(
-    () => PaymentProvider(serviceLocator<PaymentApiService>()),
+    () => PaymentProvider(
+      serviceLocator<PaymentApiService>(),
+      rawApiService: serviceLocator<ApiService>(),
+    ),
   );
 
   serviceLocator.registerFactory<MatchingProvider>(

@@ -109,11 +109,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     context.router.push(ProjectDetailRoute(projectId: projectId));
   }
 
-  Future<void> _toggleFavorite(String projectId) async {
-    final provider = context.read<ProjectProvider>();
-    await provider.removeFromFavorites(projectId);
-  }
-
   void _showInfoDialog() {
     showDialog(
       context: context,

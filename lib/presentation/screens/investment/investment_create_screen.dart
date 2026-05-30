@@ -6,6 +6,7 @@ import 'package:venturelink/data/providers/investment_provider.dart';
 import 'package:venturelink/data/providers/project_provider.dart';
 import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/core/config/app_config.dart';
+import 'package:venturelink/presentation/screens/payment/payment_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 @RoutePage()
@@ -282,10 +283,10 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
             Expanded(
               child: TextFormField(
                 controller: _amountController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   hintText: 'Montant',
-                  prefixText: '€ ',
+                  prefixText: '${_getCurrencyPrefix(_currency)} ',
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
@@ -312,6 +313,7 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: const [
+                  DropdownMenuItem(value: 'XAF', child: Text('XAF')),
                   DropdownMenuItem(value: 'EUR', child: Text('EUR')),
                   DropdownMenuItem(value: 'USD', child: Text('USD')),
                 ],
@@ -504,10 +506,42 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
           );
 
       if (success && mounted) {
+        final project = context.read<ProjectProvider>().currentProject;
+        final investmentId =
+            context.read<InvestmentProvider>().currentInvestment?.id;
+
+        if (project != null && investmentId != null) {
+          final paid = await Navigator.push<bool?>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaymentScreen(
+                project: project,
+                amount: amount,
+                currency: _currency,
+              ),
+            ),
+          );
+
+          if (!mounted) return;
+
+          if (paid == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'Paiement confirmé. Merci pour votre investissement !'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            context.router.maybePop();
+            return;
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Demande d\'investissement envoyée avec succès !'),
-            backgroundColor: Colors.green,
+            content: Text(
+                'Demande d\'investissement créée. Vous pouvez finaliser le paiement plus tard.'),
+            backgroundColor: Colors.orange,
           ),
         );
         context.router.maybePop();
@@ -535,6 +569,19 @@ class _InvestmentCreateScreenState extends State<InvestmentCreateScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  String _getCurrencyPrefix(String currency) {
+    switch (currency.toUpperCase()) {
+      case 'EUR':
+        return '€';
+      case 'USD':
+        return '\$';
+      case 'XAF':
+        return 'FCFA';
+      default:
+        return currency;
     }
   }
 }

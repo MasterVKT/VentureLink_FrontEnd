@@ -22,7 +22,6 @@ import 'package:venturelink/presentation/screens/search/search_screen.dart';
 import 'package:venturelink/presentation/screens/project/project_create_screen.dart';
 import 'package:venturelink/presentation/screens/project/project_create_screen_enhanced.dart';
 import 'package:venturelink/presentation/screens/project/project_detail_screen.dart';
-import 'package:venturelink/presentation/screens/project/project_list_screen.dart';
 import 'package:venturelink/presentation/screens/project/favorites_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_list_screen.dart';
 import 'package:venturelink/presentation/screens/investment/investment_create_screen.dart';

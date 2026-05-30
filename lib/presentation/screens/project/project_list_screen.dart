@@ -2,18 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:auto_route/auto_route.dart';
 
 import 'package:venturelink/data/providers/project_provider.dart';
-import 'package:venturelink/data/models/project_model.dart';
 import 'package:venturelink/data/models/project_filters.dart';
 import 'package:venturelink/presentation/widgets/project_card.dart';
-import 'package:venturelink/presentation/widgets/skeleton/project_card_skeleton.dart';
 import 'package:venturelink/presentation/widgets/states/empty_state_widget.dart';
 import 'package:venturelink/presentation/widgets/states/loading_state_widget.dart';
 import 'package:venturelink/presentation/widgets/filter_bottom_sheet.dart';
-import 'package:venturelink/core/theme/app_theme.dart';
 import 'package:venturelink/core/router/app_router.dart';
 
 class ProjectListScreen extends StatefulWidget {
@@ -72,7 +68,8 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
       body: Consumer<ProjectProvider>(
         builder: (context, provider, child) {
           if (provider.isLoadingProjects && provider.projects.isEmpty) {
-            return const LoadingStateWidget(message: 'Chargement des projets...');
+            return const LoadingStateWidget(
+                message: 'Chargement des projets...');
           }
 
           if (provider.projects.isEmpty) {
@@ -81,7 +78,8 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
               title: 'Aucun projet',
               subtitle: 'Soyez le premier à créer un projet !',
               action: ElevatedButton.icon(
-                onPressed: () => context.router.push(const ProjectCreateRoute()),
+                onPressed: () =>
+                    context.router.push(const ProjectCreateRoute()),
                 icon: const Icon(Icons.add),
                 label: const Text('Créer un projet'),
               ),
@@ -114,7 +112,6 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                 return ProjectCard(
                   project: project,
                   onTap: () => _navigateToProjectDetail(project.id),
-                  onFavoriteToggle: () => _toggleFavorite(project),
                   showStats: true,
                 );
               },
@@ -165,7 +162,8 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       setState(() {
-        _currentFilters = _currentFilters.copyWith(searchQuery: query.isEmpty ? null : query);
+        _currentFilters =
+            _currentFilters.copyWith(searchQuery: query.isEmpty ? null : query);
       });
       context.read<ProjectProvider>().searchProjects(query);
     });
@@ -188,10 +186,5 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
 
   void _navigateToProjectDetail(String projectId) {
     context.router.push(ProjectDetailRoute(projectId: projectId));
-  }
-
-  Future<void> _toggleFavorite(ProjectModel project) async {
-    final provider = context.read<ProjectProvider>();
-    await provider.toggleFavorite(project.id);
   }
 }

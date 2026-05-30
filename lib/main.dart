@@ -35,6 +35,7 @@ import 'package:venturelink/data/services/discover_api_service.dart';
 import 'package:venturelink/domain/services/i_api_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:venturelink/l10n/app_localizations.dart';
 
 // Handler pour les messages en arrière-plan
 @pragma('vm:entry-point')
