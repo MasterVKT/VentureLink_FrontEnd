@@ -10,6 +10,7 @@ import '../../../core/di/service_locator.dart';
 import '../../common_widgets/vl_app_bar.dart';
 import '../../common_widgets/vl_loading_indicator.dart';
 import '../../common_widgets/vl_button.dart';
+import '../payment/payment_history_screen.dart';
 import 'payment_screen.dart';
 
 @RoutePage()
@@ -826,7 +827,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               title: const Text('Historique des paiements'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Naviguer vers l'historique
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PaymentHistoryScreen(),
+                  ),
+                );
               },
             ),
             ListTile(

@@ -533,8 +533,6 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: ProjectCard(
                   project: _searchResults[index],
-                  onFavoriteToggle: () =>
-                      _toggleFavorite(_searchResults[index].id),
                 ),
               );
             },
@@ -723,30 +721,5 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
         );
       },
     );
-  }
-
-  Future<void> _toggleFavorite(String projectId) async {
-    final provider = context.read<ProjectProvider>();
-
-    try {
-      // Chercher le projet dans les résultats de recherche
-      final projectIndex = _searchResults.indexWhere((p) => p.id == projectId);
-
-      if (projectIndex != -1) {
-        final isFavorite = _searchResults[projectIndex].isFavorite;
-
-        if (isFavorite) {
-          await provider.removeFromFavorites(projectId);
-        } else {
-          await provider.addToFavorites(projectId);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
-      }
-    }
   }
 }

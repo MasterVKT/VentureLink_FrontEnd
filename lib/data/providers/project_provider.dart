@@ -709,8 +709,8 @@ Future<void> loadFavoriteProjects() async {
   try {
     final result = await _projectApiService.getFavorites();
 
-    if (result?.isSuccess == true && result?.projects != null) {
-      _favoriteProjects = result!.projects!;
+    if (result.isSuccess && result.projects != null) {
+      _favoriteProjects = result.projects!;
     } else {
       _favoriteProjects = [];
     }
@@ -770,10 +770,4 @@ Future<void> removeFromFavorites(String projectId) async {
     throw Exception('Impossible de retirer des favoris');
   }
 }
-}
-
-extension on Object? {
-  get isSuccess => null;
-  
-  get projects => null;
 }
